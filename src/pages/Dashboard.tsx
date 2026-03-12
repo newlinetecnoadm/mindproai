@@ -1,12 +1,12 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Brain, LayoutDashboard, Calendar, Plus, ArrowRight } from "lucide-react";
+import { LayoutDashboard, Calendar, Plus, ArrowRight, Brain, Kanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const quickActions = [
   { icon: Brain, label: "Novo Diagrama", description: "Mapa mental, fluxograma e mais", path: "/diagramas", color: "bg-primary/10 text-primary" },
-  { icon: LayoutDashboard, label: "Novo Board", description: "Kanban estilo Trello", path: "/boards", color: "bg-success/10 text-success" },
+  { icon: Kanban, label: "Novo Board", description: "Kanban estilo Trello", path: "/boards", color: "bg-success/10 text-success" },
   { icon: Calendar, label: "Novo Evento", description: "Adicionar à agenda", path: "/agenda", color: "bg-warning/10 text-warning" },
 ];
 
@@ -19,7 +19,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground mb-8">Bem-vindo ao Mind Pro AI</p>
         </motion.div>
 
-        {/* Quick Actions */}
         <div className="grid sm:grid-cols-3 gap-4 mb-10">
           {quickActions.map((action, i) => (
             <motion.div
@@ -44,7 +43,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Recent items placeholder */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Recentes</h2>
           <div className="rounded-xl border border-border bg-card p-12 text-center">

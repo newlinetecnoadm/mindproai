@@ -1,9 +1,10 @@
-import { Brain, Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import logoVerticalColor from "@/assets/logo-vertical-color.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -11,18 +12,14 @@ const Login = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate with Supabase auth
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <Link to="/" className="inline-flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <Brain className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl">Mind Pro AI</span>
+          <Link to="/" className="inline-block mb-8">
+            <img src={logoVerticalColor} alt="Mind Pro AI" className="h-24 mx-auto" />
           </Link>
           <h1 className="text-2xl font-display font-bold mb-2">Bem-vindo de volta</h1>
           <p className="text-muted-foreground">Entre na sua conta para continuar</p>
@@ -35,9 +32,7 @@ const Login = () => {
           </Button>
 
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">ou continue com e-mail</span>
             </div>

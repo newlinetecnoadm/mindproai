@@ -76,7 +76,7 @@ const AssinaturasPage = () => {
               <ul className="space-y-2 mb-6">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
+                    <Check className="w-4 h-4 text-primary flex-shrink-0" />
                     <span>{f}</span>
                   </li>
                 ))}
