@@ -9,6 +9,7 @@ import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import DiagramList from "./pages/DiagramList.tsx";
+import DiagramEditor from "./pages/DiagramEditor.tsx";
 import WorkspaceList from "./pages/boards/WorkspaceList.tsx";
 import AgendaPage from "./pages/AgendaPage.tsx";
 import AssinaturasPage from "./pages/AssinaturasPage.tsx";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
+          <Route path="/diagramas/:id" element={<ProtectedRoute><DiagramEditor /></ProtectedRoute>} />
           <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
           <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
           <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
