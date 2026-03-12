@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
@@ -15,6 +16,10 @@ import BoardDetail from "./pages/boards/BoardDetail.tsx";
 import AgendaPage from "./pages/AgendaPage.tsx";
 import AssinaturasPage from "./pages/AssinaturasPage.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
+import AdminUsers from "./pages/admin/AdminUsers.tsx";
+import AdminPlans from "./pages/admin/AdminPlans.tsx";
+import AdminSettings from "./pages/admin/AdminSettings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -37,6 +42,11 @@ const App = () => (
           <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
           <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+          {/* Admin */}
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/planos" element={<AdminRoute><AdminPlans /></AdminRoute>} />
+          <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -1,11 +1,12 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Map, Kanban, Calendar, Settings, CreditCard, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { LayoutDashboard, Map, Kanban, Calendar, Settings, CreditCard, ChevronLeft, ChevronRight, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
 import logoIconSimple from "@/assets/logo-icon-simple.png";
 
@@ -28,6 +29,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: plan } = usePlan();
+  const { data: isAdmin } = useIsAdmin();
 
   const handleSignOut = async () => {
     await signOut();
@@ -95,6 +97,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="px-3 py-2 text-xs text-sidebar-foreground/60 truncate">
               {user.email}
             </div>
+          )}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-primary transition-colors"
+            >
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              {!collapsed && <span>Admin</span>}
+            </Link>
           )}
           <button
             onClick={handleSignOut}
