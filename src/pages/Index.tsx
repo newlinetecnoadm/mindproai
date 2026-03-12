@@ -1,8 +1,11 @@
-import { Brain, LayoutDashboard, Calendar, Sparkles, Check, ArrowRight, Menu, X } from "lucide-react";
+import { LayoutDashboard, Calendar, Sparkles, Check, ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
+import logoVerticalColor from "@/assets/logo-vertical-color.png";
+import logoIconSimple from "@/assets/logo-icon-simple.png";
 
 const plans = [
   {
@@ -36,22 +39,22 @@ const plans = [
 
 const features = [
   {
-    icon: Brain,
+    icon: "🧠",
     title: "Mapas Mentais & Diagramas",
     description: "Editor visual poderoso com 7 tipos de diagrama, templates prontos e auto-layout inteligente.",
   },
   {
-    icon: LayoutDashboard,
+    icon: "📋",
     title: "Boards Kanban",
     description: "Organize projetos com boards completos estilo Trello: cards, checklists, labels e colaboração.",
   },
   {
-    icon: Calendar,
+    icon: "📅",
     title: "Agenda Integrada",
     description: "Calendário conectado aos seus cards e diagramas. Nunca perca um prazo.",
   },
   {
-    icon: Sparkles,
+    icon: "✨",
     title: "Inteligência Artificial",
     description: "Sugestões automáticas de expansão de nós e geração de diagramas a partir de texto.",
   },
@@ -74,11 +77,8 @@ const LandingPage = () => {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Brain className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-lg text-foreground">Mind Pro AI</span>
+          <Link to="/" className="flex items-center">
+            <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-9" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -147,6 +147,16 @@ const LandingPage = () => {
               </Button>
             </a>
           </motion.div>
+
+          {/* Logo icon as decorative element */}
+          <motion.div
+            className="mt-16"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <img src={logoVerticalColor} alt="Mind Pro AI" className="h-40 mx-auto animate-float opacity-80" />
+          </motion.div>
         </div>
       </section>
 
@@ -167,9 +177,7 @@ const LandingPage = () => {
                 className="p-6 rounded-xl bg-card border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-lg group"
                 initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
               >
-                <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center mb-4 group-hover:bg-gradient-primary transition-colors duration-300">
-                  <feature.icon className="w-6 h-6 text-accent-foreground group-hover:text-primary-foreground transition-colors duration-300" />
-                </div>
+                <div className="text-3xl mb-4">{feature.icon}</div>
                 <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
               </motion.div>
@@ -213,7 +221,7 @@ const LandingPage = () => {
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
                       <span>{f}</span>
                     </li>
                   ))}
@@ -235,12 +243,7 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="border-t border-border py-12 px-4">
         <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
-              <Brain className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display font-semibold text-sm">Mind Pro AI</span>
-          </div>
+          <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-7" />
           <p className="text-muted-foreground text-sm">
             © {new Date().getFullYear()} Mind Pro AI. Todos os direitos reservados.
           </p>
