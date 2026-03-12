@@ -18,6 +18,7 @@ const BoardDetail = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [boardTitle, setBoardTitle] = useState("");
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   // Fetch board
   const { data: board, isLoading: boardLoading } = useQuery({
