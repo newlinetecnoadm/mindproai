@@ -9,7 +9,7 @@ const configs = [
   {
     title: "Stripe",
     description: "Gateway de pagamento para assinaturas",
-    icon: CreditCardIcon,
+    icon: CreditCard,
     status: "pendente",
     fields: [
       { label: "Publishable Key", placeholder: "pk_live_..." },
