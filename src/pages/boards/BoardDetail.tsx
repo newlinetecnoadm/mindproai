@@ -8,6 +8,7 @@ import { ArrowLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
+import CardDetailModal from "@/components/kanban/CardDetailModal";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 
