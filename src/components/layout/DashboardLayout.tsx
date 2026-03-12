@@ -98,6 +98,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               {user.email}
             </div>
           )}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-primary transition-colors"
+            >
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              {!collapsed && <span>Admin</span>}
+            </Link>
+          )}
           <button
             onClick={handleSignOut}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-destructive transition-colors"
