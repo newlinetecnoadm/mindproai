@@ -8,6 +8,7 @@ import { ArrowLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
+import CardDetailModal from "@/components/kanban/CardDetailModal";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 
@@ -17,6 +18,7 @@ const BoardDetail = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [boardTitle, setBoardTitle] = useState("");
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   // Fetch board
   const { data: board, isLoading: boardLoading } = useQuery({
@@ -203,11 +205,20 @@ const BoardDetail = () => {
           onAddCard={(columnId, title) => addCardMut.mutate({ columnId, title })}
           onMoveCard={(cardId, newColumnId, newPosition) => moveCardMut.mutate({ cardId, newColumnId, newPosition })}
           onReorderCards={(columnId, cardIds) => reorderCardsMut.mutate({ columnId, cardIds })}
+          onCardClick={(card) => setSelectedCardId(card.id)}
           onAddColumn={(title) => addColumnMut.mutate(title)}
           onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
           onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
         />
       </div>
+
+      <CardDetailModal
+        cardId={selectedCardId}
+        boardId={id!}
+        open={!!selectedCardId}
+        onOpenChange={(open) => { if (!open) setSelectedCardId(null); }}
+        onCardUpdated={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+      />
     </div>
   );
 };
