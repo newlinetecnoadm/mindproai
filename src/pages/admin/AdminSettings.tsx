@@ -3,13 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Key, Webhook, Globe, Shield } from "lucide-react";
+import { Key, Globe, Shield, CreditCard } from "lucide-react";
 
 const configs = [
   {
     title: "Stripe",
     description: "Gateway de pagamento para assinaturas",
-    icon: CreditCardIcon,
+    icon: CreditCard,
     status: "pendente",
     fields: [
       { label: "Publishable Key", placeholder: "pk_live_..." },
@@ -33,9 +33,6 @@ const configs = [
   },
 ];
 
-function CreditCardIcon(props: any) {
-  return <Key {...props} />;
-}
 
 const AdminSettings = () => {
   return (
