@@ -33,9 +33,6 @@ const configs = [
   },
 ];
 
-function CreditCardIcon(props: any) {
-  return <Key {...props} />;
-}
 
 const AdminSettings = () => {
   return (
