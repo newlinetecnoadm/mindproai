@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
@@ -26,12 +27,12 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/diagramas" element={<DiagramList />} />
-          <Route path="/boards" element={<WorkspaceList />} />
-          <Route path="/agenda" element={<AgendaPage />} />
-          <Route path="/assinaturas" element={<AssinaturasPage />} />
-          <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
+          <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
+          <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+          <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
+          <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
