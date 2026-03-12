@@ -205,13 +205,23 @@ const BoardDetail = () => {
           onAddCard={(columnId, title) => addCardMut.mutate({ columnId, title })}
           onMoveCard={(cardId, newColumnId, newPosition) => moveCardMut.mutate({ cardId, newColumnId, newPosition })}
           onReorderCards={(columnId, cardIds) => reorderCardsMut.mutate({ columnId, cardIds })}
+          onCardClick={(card) => setSelectedCardId(card.id)}
           onAddColumn={(title) => addColumnMut.mutate(title)}
           onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
           onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
         />
       </div>
+
+      <CardDetailModal
+        cardId={selectedCardId}
+        boardId={id!}
+        open={!!selectedCardId}
+        onOpenChange={(open) => { if (!open) setSelectedCardId(null); }}
+        onCardUpdated={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+      />
     </div>
   );
+};
 };
 
 export default BoardDetail;
