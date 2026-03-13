@@ -1,0 +1,1 @@
+ALTER TABLE public.user_profiles ADD COLUMN notify_comments boolean NOT NULL DEFAULT true;
