@@ -11,6 +11,7 @@ import Cadastro from "./pages/Cadastro.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import DiagramList from "./pages/DiagramList.tsx";
 import DiagramEditor from "./pages/DiagramEditor.tsx";
+import NewDiagram from "./pages/NewDiagram.tsx";
 import WorkspaceList from "./pages/boards/WorkspaceList.tsx";
 import BoardDetail from "./pages/boards/BoardDetail.tsx";
 import AgendaPage from "./pages/AgendaPage.tsx";
