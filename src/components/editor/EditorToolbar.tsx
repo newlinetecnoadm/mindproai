@@ -113,6 +113,30 @@ const EditorToolbar = ({
 
       <div className="w-px h-5 bg-border mx-1" />
 
+      {/* Theme picker */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Tema do editor">
+            <SwatchBook className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[160px]">
+          {editorThemes.map((t) => (
+            <DropdownMenuItem
+              key={t.id}
+              onClick={() => onThemeChange(t)}
+              className={currentThemeId === t.id ? "bg-accent" : ""}
+            >
+              <span className="mr-2">{t.emoji}</span>
+              {t.name}
+              {currentThemeId === t.id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8" disabled={exporting} title="Exportar">
