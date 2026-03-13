@@ -139,6 +139,9 @@ const DiagramEditor = () => {
           .eq("id", id!);
 
         if (error) throw error;
+        setSavedRecently(true);
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSavedRecently(false), 2000);
       } catch (err: any) {
         toast.error("Erro ao salvar: " + (err.message || "desconhecido"));
       } finally {
