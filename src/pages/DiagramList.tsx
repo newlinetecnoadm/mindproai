@@ -155,7 +155,7 @@ const DiagramList = () => {
             <h1 className="text-2xl font-display font-bold mb-1">Meus Diagramas</h1>
             <p className="text-muted-foreground">{totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
           </div>
-          <Button variant="hero" onClick={() => navigate("/diagramas/novo")}>
+          <Button variant="hero" onClick={handleNewDiagram}>
             <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
           </Button>
         </div>
