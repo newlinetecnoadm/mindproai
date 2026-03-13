@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,6 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
 const nodeColors = [
@@ -35,6 +40,26 @@ const addLabels: Record<string, string> = {
   timeline: "Adicionar marco",
   concept_map: "Adicionar conceito",
 };
+
+const shortcuts = [
+  { keys: ["Tab"], desc: "Adicionar nó filho" },
+  { keys: ["Enter"], desc: "Adicionar nó irmão" },
+  { keys: ["←"], desc: "Ir para o nó pai" },
+  { keys: ["→"], desc: "Ir para o primeiro filho" },
+  { keys: ["↑"], desc: "Irmão anterior" },
+  { keys: ["↓"], desc: "Próximo irmão" },
+  { keys: ["Delete"], desc: "Excluir nó selecionado" },
+  { keys: ["Ctrl", "S"], desc: "Salvar" },
+  { keys: ["Ctrl", "Z"], desc: "Desfazer" },
+  { keys: ["Ctrl", "⇧", "Z"], desc: "Refazer" },
+  { keys: ["Ctrl", "D"], desc: "Duplicar nó" },
+];
+
+const Kbd = ({ children }: { children: string }) => (
+  <kbd className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded bg-muted border border-border text-[10px] font-mono font-medium text-muted-foreground">
+    {children}
+  </kbd>
+);
 
 interface EditorToolbarProps {
   onAddNode: () => void;
@@ -159,6 +184,32 @@ const EditorToolbar = ({
         <Save className="w-4 h-4" />
         {saving ? "Salvando..." : "Salvar"}
       </Button>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* Keyboard shortcuts help */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Atalhos de teclado (?)">
+            <Keyboard className="w-4 h-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-64 p-3" sideOffset={8}>
+          <p className="text-xs font-semibold text-foreground mb-2">Atalhos de teclado</p>
+          <div className="space-y-1.5">
+            {shortcuts.map((s, i) => (
+              <div key={i} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">{s.desc}</span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {s.keys.map((k, j) => (
+                    <Kbd key={j}>{k}</Kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
