@@ -26,6 +26,7 @@ interface KanbanColumnProps {
   onCardClick?: (card: CardData) => void;
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
+  onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
 }
 
 const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn }: KanbanColumnProps) => {
