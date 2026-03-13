@@ -146,16 +146,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
-  // Auto-layout helper for mindmaps
-  const applyMindmapLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    if (diagramType === "mindmap") {
-      const laid = autoLayoutMindMap(nextNodes, nextEdges);
-      setNodes(laid.nodes);
-      setEdges(laid.edges);
-    } else {
-      setNodes(nextNodes);
-      setEdges(nextEdges);
-    }
+  // Auto-layout helper for all diagram types
+  const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
+    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
+    setNodes(laid.nodes);
+    setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
