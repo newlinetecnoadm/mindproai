@@ -7,8 +7,9 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -337,7 +338,99 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onError: () => toast.error("Erro ao remover anexo"),
   });
 
+  // All boards for move card
+  const { data: allBoards = [] } = useQuery({
+    queryKey: ["boards-for-move"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("boards").select("id, title").eq("is_closed", false).order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
 
+  const [showMoveCard, setShowMoveCard] = useState(false);
+  const [moveTargetBoardId, setMoveTargetBoardId] = useState<string>("");
+  const [moveTargetColumns, setMoveTargetColumns] = useState<{ id: string; title: string }[]>([]);
+  const [moveTargetColumnId, setMoveTargetColumnId] = useState<string>("");
+
+  const [showCopyCard, setShowCopyCard] = useState(false);
+  const [copyChecklists, setCopyChecklists] = useState(true);
+  const [copyLabels, setCopyLabels] = useState(true);
+
+  const loadTargetColumns = async (targetBoardId: string) => {
+    setMoveTargetBoardId(targetBoardId);
+    const { data } = await supabase.from("board_columns").select("id, title").eq("board_id", targetBoardId).order("position");
+    setMoveTargetColumns(data || []);
+    setMoveTargetColumnId(data?.[0]?.id || "");
+  };
+
+  const copyCardMut = useMutation({
+    mutationFn: async () => {
+      if (!card || !cardId) return;
+      const { count } = await supabase.from("board_cards").select("*", { count: "exact", head: true }).eq("column_id", card.column_id);
+      const { data: newCard, error } = await supabase.from("board_cards").insert({
+        board_id: boardId,
+        column_id: card.column_id,
+        title: `${card.title} (cópia)`,
+        description: card.description,
+        cover_color: card.cover_color,
+        due_date: card.due_date,
+        position: count || 0,
+      }).select("id").single();
+      if (error) throw error;
+
+      if (copyLabels && cardLabelIds.length > 0) {
+        await supabase.from("card_label_assignments").insert(
+          cardLabelIds.map((lid: string) => ({ card_id: newCard.id, label_id: lid }))
+        );
+      }
+
+      if (copyChecklists && checklists.length > 0) {
+        for (const cl of checklists) {
+          const { data: newCl } = await supabase.from("card_checklists").insert({
+            card_id: newCard.id, title: (cl as any).title, position: (cl as any).position,
+          }).select("id").single();
+          if (newCl) {
+            const items = checklistItems.filter((i: any) => i.checklist_id === (cl as any).id);
+            if (items.length > 0) {
+              await supabase.from("checklist_items").insert(
+                items.map((i: any) => ({ checklist_id: newCl.id, text: i.text, position: i.position, is_checked: false }))
+              );
+            }
+          }
+        }
+      }
+    },
+    onSuccess: () => {
+      invalidateAll();
+      setShowCopyCard(false);
+      toast.success("Card copiado");
+    },
+    onError: () => toast.error("Erro ao copiar card"),
+  });
+
+  const moveCardToBoardMut = useMutation({
+    mutationFn: async () => {
+      if (!cardId || !moveTargetColumnId || !moveTargetBoardId) return;
+      const { count } = await supabase.from("board_cards").select("*", { count: "exact", head: true }).eq("column_id", moveTargetColumnId);
+      const { error } = await supabase.from("board_cards").update({
+        board_id: moveTargetBoardId,
+        column_id: moveTargetColumnId,
+        position: count || 0,
+      }).eq("id", cardId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      onOpenChange(false);
+      setShowMoveCard(false);
+      toast.success("Card movido para outro board");
+    },
+    onError: () => toast.error("Erro ao mover card"),
+  });
+
+  if (!card) return null;
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
 
   return (
@@ -626,8 +719,79 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </div>
           </div>
 
-          {/* Delete card */}
-          <div className="border-t border-border pt-4">
+          {/* Card actions */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {/* Copy card */}
+              <Popover open={showCopyCard} onOpenChange={setShowCopyCard}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                    <Copy className="w-3.5 h-3.5" /> Copiar
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <p className="text-xs font-medium mb-3">Copiar card</p>
+                  <div className="space-y-2 mb-3">
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox checked={copyChecklists} onCheckedChange={(v) => setCopyChecklists(!!v)} />
+                      Copiar checklists ({checklists.length})
+                    </label>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox checked={copyLabels} onCheckedChange={(v) => setCopyLabels(!!v)} />
+                      Copiar labels ({cardLabelIds.length})
+                    </label>
+                  </div>
+                  <Button size="sm" className="w-full h-7 text-xs" onClick={() => copyCardMut.mutate()} disabled={copyCardMut.isPending}>
+                    {copyCardMut.isPending ? "Copiando..." : "Criar cópia"}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+
+              {/* Move card */}
+              <Popover open={showMoveCard} onOpenChange={(o) => { setShowMoveCard(o); if (!o) { setMoveTargetBoardId(""); setMoveTargetColumns([]); } }}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <p className="text-xs font-medium mb-3">Mover para outro board</p>
+                  <div className="space-y-2 mb-3">
+                    <Select value={moveTargetBoardId} onValueChange={loadTargetColumns}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Selecionar board..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allBoards.filter((b: any) => b.id !== boardId).map((b: any) => (
+                          <SelectItem key={b.id} value={b.id} className="text-xs">{b.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {moveTargetColumns.length > 0 && (
+                      <Select value={moveTargetColumnId} onValueChange={setMoveTargetColumnId}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Selecionar coluna..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {moveTargetColumns.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs">{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    disabled={!moveTargetColumnId || moveCardToBoardMut.isPending}
+                    onClick={() => moveCardToBoardMut.mutate()}
+                  >
+                    {moveCardToBoardMut.isPending ? "Movendo..." : "Mover card"}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
               <Trash2 className="w-3.5 h-3.5" /> Excluir card
             </Button>

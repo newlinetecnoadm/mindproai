@@ -26,13 +26,22 @@ const WorkspaceList = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .select("id, title, cover_color, updated_at, is_closed")
+        .select("id, title, cover_color, updated_at, is_closed, is_starred")
         .eq("is_closed", false)
+        .order("is_starred", { ascending: false })
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
       return data;
     },
+  });
+
+  const toggleStarMut = useMutation({
+    mutationFn: async ({ boardId, starred }: { boardId: string; starred: boolean }) => {
+      const { error } = await supabase.from("boards").update({ is_starred: starred }).eq("id", boardId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["boards"] }),
   });
 
   const createBoardMut = useMutation({
@@ -162,17 +171,30 @@ const WorkspaceList = () => {
                     <Clock className="w-3 h-3" />
                     {formatDistanceToNow(new Date(board.updated_at!), { addSuffix: true, locale: ptBR })}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
-                    }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </Button>
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleStarMut.mutate({ boardId: board.id, starred: !board.is_starred });
+                      }}
+                    >
+                      <Star className={cn("w-3.5 h-3.5", board.is_starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               </StaggerItem>
