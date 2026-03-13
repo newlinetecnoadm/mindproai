@@ -52,7 +52,6 @@ const AcceptInvite = () => {
         }
 
         if (invitation.resource_type === "diagram") {
-          // Add as collaborator
           const { error: collabErr } = await supabase
             .from("diagram_collaborators")
             .upsert({
@@ -63,7 +62,6 @@ const AcceptInvite = () => {
 
           if (collabErr) throw collabErr;
 
-          // Mark invitation as accepted
           await supabase
             .from("invitations")
             .update({ status: "accepted", invited_user_id: user.id })
@@ -71,8 +69,28 @@ const AcceptInvite = () => {
 
           setStatus("success");
           setMessage("Você agora é colaborador deste diagrama!");
-
           setTimeout(() => navigate(`/diagramas/${invitation.resource_id}`), 2000);
+
+        } else if (invitation.resource_type === "board") {
+          const { error: memberErr } = await supabase
+            .from("board_members")
+            .upsert({
+              board_id: invitation.resource_id,
+              user_id: user.id,
+              role: invitation.role === "viewer" ? "viewer" : "member",
+            }, { onConflict: "board_id,user_id" });
+
+          if (memberErr) throw memberErr;
+
+          await supabase
+            .from("invitations")
+            .update({ status: "accepted", invited_user_id: user.id })
+            .eq("id", invitation.id);
+
+          setStatus("success");
+          setMessage("Você agora é membro deste board!");
+          setTimeout(() => navigate(`/boards/${invitation.resource_id}`), 2000);
+
         } else {
           setStatus("error");
           setMessage("Tipo de convite não suportado.");
