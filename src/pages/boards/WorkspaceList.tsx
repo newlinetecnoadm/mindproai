@@ -251,6 +251,14 @@ const WorkspaceList = () => {
           onCreateBoard={(title, template) => createBoardMut.mutate({ title, template })}
           isPending={createBoardMut.isPending}
         />
+        <UpgradeModal
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          resource="board"
+          currentCount={limits.currentBoards}
+          maxCount={limits.maxBoards}
+          planName={limits.displayName}
+        />
       </PageTransition>
     </DashboardLayout>
   );
