@@ -136,13 +136,41 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onCardUpdated();
   };
 
+  // Sync due_date with events table
+  const syncCardEvent = async (dueDate: string | null) => {
+    if (!user || !cardId) return;
+    // Remove existing event for this card
+    await supabase.from("events").delete().eq("card_id", cardId).eq("user_id", user.id);
+    // Create new event if due_date is set
+    if (dueDate) {
+      const cardTitle = title || card?.title || "Card";
+      const d = new Date(dueDate);
+      await supabase.from("events").insert({
+        user_id: user.id,
+        card_id: cardId,
+        title: `📋 ${cardTitle}`,
+        start_at: d.toISOString(),
+        end_at: d.toISOString(),
+        all_day: true,
+        color: "#f97316",
+      });
+    }
+  };
+
   // Update card
   const updateCard = useMutation({
     mutationFn: async (updates: Record<string, any>) => {
       const { error } = await supabase.from("board_cards").update(updates).eq("id", cardId!);
       if (error) throw error;
+      // Sync event when due_date changes
+      if ("due_date" in updates) {
+        await syncCardEvent(updates.due_date);
+      }
     },
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
   });
 
   // Delete card
