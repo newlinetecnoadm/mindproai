@@ -12,6 +12,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
+import TemplateThumbnail from "@/components/editor/TemplateThumbnail";
 
 const NewDiagram = () => {
   const navigate = useNavigate();
