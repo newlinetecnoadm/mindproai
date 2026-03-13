@@ -53,7 +53,7 @@ const DiagramEditor = () => {
   }, [id, navigate]);
 
   const handleSave = useCallback(
-    async (nodes: Node[], edges: Edge[]) => {
+    async (nodes: Node[], edges: Edge[], themeId: string) => {
       if (!user) return;
       setSaving(true);
 
