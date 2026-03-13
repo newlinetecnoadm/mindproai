@@ -26,6 +26,9 @@ import FlowchartNode from "./nodes/FlowchartNode";
 import OrgNode from "./nodes/OrgNode";
 import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
+import DiamondNode from "./nodes/DiamondNode";
+import StickyNoteNode from "./nodes/StickyNoteNode";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
@@ -38,6 +41,15 @@ const nodeTypes = {
   org: OrgNode as any,
   timeline: TimelineNode as any,
   concept: ConceptNode as any,
+  diamond: DiamondNode as any,
+  sticky: StickyNoteNode as any,
+};
+
+const edgeTypes = {
+  curved: CurvedEdge as any,
+  orthogonal: OrthogonalEdge as any,
+  straight: StraightEdge as any,
+  hierarchy: HierarchyEdge as any,
 };
 
 const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
