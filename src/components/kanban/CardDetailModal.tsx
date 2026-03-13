@@ -338,7 +338,99 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onError: () => toast.error("Erro ao remover anexo"),
   });
 
+  // All boards for move card
+  const { data: allBoards = [] } = useQuery({
+    queryKey: ["boards-for-move"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("boards").select("id, title").eq("is_closed", false).order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
 
+  const [showMoveCard, setShowMoveCard] = useState(false);
+  const [moveTargetBoardId, setMoveTargetBoardId] = useState<string>("");
+  const [moveTargetColumns, setMoveTargetColumns] = useState<{ id: string; title: string }[]>([]);
+  const [moveTargetColumnId, setMoveTargetColumnId] = useState<string>("");
+
+  const [showCopyCard, setShowCopyCard] = useState(false);
+  const [copyChecklists, setCopyChecklists] = useState(true);
+  const [copyLabels, setCopyLabels] = useState(true);
+
+  const loadTargetColumns = async (targetBoardId: string) => {
+    setMoveTargetBoardId(targetBoardId);
+    const { data } = await supabase.from("board_columns").select("id, title").eq("board_id", targetBoardId).order("position");
+    setMoveTargetColumns(data || []);
+    setMoveTargetColumnId(data?.[0]?.id || "");
+  };
+
+  const copyCardMut = useMutation({
+    mutationFn: async () => {
+      if (!card || !cardId) return;
+      const { count } = await supabase.from("board_cards").select("*", { count: "exact", head: true }).eq("column_id", card.column_id);
+      const { data: newCard, error } = await supabase.from("board_cards").insert({
+        board_id: boardId,
+        column_id: card.column_id,
+        title: `${card.title} (cópia)`,
+        description: card.description,
+        cover_color: card.cover_color,
+        due_date: card.due_date,
+        position: count || 0,
+      }).select("id").single();
+      if (error) throw error;
+
+      if (copyLabels && cardLabelIds.length > 0) {
+        await supabase.from("card_label_assignments").insert(
+          cardLabelIds.map((lid: string) => ({ card_id: newCard.id, label_id: lid }))
+        );
+      }
+
+      if (copyChecklists && checklists.length > 0) {
+        for (const cl of checklists) {
+          const { data: newCl } = await supabase.from("card_checklists").insert({
+            card_id: newCard.id, title: (cl as any).title, position: (cl as any).position,
+          }).select("id").single();
+          if (newCl) {
+            const items = checklistItems.filter((i: any) => i.checklist_id === (cl as any).id);
+            if (items.length > 0) {
+              await supabase.from("checklist_items").insert(
+                items.map((i: any) => ({ checklist_id: newCl.id, text: i.text, position: i.position, is_checked: false }))
+              );
+            }
+          }
+        }
+      }
+    },
+    onSuccess: () => {
+      invalidateAll();
+      setShowCopyCard(false);
+      toast.success("Card copiado");
+    },
+    onError: () => toast.error("Erro ao copiar card"),
+  });
+
+  const moveCardToBoardMut = useMutation({
+    mutationFn: async () => {
+      if (!cardId || !moveTargetColumnId || !moveTargetBoardId) return;
+      const { count } = await supabase.from("board_cards").select("*", { count: "exact", head: true }).eq("column_id", moveTargetColumnId);
+      const { error } = await supabase.from("board_cards").update({
+        board_id: moveTargetBoardId,
+        column_id: moveTargetColumnId,
+        position: count || 0,
+      }).eq("id", cardId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      onOpenChange(false);
+      setShowMoveCard(false);
+      toast.success("Card movido para outro board");
+    },
+    onError: () => toast.error("Erro ao mover card"),
+  });
+
+  if (!card) return null;
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
 
   return (
