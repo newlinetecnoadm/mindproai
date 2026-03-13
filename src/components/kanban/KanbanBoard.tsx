@@ -27,6 +27,7 @@ interface KanbanBoardProps {
   onAddColumn: (title: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
+  onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
 }
 
 const KanbanBoard = ({
