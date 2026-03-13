@@ -42,6 +42,14 @@ const BoardDetail = () => {
     },
   });
 
+  // Apply dark theme only inside boards
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    return () => {
+      document.documentElement.classList.remove("dark");
+    };
+  }, []);
+
   useEffect(() => {
     if (board) setBoardTitle(board.title);
   }, [board]);
