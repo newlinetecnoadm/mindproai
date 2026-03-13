@@ -11,6 +11,7 @@ import KanbanBoard from "@/components/kanban/KanbanBoard";
 import CardDetailModal from "@/components/kanban/CardDetailModal";
 import BoardFilters, { type BoardFilterState, EMPTY_FILTERS } from "@/components/kanban/BoardFilters";
 import InboxPanel from "@/components/boards/InboxPanel";
+import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
