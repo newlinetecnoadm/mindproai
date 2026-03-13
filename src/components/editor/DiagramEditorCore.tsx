@@ -537,6 +537,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
