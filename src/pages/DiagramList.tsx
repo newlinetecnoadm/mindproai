@@ -56,7 +56,7 @@ const DiagramList = () => {
       // Own diagrams
       const { data: own, error } = await supabase
         .from("diagrams")
-        .select("id, title, type, updated_at, created_at, user_id")
+        .select("id, title, type, updated_at, created_at, user_id, thumbnail")
         .eq("user_id", user!.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
