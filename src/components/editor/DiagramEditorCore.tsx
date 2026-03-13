@@ -555,6 +555,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if (e.key === "F2" && selectedNodes.length === 1) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id } }));
+        return;
+      }
+      // Type-to-edit: printable character starts editing the selected node
+      if (
+        selectedNodes.length === 1 &&
+        !e.ctrlKey && !e.metaKey && !e.altKey &&
+        e.key.length === 1
+      ) {
+        window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id, replaceText: true } }));
       }
     };
     window.addEventListener("keydown", handler);
