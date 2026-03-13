@@ -331,7 +331,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "Tab") { e.preventDefault(); handleAddNode(); }
+      if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
+      if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
       if (e.key === "Delete" || e.key === "Backspace") handleDelete();
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
@@ -341,7 +342,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddNode, handleDelete, handleSave, undo, redo, handleDuplicate]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
