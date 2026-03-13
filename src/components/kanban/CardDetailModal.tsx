@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
+import MentionInput, { extractMentionedUserIds, type MentionUser } from "./MentionInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -111,6 +112,21 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       const { data, error } = await supabase.from("card_comments").select("*").eq("card_id", cardId!).order("created_at", { ascending: true });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Board members for @mentions
+  const { data: mentionUsers = [] } = useQuery<MentionUser[]>({
+    queryKey: ["board-mention-users", boardId],
+    enabled: !!boardId && open,
+    queryFn: async () => {
+      // Get board owner + members
+      const { data: board } = await supabase.from("boards").select("user_id").eq("id", boardId).single();
+      const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", boardId);
+      const allIds = [...new Set([board?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+      if (!allIds.length) return [];
+      const { data: profiles } = await supabase.from("user_profiles").select("user_id, full_name, email").in("user_id", allIds);
+      return (profiles || []).filter((p: any) => p.user_id !== user?.id) as MentionUser[];
     },
   });
 
@@ -230,10 +246,16 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     mutationFn: async (content: string) => {
       const { error } = await supabase.from("card_comments").insert({ card_id: cardId!, user_id: user!.id, content });
       if (error) throw error;
-      // Send email notification (fire-and-forget)
+      // Extract mentioned user IDs and notify only them
+      const mentionedIds = extractMentionedUserIds(content, mentionUsers);
       const boardUrl = `${window.location.origin}/boards/${boardId}`;
       supabase.functions.invoke("notify-card-comment", {
-        body: { card_id: cardId, comment: content, board_url: boardUrl },
+        body: {
+          card_id: cardId,
+          comment: content,
+          board_url: boardUrl,
+          ...(mentionedIds.length > 0 ? { mentioned_user_ids: mentionedIds } : {}),
+        },
       }).catch(() => { /* silent */ });
     },
     onSuccess: () => {
@@ -460,6 +482,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
 
   if (!card) return null;
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
+
+  // Render comment text with highlighted @mentions
+  const renderCommentWithMentions = (text: string) => {
+    const parts = text.split(/(@\S+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("@")) {
+        return (
+          <span key={i} className="text-primary font-medium">{part}</span>
+        );
+      }
+      return part;
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -723,17 +758,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                       {format(new Date(c.created_at), "dd MMM, HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <p className="text-sm">{c.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {renderCommentWithMentions(c.content)}
+                  </p>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <Textarea
+              <MentionInput
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escreva um comentário..."
-                rows={2}
-                className="resize-none text-sm flex-1"
+                onChange={setNewComment}
+                onSubmit={() => { if (newComment.trim()) addComment.mutate(newComment.trim()); }}
+                users={mentionUsers}
+                placeholder="Escreva um comentário... Use @ para mencionar"
               />
               <Button
                 size="sm"

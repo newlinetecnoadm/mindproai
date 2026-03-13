@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { card_id, comment, board_url } = await req.json();
+    const { card_id, comment, board_url, mentioned_user_ids } = await req.json();
     if (!card_id || !comment) {
       return new Response(JSON.stringify({ error: "card_id e comment são obrigatórios" }), {
         status: 400,
@@ -88,30 +88,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get board owner
-    const { data: board } = await supabase
-      .from("boards")
-      .select("user_id")
-      .eq("id", card.board_id)
-      .single();
+    // Determine who to notify
+    let notifySet: Set<string>;
 
-    // Get board members
-    const { data: members } = await supabase
-      .from("board_members")
-      .select("user_id")
-      .eq("board_id", card.board_id);
+    if (mentioned_user_ids && Array.isArray(mentioned_user_ids) && mentioned_user_ids.length > 0) {
+      // Only notify mentioned users (exclude commenter)
+      notifySet = new Set(mentioned_user_ids.filter((id: string) => id !== user.id));
+    } else {
+      // Fallback: notify board owner + members + card members (exclude commenter)
+      notifySet = new Set<string>();
+      const { data: board } = await supabase
+        .from("boards")
+        .select("user_id")
+        .eq("id", card.board_id)
+        .single();
+      const { data: members } = await supabase
+        .from("board_members")
+        .select("user_id")
+        .eq("board_id", card.board_id);
+      const { data: cardMembers } = await supabase
+        .from("card_members")
+        .select("user_id")
+        .eq("card_id", card_id);
 
-    // Get card members
-    const { data: cardMembers } = await supabase
-      .from("card_members")
-      .select("user_id")
-      .eq("card_id", card_id);
-
-    // Collect unique user IDs to notify (exclude commenter)
-    const notifySet = new Set<string>();
-    if (board?.user_id && board.user_id !== user.id) notifySet.add(board.user_id);
-    members?.forEach((m: any) => { if (m.user_id !== user.id) notifySet.add(m.user_id); });
-    cardMembers?.forEach((m: any) => { if (m.user_id !== user.id) notifySet.add(m.user_id); });
+      if (board?.user_id && board.user_id !== user.id) notifySet.add(board.user_id);
+      members?.forEach((m: any) => { if (m.user_id !== user.id) notifySet.add(m.user_id); });
+      cardMembers?.forEach((m: any) => { if (m.user_id !== user.id) notifySet.add(m.user_id); });
+    }
 
     if (notifySet.size === 0) {
       return new Response(JSON.stringify({ success: true, notified: 0 }), {
