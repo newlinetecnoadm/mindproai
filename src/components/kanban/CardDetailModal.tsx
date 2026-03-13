@@ -782,7 +782,6 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            </div>
           </div>
 
           {/* Activity Feed */}
