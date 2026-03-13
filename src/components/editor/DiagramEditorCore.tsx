@@ -52,17 +52,20 @@ interface DiagramEditorCoreProps {
   diagramType: string;
   initialNodes?: Node[];
   initialEdges?: Edge[];
-  onSave: (nodes: Node[], edges: Edge[]) => Promise<void>;
+  initialThemeId?: string;
+  onSave: (nodes: Node[], edges: Edge[], themeId: string) => Promise<void>;
   saving: boolean;
 }
 
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, saving }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving }: DiagramEditorCoreProps) {
   const defaultNodes = initialNodes || [];
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
-  const [theme, setTheme] = useState<EditorTheme>(editorThemes[0]);
+  const [theme, setTheme] = useState<EditorTheme>(
+    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
+  );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
