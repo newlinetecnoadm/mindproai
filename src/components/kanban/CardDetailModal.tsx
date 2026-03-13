@@ -547,9 +547,12 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </Popover>
 
             {card.due_date && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
-                Remover data
-              </Button>
+              <>
+                <ReminderPicker cardId={cardId!} dueDate={card.due_date} />
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
+                  Remover data
+                </Button>
+              </>
             )}
 
             {/* Label picker */}
