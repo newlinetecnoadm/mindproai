@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2 } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,16 +45,20 @@ interface EditorToolbarProps {
   onColorChange: (color: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onExportPng: () => void;
+  onExportPdf: () => void;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
   hasSelection: boolean;
   diagramType: string;
+  exporting: boolean;
 }
 
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onColorChange, onUndo, onRedo, canUndo, canRedo, saving, hasSelection, diagramType,
+  onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
+  canUndo, canRedo, saving, hasSelection, diagramType, exporting,
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md">
@@ -104,6 +108,24 @@ const EditorToolbar = ({
       </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={exporting} title="Exportar">
+            <Download className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={onExportPng}>
+            <Image className="w-3.5 h-3.5 mr-2" />
+            Exportar PNG
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onExportPdf}>
+            <FileText className="w-3.5 h-3.5 mr-2" />
+            Exportar PDF
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onSave} disabled={saving}>
         <Save className="w-4 h-4" />

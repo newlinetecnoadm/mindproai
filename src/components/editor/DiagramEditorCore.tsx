@@ -1,4 +1,7 @@
 import { useCallback, useRef, useState, useEffect } from "react";
+import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
+import { toast } from "sonner";
 import {
   ReactFlow,
   addEdge,
@@ -57,6 +60,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
+  const [exporting, setExporting] = useState(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
@@ -174,6 +178,57 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
 
   const handleSave = useCallback(() => onSave(nodes, edges), [nodes, edges, onSave]);
 
+  const getFlowElement = useCallback(() => {
+    return document.querySelector(".react-flow__viewport") as HTMLElement | null;
+  }, []);
+
+  const handleExportPng = useCallback(async () => {
+    const el = getFlowElement();
+    if (!el) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(el, {
+        backgroundColor: "white",
+        pixelRatio: 2,
+        filter: (node) => !node.classList?.contains("react-flow__minimap") && !node.classList?.contains("react-flow__controls"),
+      });
+      const link = document.createElement("a");
+      link.download = "diagrama.png";
+      link.href = dataUrl;
+      link.click();
+      toast.success("PNG exportado com sucesso!");
+    } catch {
+      toast.error("Erro ao exportar PNG");
+    } finally {
+      setExporting(false);
+    }
+  }, [getFlowElement]);
+
+  const handleExportPdf = useCallback(async () => {
+    const el = getFlowElement();
+    if (!el) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(el, {
+        backgroundColor: "white",
+        pixelRatio: 2,
+        filter: (node) => !node.classList?.contains("react-flow__minimap") && !node.classList?.contains("react-flow__controls"),
+      });
+      const img = new window.Image();
+      img.src = dataUrl;
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+      const landscape = img.width > img.height;
+      const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "px", format: [img.width / 2, img.height / 2] });
+      pdf.addImage(dataUrl, "PNG", 0, 0, img.width / 2, img.height / 2);
+      pdf.save("diagrama.pdf");
+      toast.success("PDF exportado com sucesso!");
+    } catch {
+      toast.error("Erro ao exportar PDF");
+    } finally {
+      setExporting(false);
+    }
+  }, [getFlowElement]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -202,9 +257,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         onColorChange={handleColorChange}
         onUndo={undo}
         onRedo={redo}
+        onExportPng={handleExportPng}
+        onExportPdf={handleExportPdf}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
+        exporting={exporting}
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
