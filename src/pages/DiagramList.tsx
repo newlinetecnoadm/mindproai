@@ -212,7 +212,7 @@ const DiagramList = () => {
             <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
               Escolha entre mapas mentais, fluxogramas, organogramas e mais.
             </p>
-            <Button variant="hero" onClick={() => navigate("/diagramas/novo")}>
+            <Button variant="hero" onClick={handleNewDiagram}>
               <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
             </Button>
           </div>
