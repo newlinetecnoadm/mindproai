@@ -27,6 +27,7 @@ interface KanbanBoardProps {
   onAddColumn: (title: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
+  onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
 }
 
 const KanbanBoard = ({
@@ -39,6 +40,7 @@ const KanbanBoard = ({
   onAddColumn,
   onDeleteColumn,
   onRenameColumn,
+  onDropInboxItem,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
@@ -136,6 +138,7 @@ const KanbanBoard = ({
             onCardClick={onCardClick}
             onDeleteColumn={onDeleteColumn}
             onRenameColumn={onRenameColumn}
+            onDropInboxItem={onDropInboxItem}
           />
         ))}
 

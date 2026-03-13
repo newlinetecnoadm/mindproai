@@ -12,6 +12,7 @@ import {
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
 import MentionInput, { extractMentionedUserIds, type MentionUser } from "./MentionInput";
+import ReminderPicker from "./ReminderPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -546,9 +547,12 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </Popover>
 
             {card.due_date && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
-                Remover data
-              </Button>
+              <>
+                <ReminderPicker cardId={cardId!} dueDate={card.due_date} />
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
+                  Remover data
+                </Button>
+              </>
             )}
 
             {/* Label picker */}

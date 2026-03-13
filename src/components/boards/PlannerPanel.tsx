@@ -2,17 +2,18 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, ChevronLeft, ChevronRight, MoreHorizontal, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface PlannerPanelProps {
   onClose: () => void;
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 6); // 6am to 7pm
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 6);
 
 const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
   const { user } = useAuth();
@@ -38,10 +39,26 @@ const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
     },
   });
 
+  // Cards with due dates for this day
+  const { data: dueCards = [] } = useQuery({
+    queryKey: ["planner-due-cards", user?.id, dateStr],
+    enabled: !!user,
+    queryFn: async () => {
+      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).toISOString();
+      const end = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1).toISOString();
+      const { data, error } = await supabase
+        .from("board_cards")
+        .select("id, title, due_date, is_complete, board_id")
+        .gte("due_date", start)
+        .lt("due_date", end)
+        .order("due_date");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const now = new Date();
   const isToday = format(now, "yyyy-MM-dd") === dateStr;
-
-  // Calculate current time position
   const currentHour = now.getHours() + now.getMinutes() / 60;
   const currentTimeTop = ((currentHour - 6) / 14) * 100;
 
@@ -63,26 +80,16 @@ const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentDate(subDays(currentDate, 1))}>
             <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setCurrentDate(new Date())}
-          >
-            Today
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setCurrentDate(new Date())}>
+            Hoje
           </Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentDate(addDays(currentDate, 1))}>
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <MoreHorizontal className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <X className="w-3.5 h-3.5" />
+        </Button>
       </div>
 
       {/* Day label */}
@@ -90,22 +97,43 @@ const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
         <span className="text-sm capitalize">
           {format(currentDate, "EEEE", { locale: ptBR })}
         </span>
-        <span className={`ml-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
-          isToday ? "bg-primary text-primary-foreground" : ""
-        }`}>
+        <span className={cn(
+          "ml-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold",
+          isToday && "bg-primary text-primary-foreground"
+        )}>
           {format(currentDate, "d")}
         </span>
       </div>
 
-      {/* All day section */}
-      <div className="px-3 py-1.5 border-b border-border">
-        <span className="text-[11px] text-muted-foreground">All day</span>
-        {events.filter((e: any) => e.all_day).map((ev: any) => (
-          <div key={ev.id} className="mt-1 px-2 py-1 rounded text-xs font-medium bg-primary/20 text-primary">
-            {ev.title}
+      {/* Due cards section */}
+      {dueCards.length > 0 && (
+        <div className="px-3 py-2 border-b border-border">
+          <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Cards com prazo</span>
+          <div className="space-y-1 mt-1.5">
+            {dueCards.map((card: any) => (
+              <div key={card.id} className={cn(
+                "flex items-center gap-2 px-2 py-1.5 rounded text-xs",
+                card.is_complete ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+              )}>
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate font-medium">{card.title}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* All day events */}
+      {events.filter((e: any) => e.all_day).length > 0 && (
+        <div className="px-3 py-1.5 border-b border-border">
+          <span className="text-[11px] text-muted-foreground">Dia inteiro</span>
+          {events.filter((e: any) => e.all_day).map((ev: any) => (
+            <div key={ev.id} className="mt-1 px-2 py-1 rounded text-xs font-medium bg-primary/20 text-primary">
+              {ev.title}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Timeline */}
       <div className="flex-1 overflow-y-auto relative">
@@ -123,7 +151,6 @@ const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
             </div>
           ))}
 
-          {/* Current time indicator */}
           {isToday && currentHour >= 6 && currentHour <= 20 && (
             <div
               className="absolute left-10 right-0 flex items-center z-10"
@@ -134,7 +161,6 @@ const PlannerPanel = ({ onClose }: PlannerPanelProps) => {
             </div>
           )}
 
-          {/* Events on timeline */}
           {events.filter((e: any) => !e.all_day).map((ev: any) => {
             const startH = new Date(ev.start_at).getHours() + new Date(ev.start_at).getMinutes() / 60;
             const endH = new Date(ev.end_at).getHours() + new Date(ev.end_at).getMinutes() / 60;

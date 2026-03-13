@@ -26,18 +26,42 @@ interface KanbanColumnProps {
   onCardClick?: (card: CardData) => void;
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
+  onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
 }
 
-const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn }: KanbanColumnProps) => {
+const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem }: KanbanColumnProps) => {
   const [addingCard, setAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [columnTitle, setColumnTitle] = useState(column.title);
 
+  const [nativeDragOver, setNativeDragOver] = useState(false);
+
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${column.id}`,
     data: { type: "column", columnId: column.id },
   });
+
+  const handleNativeDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("application/inbox-item")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setNativeDragOver(true);
+    }
+  };
+
+  const handleNativeDragLeave = () => setNativeDragOver(false);
+
+  const handleNativeDrop = (e: React.DragEvent) => {
+    setNativeDragOver(false);
+    const data = e.dataTransfer.getData("application/inbox-item");
+    if (data && onDropInboxItem) {
+      try {
+        const item = JSON.parse(data);
+        onDropInboxItem(column.id, item);
+      } catch {}
+    }
+  };
 
   const handleAddCard = () => {
     if (newCardTitle.trim()) {
@@ -57,10 +81,15 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
   const sortedCards = [...cards].sort((a, b) => a.position - b.position);
 
   return (
-    <div className={cn(
-      "flex flex-col w-72 shrink-0 bg-muted/50 rounded-xl border border-border",
-      isOver && "ring-2 ring-primary/30"
-    )}>
+    <div
+      className={cn(
+        "flex flex-col w-72 shrink-0 bg-muted/50 rounded-xl border border-border transition-all",
+        (isOver || nativeDragOver) && "ring-2 ring-primary/30"
+      )}
+      onDragOver={handleNativeDragOver}
+      onDragLeave={handleNativeDragLeave}
+      onDrop={handleNativeDrop}
+    >
       {/* Column header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         {editingTitle ? (
