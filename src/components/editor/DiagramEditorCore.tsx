@@ -61,8 +61,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasChanges = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
+
+  // Autosave with 2s debounce
+  useEffect(() => {
+    // Skip initial render
+    if (!hasChanges.current) {
+      hasChanges.current = true;
+      return;
+    }
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      try {
+        await onSave(nodes, edges);
+        setLastSavedAt(new Date());
+      } catch {
+        // silent fail — manual save still available
+      }
+    }, 2000);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+  }, [nodes, edges, onSave]);
 
   const onConnect = useCallback(
     (params: Connection) => {
