@@ -110,7 +110,17 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
-  // Local state
+  // Attachments
+  const { data: attachments = [] } = useQuery({
+    queryKey: ["card-attachments", cardId],
+    enabled: !!cardId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("card_attachments").select("*").eq("card_id", cardId!).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [newComment, setNewComment] = useState("");
