@@ -246,10 +246,16 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     mutationFn: async (content: string) => {
       const { error } = await supabase.from("card_comments").insert({ card_id: cardId!, user_id: user!.id, content });
       if (error) throw error;
-      // Send email notification (fire-and-forget)
+      // Extract mentioned user IDs and notify only them
+      const mentionedIds = extractMentionedUserIds(content, mentionUsers);
       const boardUrl = `${window.location.origin}/boards/${boardId}`;
       supabase.functions.invoke("notify-card-comment", {
-        body: { card_id: cardId, comment: content, board_url: boardUrl },
+        body: {
+          card_id: cardId,
+          comment: content,
+          board_url: boardUrl,
+          ...(mentionedIds.length > 0 ? { mentioned_user_ids: mentionedIds } : {}),
+        },
       }).catch(() => { /* silent */ });
     },
     onSuccess: () => {
