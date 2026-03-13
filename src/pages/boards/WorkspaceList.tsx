@@ -26,13 +26,22 @@ const WorkspaceList = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .select("id, title, cover_color, updated_at, is_closed")
+        .select("id, title, cover_color, updated_at, is_closed, is_starred")
         .eq("is_closed", false)
+        .order("is_starred", { ascending: false })
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
       return data;
     },
+  });
+
+  const toggleStarMut = useMutation({
+    mutationFn: async ({ boardId, starred }: { boardId: string; starred: boolean }) => {
+      const { error } = await supabase.from("boards").update({ is_starred: starred }).eq("id", boardId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["boards"] }),
   });
 
   const createBoardMut = useMutation({
