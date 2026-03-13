@@ -624,6 +624,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
+      // Alt+Arrow: move node between branches
+      if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); handleMoveNode("up"); return; }
+      if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); handleMoveNode("down"); return; }
+      if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); handleMoveNode("left"); return; }
+      if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); handleMoveNode("right"); return; }
       // Arrow navigation
       if (e.key === "ArrowUp") { e.preventDefault(); handleArrowNav("up"); }
       if (e.key === "ArrowDown") { e.preventDefault(); handleArrowNav("down"); }
@@ -646,7 +651,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, searchOpen]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, searchOpen]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
