@@ -52,6 +52,16 @@ const DiagramList = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
+
+  const handleNewDiagram = () => {
+    if (!limits.canCreateDiagram) {
+      setUpgradeOpen(true);
+      return;
+    }
+    navigate("/diagramas/novo");
+  };
 
   const { data: diagrams, isLoading } = useQuery({
     queryKey: ["diagrams", user?.id],
