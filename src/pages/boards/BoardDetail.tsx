@@ -244,6 +244,18 @@ const BoardDetail = () => {
             data: { card_title: oldCard?.title || "", from_column: oldCol.title, to_column: newCol.title, board_url: boardUrl },
           },
         }).catch(() => {});
+        // In-app notifications for card move
+        const cardTitle = oldCard?.title || "Card";
+        for (const uid of allUserIds) {
+          if (uid === user?.id) continue;
+          supabase.from("notifications").insert({
+            user_id: uid,
+            type: "card_moved",
+            title: `"${cardTitle}" movido de ${oldCol.title} para ${newCol.title}`,
+            board_id: id,
+            card_id: cardId,
+          }).then(() => {});
+        }
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
