@@ -20,6 +20,7 @@ const DiagramEditor = () => {
   const [diagramType, setDiagramType] = useState("mindmap");
   const [initialNodes, setInitialNodes] = useState<Node[] | undefined>();
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
+  const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
