@@ -220,24 +220,33 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   // Auto-layout helper — respects manually pinned nodes
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    // Separate pinned nodes from unpinned
-    const unpinnedNodes = nextNodes.filter((n) => !pinnedPositions.current.has(n.id));
-    const pinnedNodes = nextNodes.filter((n) => pinnedPositions.current.has(n.id));
+    for (const pinnedId of [...pinnedPositions.current]) {
+      if (!nextNodes.some((node) => node.id === pinnedId)) {
+        pinnedPositions.current.delete(pinnedId);
+      }
+    }
 
-    if (unpinnedNodes.length > 0) {
-      const laid = autoLayoutDiagram(unpinnedNodes, nextEdges, diagramType);
-      // Merge: use laid positions for unpinned, keep pinned as-is
-      const laidMap = new Map(laid.nodes.map((n) => [n.id, n]));
-      const mergedNodes = nextNodes.map((n) => {
-        if (pinnedPositions.current.has(n.id)) return n;
-        return laidMap.get(n.id) || n;
-      });
-      setNodes(mergedNodes);
+    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
+
+    if (pinnedPositions.current.size === 0) {
+      setNodes(laid.nodes);
       setEdges(laid.edges);
     } else {
-      setNodes(nextNodes);
-      setEdges(nextEdges);
+      const pinnedMap = new Map(
+        nextNodes
+          .filter((node) => pinnedPositions.current.has(node.id))
+          .map((node) => [node.id, node.position])
+      );
+
+      const mergedNodes = laid.nodes.map((node) => {
+        const pinnedPosition = pinnedMap.get(node.id);
+        return pinnedPosition ? { ...node, position: pinnedPosition } : node;
+      });
+
+      setNodes(mergedNodes);
+      setEdges(rerouteDiagramEdges(mergedNodes, laid.edges, diagramType));
     }
+
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
@@ -254,7 +263,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Mark node as pinned when user drags it
   const handleNodeDragStop = useCallback((_event: any, node: Node) => {
     pinnedPositions.current.add(node.id);
-  }, []);
+    const updatedNodes = nodes.map((currentNode) =>
+      currentNode.id === node.id ? { ...currentNode, position: node.position } : currentNode
+    );
+    setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+  }, [nodes, setEdges, diagramType]);
 
   const handleAddChild = useCallback(() => {
     takeSnapshot();
