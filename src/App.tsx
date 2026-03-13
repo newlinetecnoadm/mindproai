@@ -58,7 +58,7 @@ const App = () => (
           <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <FloatingNavBar />
+        
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
