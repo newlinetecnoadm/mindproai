@@ -1,0 +1,117 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import { Inbox, CalendarDays, Kanban, ArrowLeftRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+const navItems = [
+  { icon: Inbox, label: "Inbox", path: "/inbox" },
+  { icon: CalendarDays, label: "Planner", path: "/planner" },
+  { icon: Kanban, label: "Board", path: "/boards" },
+];
+
+const FloatingNavBar = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const { data: boards = [] } = useQuery({
+    queryKey: ["boards-nav", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("boards")
+        .select("id, title, is_starred")
+        .eq("user_id", user!.id)
+        .eq("is_closed", false)
+        .order("is_starred", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Only show on relevant pages
+  const showOnPaths = ["/inbox", "/planner", "/boards", "/dashboard"];
+  const isRelevant = showOnPaths.some(
+    (p) => location.pathname === p || location.pathname.startsWith("/boards/")
+  );
+  if (!isRelevant) return null;
+
+  return (
+    <motion.div
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+    >
+      <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-lg">
+        {navItems.map((item) => {
+          const isActive =
+            location.pathname === item.path ||
+            (item.path === "/boards" && location.pathname.startsWith("/boards"));
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="floating-nav-indicator"
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary"
+                />
+              )}
+            </button>
+          );
+        })}
+
+        {/* Switch boards dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-200">
+              <ArrowLeftRight className="w-4 h-4" />
+              <span>Switch boards</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {boards.length === 0 ? (
+              <DropdownMenuItem disabled>Nenhum board encontrado</DropdownMenuItem>
+            ) : (
+              boards.map((board) => (
+                <DropdownMenuItem
+                  key={board.id}
+                  onClick={() => navigate(`/boards/${board.id}`)}
+                  className="cursor-pointer"
+                >
+                  <span className="truncate">{board.title}</span>
+                  {board.is_starred && (
+                    <span className="ml-auto text-warning text-xs">★</span>
+                  )}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </motion.div>
+  );
+};
+
+export default FloatingNavBar;
