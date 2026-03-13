@@ -105,7 +105,7 @@ const Login = () => {
           Não tem conta?{" "}
           <Link to="/cadastro" className="text-primary hover:underline font-medium">Criar conta grátis</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -139,7 +139,7 @@ const Cadastro = () => {
           Já tem conta?{" "}
           <Link to="/login" className="text-primary hover:underline font-medium">Entrar</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };
