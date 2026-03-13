@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -135,7 +137,7 @@ const DiagramList = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-6xl">
+      <PageTransition className="p-6 lg:p-8 max-w-6xl">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-display font-bold mb-1">Meus Diagramas</h1>
@@ -227,10 +229,10 @@ const DiagramList = () => {
                 {filteredCount} de {totalCount} diagrama{totalCount !== 1 ? "s" : ""}
               </p>
             )}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((d) => (
+                <StaggerItem key={d.id}>
                 <div
-                  key={d.id}
                   className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                   onClick={() => navigate(`/diagramas/${d.id}`)}
                 >
@@ -277,11 +279,12 @@ const DiagramList = () => {
                     </div>
                   </div>
                 </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerContainer>
           </>
         )}
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };

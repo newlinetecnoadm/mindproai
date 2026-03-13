@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalendarGrid from "@/components/agenda/CalendarGrid";
@@ -100,7 +101,7 @@ const AgendaPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4 lg:p-8 max-w-7xl">
+      <PageTransition className="p-4 lg:p-8 max-w-7xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -157,7 +158,7 @@ const AgendaPage = () => {
           onDelete={(id) => deleteMutation.mutate(id)}
           defaultDate={defaultDate}
         />
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };

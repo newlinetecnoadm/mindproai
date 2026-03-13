@@ -1,4 +1,5 @@
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,7 +80,12 @@ const Cadastro = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="w-full max-w-md space-y-8"
+      >
         <div className="text-center">
           <Link to="/" className="inline-block mb-8">
             <img src={logoVerticalColor} alt="Mind Pro AI" className="h-24 mx-auto" />
@@ -133,7 +139,7 @@ const Cadastro = () => {
           Já tem conta?{" "}
           <Link to="/login" className="text-primary hover:underline font-medium">Entrar</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

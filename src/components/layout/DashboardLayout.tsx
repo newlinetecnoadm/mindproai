@@ -124,7 +124,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       <main className="flex-1 overflow-auto">
-        {children}
+        <div className="animate-fade-in">
+          {children}
+        </div>
       </main>
     </div>
   );

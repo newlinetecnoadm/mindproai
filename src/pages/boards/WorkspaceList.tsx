@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -88,7 +89,7 @@ const WorkspaceList = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-6xl">
+      <PageTransition className="p-6 lg:p-8 max-w-6xl">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-display font-bold mb-1">Meus Boards</h1>
@@ -143,10 +144,10 @@ const WorkspaceList = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {boards!.map((board) => (
+              <StaggerItem key={board.id}>
               <div
-                key={board.id}
                 className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/boards/${board.id}`)}
               >
@@ -174,10 +175,11 @@ const WorkspaceList = () => {
                   </Button>
                 </div>
               </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         )}
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };
