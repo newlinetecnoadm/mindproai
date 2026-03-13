@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
-import { autoLayoutMindMap } from "@/components/mindmap/mindmapLayout";
+import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
 import {
   ReactFlow,
   addEdge,
@@ -65,8 +65,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const getInitialLayout = () => {
     const n = initialNodes || [];
     const e = initialEdges || [];
-    if (diagramType === "mindmap" && n.length > 0) {
-      return autoLayoutMindMap(n, e);
+    if (n.length > 0) {
+      return autoLayoutDiagram(n, e, diagramType);
     }
     return { nodes: n, edges: e };
   };
@@ -95,23 +95,27 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave with 2s debounce
+  // Autosave: only on explicit inactivity (10s debounce), not on every keystroke
+  const pendingChanges = useRef(false);
   useEffect(() => {
     // Skip initial render
     if (!hasChanges.current) {
       hasChanges.current = true;
       return;
     }
+    pendingChanges.current = true;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(async () => {
+      if (!pendingChanges.current) return;
       try {
         const thumb = await captureThumbnail();
         await onSave(nodes, edges, theme.id, thumb);
         setLastSavedAt(new Date());
+        pendingChanges.current = false;
       } catch {
         // silent fail — manual save still available
       }
-    }, 2000);
+    }, 10000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [nodes, edges, theme, onSave, captureThumbnail]);
 
@@ -142,16 +146,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
-  // Auto-layout helper for mindmaps
-  const applyMindmapLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    if (diagramType === "mindmap") {
-      const laid = autoLayoutMindMap(nextNodes, nextEdges);
-      setNodes(laid.nodes);
-      setEdges(laid.edges);
-    } else {
-      setNodes(nextNodes);
-      setEdges(nextEdges);
-    }
+  // Auto-layout helper for all diagram types
+  const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
+    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
+    setNodes(laid.nodes);
+    setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
@@ -180,8 +179,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
     }
 
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyAutoLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
@@ -211,8 +210,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
@@ -235,8 +234,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const nextNodes = nodes.filter((n) => !toDelete.has(n.id));
     const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target));
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyAutoLayout]);
 
   const handleColorChange = useCallback(
     (color: string) => {

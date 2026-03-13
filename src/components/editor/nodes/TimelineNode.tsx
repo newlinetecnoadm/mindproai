@@ -20,20 +20,22 @@ const colorMap: Record<string, string> = {
   default: "border-border bg-card",
 };
 
-function TimelineNode({ data, selected }: NodeProps & { data: TimelineNodeData }) {
+const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
+
+function TimelineNode({ data, selected, id }: NodeProps & { data: TimelineNodeData }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
+
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
+    const handler = (e: Event) => { if ((e as CustomEvent).detail?.nodeId === id) setEditing(true); };
+    window.addEventListener("mindmap-edit-node", handler);
+    return () => window.removeEventListener("mindmap-edit-node", handler);
+  }, [id]);
 
   const colorClass = colorMap[data.color || "default"] || colorMap.default;
-
   const handleBlur = () => { setEditing(false); data.label = label; };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { setEditing(false); data.label = label; }
@@ -50,20 +52,22 @@ function TimelineNode({ data, selected }: NodeProps & { data: TimelineNodeData }
       )}
       onDoubleClick={() => setEditing(true)}
     >
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
+      <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="source" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="source" position={Position.Right} id="right" className={handleStyle} />
+      <Handle type="target" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="target" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="target" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="target" position={Position.Right} id="right" className={handleStyle} />
+
       <div className="p-3">
         {data.date && (
           <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{data.date}</span>
         )}
         {editing ? (
-          <input
-            ref={inputRef}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="bg-transparent outline-none w-full text-sm font-semibold mt-1"
-          />
+          <input ref={inputRef} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown}
+            className="bg-transparent outline-none w-full text-sm font-semibold mt-1" />
         ) : (
           <p className="text-sm font-semibold mt-0.5">{label}</p>
         )}
@@ -71,7 +75,6 @@ function TimelineNode({ data, selected }: NodeProps & { data: TimelineNodeData }
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{data.description}</p>
         )}
       </div>
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
     </div>
   );
 }

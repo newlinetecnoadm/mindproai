@@ -3,9 +3,25 @@ import type { Node, Edge } from "@xyflow/react";
 const ROOT_WIDTH = 200;
 const ROOT_HEIGHT = 60;
 const NODE_WIDTH = 180;
-const NODE_HEIGHT = 44;
-const H_GAP = 80; // horizontal gap between levels
-const V_GAP = 30; // vertical gap between siblings
+const NODE_HEIGHT = 48;
+const H_GAP = 80;
+const V_GAP = 24;
+
+// Org chart constants
+const ORG_NODE_WIDTH = 180;
+const ORG_NODE_HEIGHT = 60;
+const ORG_H_GAP = 40;
+const ORG_V_GAP = 60;
+
+// Timeline constants
+const TL_NODE_WIDTH = 180;
+const TL_NODE_HEIGHT = 70;
+const TL_GAP = 40;
+
+// Concept map constants
+const CONCEPT_NODE_WIDTH = 160;
+const CONCEPT_NODE_HEIGHT = 48;
+const CONCEPT_RADIUS = 220;
 
 interface TreeNode {
   id: string;
@@ -15,9 +31,8 @@ interface TreeNode {
   isRoot: boolean;
 }
 
-/**
- * Build a tree structure from flat nodes + edges.
- */
+// ─── Tree helpers ────────────────────────────────────────
+
 function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
   const nodeMap = new Map<string, Node>();
   nodes.forEach((n) => nodeMap.set(n.id, n));
@@ -32,11 +47,8 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
     hasParent.add(e.target);
   });
 
-  // Find root (node with isRoot flag, or node without parent)
   let rootId = nodes.find((n) => (n.data as any).isRoot)?.id;
-  if (!rootId) {
-    rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
-  }
+  if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
   if (!rootId) return null;
 
   function build(id: string, depth: number): TreeNode | null {
@@ -51,11 +63,7 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
     const subtreeHeight =
       children.length === 0
         ? nodeH
-        : Math.max(
-            nodeH,
-            children.reduce((sum, c) => sum + c.subtreeHeight, 0) +
-              (children.length - 1) * V_GAP
-          );
+        : Math.max(nodeH, children.reduce((sum, c) => sum + c.subtreeHeight, 0) + (children.length - 1) * V_GAP);
 
     return { id, children, subtreeHeight, node, isRoot };
   }
@@ -63,10 +71,9 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
   return build(rootId, 0);
 }
 
-/**
- * Layout the tree: root is centered, children fan out to the right.
- */
-function layoutTree(
+// ─── Mindmap layout (horizontal tree, root → right) ─────
+
+function layoutMindmapTree(
   tree: TreeNode,
   x: number,
   yStart: number,
@@ -75,45 +82,189 @@ function layoutTree(
   const nodeH = tree.isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
   const nodeW = tree.isRoot ? ROOT_WIDTH : NODE_WIDTH;
 
-  // Center this node vertically within its subtree
   const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
   positions.set(tree.id, { x, y });
 
   if (tree.children.length === 0) return;
-
   let childY = yStart;
   for (const child of tree.children) {
-    layoutTree(child, x + nodeW + H_GAP, childY, positions);
+    layoutMindmapTree(child, x + nodeW + H_GAP, childY, positions);
     childY += child.subtreeHeight + V_GAP;
   }
 }
 
-/**
- * Determine the best sourceHandle and targetHandle based on relative positions.
- */
-function getBestHandles(
-  sourcePos: { x: number; y: number },
-  targetPos: { x: number; y: number }
-): { sourceHandle: string; targetHandle: string } {
-  const dx = targetPos.x - sourcePos.x;
-  const dy = targetPos.y - sourcePos.y;
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
+// ─── Org chart layout (top-down centered tree) ──────────
 
-  if (absDx >= absDy) {
-    return dx > 0
-      ? { sourceHandle: "right", targetHandle: "left" }
-      : { sourceHandle: "left", targetHandle: "right" };
-  } else {
-    return dy > 0
-      ? { sourceHandle: "bottom", targetHandle: "top" }
-      : { sourceHandle: "top", targetHandle: "bottom" };
+function buildOrgTree(nodes: Node[], edges: Edge[]) {
+  const nodeMap = new Map<string, Node>();
+  nodes.forEach((n) => nodeMap.set(n.id, n));
+  const childrenMap = new Map<string, string[]>();
+  const hasParent = new Set<string>();
+  edges.forEach((e) => {
+    const arr = childrenMap.get(e.source) || [];
+    arr.push(e.target);
+    childrenMap.set(e.source, arr);
+    hasParent.add(e.target);
+  });
+  let rootId = nodes.find((n) => (n.data as any).isRoot)?.id;
+  if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
+  if (!rootId) return null;
+
+  interface OrgTreeNode { id: string; children: OrgTreeNode[]; subtreeWidth: number; }
+
+  function build(id: string): OrgTreeNode | null {
+    if (!nodeMap.has(id)) return null;
+    const childIds = childrenMap.get(id) || [];
+    const children = childIds.map((c) => build(c)).filter(Boolean) as OrgTreeNode[];
+    const subtreeWidth = children.length === 0
+      ? ORG_NODE_WIDTH
+      : children.reduce((s, c) => s + c.subtreeWidth, 0) + (children.length - 1) * ORG_H_GAP;
+    return { id, children, subtreeWidth };
+  }
+  return build(rootId);
+}
+
+function layoutOrgTree(
+  tree: { id: string; children: any[]; subtreeWidth: number },
+  x: number,
+  y: number,
+  positions: Map<string, { x: number; y: number }>
+) {
+  positions.set(tree.id, { x: x + tree.subtreeWidth / 2 - ORG_NODE_WIDTH / 2, y });
+  if (tree.children.length === 0) return;
+  let childX = x;
+  for (const child of tree.children) {
+    layoutOrgTree(child, childX, y + ORG_NODE_HEIGHT + ORG_V_GAP, positions);
+    childX += child.subtreeWidth + ORG_H_GAP;
   }
 }
 
-/**
- * Apply auto-layout to mind map nodes and update edge handles.
- */
+// ─── Timeline layout (horizontal sequential) ───────────
+
+function layoutTimeline(nodes: Node[], edges: Edge[]): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  // Order by edges (chain)
+  const childMap = new Map<string, string>();
+  const hasParent = new Set<string>();
+  edges.forEach((e) => { childMap.set(e.source, e.target); hasParent.add(e.target); });
+  
+  let startId = nodes.find((n) => !hasParent.has(n.id))?.id;
+  if (!startId && nodes.length > 0) startId = nodes[0].id;
+  
+  const ordered: string[] = [];
+  const visited = new Set<string>();
+  let current = startId;
+  while (current && !visited.has(current)) {
+    visited.add(current);
+    ordered.push(current);
+    current = childMap.get(current) as string;
+  }
+  // Add any unvisited nodes
+  nodes.forEach((n) => { if (!visited.has(n.id)) ordered.push(n.id); });
+
+  ordered.forEach((id, i) => {
+    positions.set(id, { x: i * (TL_NODE_WIDTH + TL_GAP), y: 0 });
+  });
+  return positions;
+}
+
+// ─── Concept map layout (radial from root) ──────────────
+
+function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  if (nodes.length === 0) return positions;
+
+  const childrenMap = new Map<string, string[]>();
+  const hasParent = new Set<string>();
+  edges.forEach((e) => {
+    const arr = childrenMap.get(e.source) || [];
+    arr.push(e.target);
+    childrenMap.set(e.source, arr);
+    hasParent.add(e.target);
+  });
+
+  let rootId = nodes.find((n) => (n.data as any).isRoot)?.id;
+  if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
+  if (!rootId) rootId = nodes[0].id;
+
+  // Place root at center
+  positions.set(rootId, { x: 0, y: 0 });
+
+  const visited = new Set<string>([rootId]);
+
+  function layoutLevel(parentId: string, parentX: number, parentY: number, startAngle: number, sweep: number, radius: number) {
+    const childIds = (childrenMap.get(parentId) || []).filter((id) => !visited.has(id));
+    if (childIds.length === 0) return;
+
+    const angleStep = sweep / Math.max(childIds.length, 1);
+    childIds.forEach((cid, i) => {
+      visited.add(cid);
+      const angle = startAngle + angleStep * (i + 0.5);
+      const cx = parentX + radius * Math.cos(angle);
+      const cy = parentY + radius * Math.sin(angle);
+      positions.set(cid, { x: cx - CONCEPT_NODE_WIDTH / 2, y: cy - CONCEPT_NODE_HEIGHT / 2 });
+
+      // Recurse with a narrower sweep
+      const childSweep = Math.min(sweep / childIds.length, Math.PI * 0.8);
+      layoutLevel(cid, cx, cy, angle - childSweep / 2, childSweep, radius * 0.75);
+    });
+  }
+
+  const directChildren = (childrenMap.get(rootId) || []).filter((id) => !visited.has(id));
+  if (directChildren.length > 0) {
+    layoutLevel(rootId, CONCEPT_NODE_WIDTH / 2, CONCEPT_NODE_HEIGHT / 2, -Math.PI / 2, Math.PI * 2, CONCEPT_RADIUS);
+  }
+
+  return positions;
+}
+
+// ─── Handle selection ───────────────────────────────────
+
+function getBestHandles(
+  sourcePos: { x: number; y: number },
+  targetPos: { x: number; y: number },
+  srcW: number, srcH: number, tgtW: number, tgtH: number
+): { sourceHandle: string; targetHandle: string } {
+  const srcCx = sourcePos.x + srcW / 2;
+  const srcCy = sourcePos.y + srcH / 2;
+  const tgtCx = targetPos.x + tgtW / 2;
+  const tgtCy = targetPos.y + tgtH / 2;
+
+  const dx = tgtCx - srcCx;
+  const dy = tgtCy - srcCy;
+
+  // Source handle: pick the side closest to the target
+  const sourceHandle = Math.abs(dx) >= Math.abs(dy)
+    ? (dx > 0 ? "right" : "left")
+    : (dy > 0 ? "bottom" : "top");
+
+  // Target handle: pick the side closest to the source (opposite direction)
+  const targetHandle = Math.abs(dx) >= Math.abs(dy)
+    ? (dx > 0 ? "left" : "right")
+    : (dy > 0 ? "top" : "bottom");
+
+  return { sourceHandle, targetHandle };
+}
+
+// ─── Center positions around origin ─────────────────────
+
+function centerPositions(positions: Map<string, { x: number; y: number }>, defaultW = NODE_WIDTH, defaultH = NODE_HEIGHT) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  positions.forEach((pos) => {
+    minX = Math.min(minX, pos.x);
+    minY = Math.min(minY, pos.y);
+    maxX = Math.max(maxX, pos.x + defaultW);
+    maxY = Math.max(maxY, pos.y + defaultH);
+  });
+  const offsetX = -(minX + maxX) / 2;
+  const offsetY = -(minY + maxY) / 2;
+  positions.forEach((pos, id) => {
+    positions.set(id, { x: pos.x + offsetX, y: pos.y + offsetY });
+  });
+}
+
+// ─── Public API ─────────────────────────────────────────
+
 export function autoLayoutMindMap(
   nodes: Node[],
   edges: Edge[]
@@ -124,25 +275,69 @@ export function autoLayoutMindMap(
   if (!tree) return { nodes, edges };
 
   const positions = new Map<string, { x: number; y: number }>();
-  layoutTree(tree, 0, 0, positions);
+  layoutMindmapTree(tree, 0, 0, positions);
+  centerPositions(positions);
 
-  // Center tree around origin for better fitView
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  positions.forEach((pos) => {
-    minX = Math.min(minX, pos.x);
-    minY = Math.min(minY, pos.y);
-    maxX = Math.max(maxX, pos.x + NODE_WIDTH);
-    maxY = Math.max(maxY, pos.y + NODE_HEIGHT);
-  });
-  const offsetX = -(minX + maxX) / 2;
-  const offsetY = -(minY + maxY) / 2;
+  return applyPositions(nodes, edges, positions);
+}
 
+export function autoLayoutDiagram(
+  nodes: Node[],
+  edges: Edge[],
+  diagramType: string
+): { nodes: Node[]; edges: Edge[] } {
+  if (nodes.length === 0) return { nodes, edges };
+
+  let positions: Map<string, { x: number; y: number }>;
+
+  switch (diagramType) {
+    case "mindmap": return autoLayoutMindMap(nodes, edges);
+
+    case "orgchart": {
+      const tree = buildOrgTree(nodes, edges);
+      if (!tree) return { nodes, edges };
+      positions = new Map();
+      layoutOrgTree(tree, 0, 0, positions);
+      centerPositions(positions, ORG_NODE_WIDTH, ORG_NODE_HEIGHT);
+      break;
+    }
+
+    case "timeline": {
+      positions = layoutTimeline(nodes, edges);
+      centerPositions(positions, TL_NODE_WIDTH, TL_NODE_HEIGHT);
+      break;
+    }
+
+    case "concept_map": {
+      positions = layoutConceptMap(nodes, edges);
+      centerPositions(positions, CONCEPT_NODE_WIDTH, CONCEPT_NODE_HEIGHT);
+      break;
+    }
+
+    default: return autoLayoutMindMap(nodes, edges);
+  }
+
+  return applyPositions(nodes, edges, positions);
+}
+
+function getNodeDimensions(node: Node): { w: number; h: number } {
+  const d = node.data as any;
+  if (d?.isRoot) return { w: ROOT_WIDTH, h: ROOT_HEIGHT };
+  const type = node.type;
+  if (type === "org") return { w: ORG_NODE_WIDTH, h: ORG_NODE_HEIGHT };
+  if (type === "timeline") return { w: TL_NODE_WIDTH, h: TL_NODE_HEIGHT };
+  if (type === "concept") return { w: CONCEPT_NODE_WIDTH, h: CONCEPT_NODE_HEIGHT };
+  return { w: NODE_WIDTH, h: NODE_HEIGHT };
+}
+
+function applyPositions(
+  nodes: Node[],
+  edges: Edge[],
+  positions: Map<string, { x: number; y: number }>
+): { nodes: Node[]; edges: Edge[] } {
   const newNodes = nodes.map((n) => {
     const pos = positions.get(n.id);
-    if (pos) {
-      return { ...n, position: { x: pos.x + offsetX, y: pos.y + offsetY } };
-    }
-    return n;
+    return pos ? { ...n, position: pos } : n;
   });
 
   const newEdges = edges.map((e) => {
@@ -151,15 +346,10 @@ export function autoLayoutMindMap(
     if (srcPos && tgtPos) {
       const srcNode = nodes.find((n) => n.id === e.source);
       const tgtNode = nodes.find((n) => n.id === e.target);
-      const srcW = (srcNode?.data as any)?.isRoot ? ROOT_WIDTH : NODE_WIDTH;
-      const srcH = (srcNode?.data as any)?.isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
-      const tgtW = (tgtNode?.data as any)?.isRoot ? ROOT_WIDTH : NODE_WIDTH;
-      const tgtH = (tgtNode?.data as any)?.isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
+      const { w: srcW, h: srcH } = srcNode ? getNodeDimensions(srcNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
+      const { w: tgtW, h: tgtH } = tgtNode ? getNodeDimensions(tgtNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
 
-      const { sourceHandle, targetHandle } = getBestHandles(
-        { x: srcPos.x + srcW / 2, y: srcPos.y + srcH / 2 },
-        { x: tgtPos.x + tgtW / 2, y: tgtPos.y + tgtH / 2 }
-      );
+      const { sourceHandle, targetHandle } = getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
       return { ...e, sourceHandle, targetHandle, type: "smoothstep" };
     }
     return e;
