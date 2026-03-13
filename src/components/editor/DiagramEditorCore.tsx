@@ -82,7 +82,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(async () => {
       try {
-        await onSave(nodes, edges);
+        await onSave(nodes, edges, theme.id);
         setLastSavedAt(new Date());
       } catch {
         // silent fail — manual save still available
