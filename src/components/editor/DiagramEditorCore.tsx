@@ -82,9 +82,45 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [searchOpen, setSearchOpen] = useState(false);
   const pinnedPositions = useRef<Set<string>>(new Set());
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasChanges = useRef(false);
+  const pendingChanges = useRef(false);
+  const lastPersistedSnapshot = useRef<string | null>(null);
+  const remoteUpdateRef = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
+
+  const buildContentSnapshot = useCallback((snapshotNodes: Node[], snapshotEdges: Edge[], themeId: string) => {
+    const round = (value: number) => Math.round(value * 100) / 100;
+
+    const normalizedNodes = snapshotNodes
+      .map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: {
+          x: round(node.position.x),
+          y: round(node.position.y),
+        },
+        data: node.data,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const normalizedEdges = snapshotEdges
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type || "smoothstep",
+        sourceHandle: edge.sourceHandle || null,
+        targetHandle: edge.targetHandle || null,
+        label: edge.label || null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    return JSON.stringify({
+      themeId,
+      nodes: normalizedNodes,
+      edges: normalizedEdges,
+    });
+  }, []);
 
   // Capture thumbnail from the ReactFlow viewport
   const captureThumbnail = useCallback(async (): Promise<string | undefined> => {
@@ -98,45 +134,78 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave: only on explicit inactivity (10s debounce), not on every keystroke
-  const pendingChanges = useRef(false);
+  // Autosave: only when content actually changed
   useEffect(() => {
-    // Skip initial render
-    if (!hasChanges.current) {
-      hasChanges.current = true;
+    const currentSnapshot = buildContentSnapshot(nodes, edges, theme.id);
+
+    if (lastPersistedSnapshot.current === null) {
+      lastPersistedSnapshot.current = currentSnapshot;
       return;
     }
+
+    if (remoteUpdateRef.current) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      pendingChanges.current = false;
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      return;
+    }
+
+    if (currentSnapshot === lastPersistedSnapshot.current) {
+      pendingChanges.current = false;
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      return;
+    }
+
     pendingChanges.current = true;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+
     autosaveTimer.current = setTimeout(async () => {
       if (!pendingChanges.current) return;
+
+      const snapshotBeforeSave = buildContentSnapshot(nodes, edges, theme.id);
+      if (snapshotBeforeSave === lastPersistedSnapshot.current) {
+        pendingChanges.current = false;
+        return;
+      }
+
       try {
         const thumb = await captureThumbnail();
         await onSave(nodes, edges, theme.id, thumb);
         setLastSavedAt(new Date());
+        lastPersistedSnapshot.current = snapshotBeforeSave;
         pendingChanges.current = false;
       } catch {
         // silent fail — manual save still available
       }
     }, 10000);
-    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [nodes, edges, theme, onSave, captureThumbnail]);
+
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
 
   // Apply remote updates from other users
-  const remoteUpdateRef = useRef(false);
   useEffect(() => {
     if (remoteNodes && remoteNodes.length > 0) {
       remoteUpdateRef.current = true;
+      const nextRemoteEdges = remoteEdges || [];
+      const nextThemeId = remoteThemeId || theme.id;
+
       setNodes(remoteNodes);
-      setEdges(remoteEdges || []);
+      setEdges(nextRemoteEdges);
+      lastPersistedSnapshot.current = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
+
       if (remoteThemeId) {
         const newTheme = editorThemes.find((t) => t.id === remoteThemeId);
         if (newTheme) setTheme(newTheme);
       }
+
       // Reset flag after React processes the state update
-      requestAnimationFrame(() => { remoteUpdateRef.current = false; });
+      requestAnimationFrame(() => {
+        remoteUpdateRef.current = false;
+      });
     }
-  }, [remoteNodes, remoteEdges, remoteThemeId, setNodes, setEdges]);
+  }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot]);
 
   const onConnect = useCallback(
     (params: Connection) => {
