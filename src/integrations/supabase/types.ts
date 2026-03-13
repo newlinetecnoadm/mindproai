@@ -159,6 +159,7 @@ export type Database = {
           id: string
           is_closed: boolean | null
           is_starred: boolean | null
+          theme: string | null
           title: string
           updated_at: string | null
           user_id: string
@@ -171,6 +172,7 @@ export type Database = {
           id?: string
           is_closed?: boolean | null
           is_starred?: boolean | null
+          theme?: string | null
           title?: string
           updated_at?: string | null
           user_id: string
@@ -183,6 +185,7 @@ export type Database = {
           id?: string
           is_closed?: boolean | null
           is_starred?: boolean | null
+          theme?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -408,6 +411,41 @@ export type Database = {
           },
         ]
       }
+      card_reminders: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          remind_at: string
+          sent: boolean
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          remind_at: string
+          sent?: boolean
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          remind_at?: string
+          sent?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_reminders_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "board_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           checklist_id: string
@@ -585,6 +623,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inbox_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          position: number
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          position?: number
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          position?: number
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       invitations: {
         Row: {
