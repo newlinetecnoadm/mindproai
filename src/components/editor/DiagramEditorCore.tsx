@@ -75,6 +75,18 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
+  // Capture thumbnail from the ReactFlow viewport
+  const captureThumbnail = useCallback(async (): Promise<string | undefined> => {
+    const el = document.querySelector(".react-flow__viewport") as HTMLElement;
+    if (!el) return undefined;
+    try {
+      const dataUrl = await toPng(el, { width: 400, height: 240, quality: 0.7, pixelRatio: 1 });
+      return dataUrl;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   // Autosave with 2s debounce
   useEffect(() => {
     // Skip initial render
@@ -85,14 +97,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(async () => {
       try {
-        await onSave(nodes, edges, theme.id);
+        const thumb = await captureThumbnail();
+        await onSave(nodes, edges, theme.id, thumb);
         setLastSavedAt(new Date());
       } catch {
         // silent fail — manual save still available
       }
     }, 2000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [nodes, edges, theme, onSave]);
+  }, [nodes, edges, theme, onSave, captureThumbnail]);
 
   // Apply remote updates from other users
   const remoteUpdateRef = useRef(false);
