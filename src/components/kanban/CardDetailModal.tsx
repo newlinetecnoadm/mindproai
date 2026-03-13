@@ -483,6 +483,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   if (!card) return null;
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
 
+  // Render comment text with highlighted @mentions
+  const renderCommentWithMentions = (text: string) => {
+    const parts = text.split(/(@\S+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("@")) {
+        return (
+          <span key={i} className="text-primary font-medium">{part}</span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
