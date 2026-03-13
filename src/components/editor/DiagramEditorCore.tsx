@@ -79,6 +79,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
   );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
