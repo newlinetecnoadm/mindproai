@@ -23,7 +23,7 @@ const plans = [
     period: "/mês",
     description: "Para profissionais",
     features: ["Diagramas ilimitados", "Boards ilimitados", "Até 5 colaboradores", "Exportar PDF + PNG", "Todos os templates", "Sugestões de IA", "Histórico de versões"],
-    cta: "Começar Trial de 14 dias",
+    cta: "Assinar Pro",
     highlighted: true,
   },
   {
