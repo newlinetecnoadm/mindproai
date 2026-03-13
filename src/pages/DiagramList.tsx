@@ -234,8 +234,17 @@ const DiagramList = () => {
                   className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                   onClick={() => navigate(`/diagramas/${d.id}`)}
                 >
-                  <div className="h-32 bg-muted flex items-center justify-center text-muted-foreground/30">
-                    {typeIcons[d.type] || <Brain className="w-10 h-10" />}
+                  <div className="h-32 bg-muted flex items-center justify-center text-muted-foreground/30 overflow-hidden">
+                    {d.thumbnail ? (
+                      <img
+                        src={d.thumbnail}
+                        alt={d.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      typeIcons[d.type] || <Brain className="w-10 h-10" />
+                    )}
                   </div>
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
