@@ -366,6 +366,30 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onSuccess: invalidateAll,
   });
 
+  // Toggle card member
+  const toggleMember = useMutation({
+    mutationFn: async (userId: string) => {
+      if (cardMemberIds.includes(userId)) {
+        await supabase.from("card_members").delete().eq("card_id", cardId!).eq("user_id", userId);
+        if (cardId) await logActivity(cardId, "member_removed", {});
+      } else {
+        await supabase.from("card_members").insert({ card_id: cardId!, user_id: userId });
+        if (cardId) await logActivity(cardId, "member_added", {});
+        // Notify the added member
+        const cardTitle = title || card?.title || "Card";
+        const boardUrl = `${window.location.origin}/boards/${boardId}`;
+        supabase.functions.invoke("notify-board-event", {
+          body: {
+            type: "member_added",
+            user_ids: [userId],
+            data: { card_title: cardTitle, board_url: boardUrl },
+          },
+        }).catch(() => {});
+      }
+    },
+    onSuccess: invalidateAll,
+  });
+
   // Upload attachment
   const [uploading, setUploading] = useState(false);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
