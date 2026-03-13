@@ -283,6 +283,34 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
           ...(mentionedIds.length > 0 ? { mentioned_user_ids: mentionedIds } : {}),
         },
       }).catch(() => { /* silent */ });
+
+      // In-app notifications for mentions
+      const cardTitle = card?.title || "card";
+      for (const uid of mentionedIds) {
+        supabase.from("notifications").insert({
+          user_id: uid,
+          type: "mention",
+          title: `Você foi mencionado em "${cardTitle}"`,
+          body: content.substring(0, 200),
+          board_id: boardId,
+          card_id: cardId,
+        }).then(() => {});
+      }
+
+      // In-app notification for comment (to card members excluding commenter and already-mentioned)
+      const { data: cMembers } = await supabase.from("card_members").select("user_id").eq("card_id", cardId!);
+      const mentionedSet = new Set(mentionedIds);
+      const commentRecipients = (cMembers || []).filter((m: any) => m.user_id !== user!.id && !mentionedSet.has(m.user_id));
+      for (const r of commentRecipients) {
+        supabase.from("notifications").insert({
+          user_id: r.user_id,
+          type: "comment",
+          title: `Novo comentário em "${cardTitle}"`,
+          body: content.substring(0, 200),
+          board_id: boardId,
+          card_id: cardId,
+        }).then(() => {});
+      }
     },
     onSuccess: () => {
       setNewComment("");
