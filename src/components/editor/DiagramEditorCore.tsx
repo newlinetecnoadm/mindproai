@@ -65,8 +65,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const getInitialLayout = () => {
     const n = initialNodes || [];
     const e = initialEdges || [];
-    if (diagramType === "mindmap" && n.length > 0) {
-      return autoLayoutMindMap(n, e);
+    if (n.length > 0) {
+      return autoLayoutDiagram(n, e, diagramType);
     }
     return { nodes: n, edges: e };
   };
