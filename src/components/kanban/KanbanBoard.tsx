@@ -138,6 +138,7 @@ const KanbanBoard = ({
             onCardClick={onCardClick}
             onDeleteColumn={onDeleteColumn}
             onRenameColumn={onRenameColumn}
+            onDropInboxItem={onDropInboxItem}
           />
         ))}
 
