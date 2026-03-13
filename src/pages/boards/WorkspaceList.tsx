@@ -126,6 +126,7 @@ const WorkspaceList = () => {
     },
     onSuccess: (boardId) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board-count"] });
       setDialogOpen(false);
       navigate(`/boards/${boardId}`);
     },
