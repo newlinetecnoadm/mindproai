@@ -463,6 +463,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
+      <NodeSearchBar
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        nodes={nodes}
+        onSelectNode={handleSearchSelect}
+        themeCardBg={theme.cardBg}
+        themeCardBorder={theme.cardBorder}
+        themeCardText={theme.cardText}
+      />
       {/* Autosave indicator */}
       {saving && (
         <div
