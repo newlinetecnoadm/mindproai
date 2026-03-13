@@ -84,7 +84,7 @@ const DiagramEditor = () => {
   });
 
   const handleSave = useCallback(
-    async (nodes: Node[], edges: Edge[], themeId: string) => {
+    async (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string) => {
       if (!user) return;
       setSaving(true);
 
@@ -106,9 +106,34 @@ const DiagramEditor = () => {
       };
 
       try {
+        // Upload thumbnail if available
+        let thumbnailUrl: string | undefined;
+        if (thumbnailDataUrl && id) {
+          try {
+            const res = await fetch(thumbnailDataUrl);
+            const blob = await res.blob();
+            const filePath = `${user.id}/${id}.png`;
+            await supabase.storage
+              .from("diagram-thumbnails")
+              .upload(filePath, blob, { upsert: true, contentType: "image/png" });
+            const { data: urlData } = supabase.storage
+              .from("diagram-thumbnails")
+              .getPublicUrl(filePath);
+            thumbnailUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          } catch {
+            // thumbnail upload failed silently
+          }
+        }
+
         const { error } = await supabase
           .from("diagrams")
-          .update({ title, data: diagramData, theme: themeId, updated_at: new Date().toISOString() })
+          .update({
+            title,
+            data: diagramData,
+            theme: themeId,
+            updated_at: new Date().toISOString(),
+            ...(thumbnailUrl ? { thumbnail: thumbnailUrl } : {}),
+          })
           .eq("id", id!);
 
         if (error) throw error;
