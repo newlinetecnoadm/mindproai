@@ -15,6 +15,7 @@ import InboxPanel from "@/components/boards/InboxPanel";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
+import BoardThemePicker, { applyBoardTheme, removeBoardTheme } from "@/components/boards/BoardThemePicker";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
@@ -45,16 +46,20 @@ const BoardDetail = () => {
     },
   });
 
-  // Apply dark theme only inside boards
+  // Apply dark theme + board theme
   useEffect(() => {
     document.documentElement.classList.add("dark");
     return () => {
       document.documentElement.classList.remove("dark");
+      removeBoardTheme();
     };
   }, []);
 
   useEffect(() => {
-    if (board) setBoardTitle(board.title);
+    if (board) {
+      setBoardTitle(board.title);
+      applyBoardTheme((board as any).theme || "default");
+    }
   }, [board]);
 
   // Fetch columns
@@ -244,6 +249,36 @@ const BoardDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["boards"] }),
   });
 
+  const updateThemeMut = useMutation({
+    mutationFn: async (theme: string) => {
+      const { error } = await supabase.from("boards").update({ theme } as any).eq("id", id!);
+      if (error) throw error;
+      applyBoardTheme(theme);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board", id] }),
+  });
+
+  // Handle inbox item drop onto a column
+  const handleDropInboxItem = useCallback(async (columnId: string, item: { id: string; title: string }) => {
+    const columnCards = cards.filter((c) => c.column_id === columnId);
+    const { data: newCard, error } = await supabase.from("board_cards").insert({
+      board_id: id!,
+      column_id: columnId,
+      title: item.title,
+      position: columnCards.length,
+    }).select("id").single();
+    if (error) {
+      toast.error("Erro ao criar card");
+      return;
+    }
+    // Delete inbox item
+    await supabase.from("inbox_items").delete().eq("id", item.id);
+    if (newCard) await logActivity(newCard.id, "created");
+    queryClient.invalidateQueries({ queryKey: ["board-cards", id] });
+    queryClient.invalidateQueries({ queryKey: ["inbox-items"] });
+    toast.success("Item movido para o board");
+  }, [cards, id, logActivity, queryClient]);
+
   if (boardLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -260,7 +295,6 @@ const BoardDetail = () => {
     );
   }
 
-
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
@@ -275,6 +309,10 @@ const BoardDetail = () => {
           className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
         />
         <div className="ml-auto flex items-center gap-2">
+          <BoardThemePicker
+            currentTheme={(board as any).theme || "default"}
+            onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
+          />
           <ShareBoardDialog boardId={id!} boardTitle={board.title} />
           <BoardFilters
             filters={filters}
@@ -289,7 +327,7 @@ const BoardDetail = () => {
       <div className="flex-1 flex overflow-hidden">
         <AnimatePresence>
           {activePanel === "inbox" && (
-            <InboxPanel onClose={() => setActivePanel(null)} />
+            <InboxPanel onClose={() => setActivePanel(null)} boardId={id} />
           )}
         </AnimatePresence>
 
@@ -311,6 +349,7 @@ const BoardDetail = () => {
             onAddColumn={(title) => addColumnMut.mutate(title)}
             onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
             onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
+            onDropInboxItem={handleDropInboxItem}
           />
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
 import MentionInput, { extractMentionedUserIds, type MentionUser } from "./MentionInput";
+import ReminderPicker from "./ReminderPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
