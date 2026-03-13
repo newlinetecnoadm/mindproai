@@ -32,7 +32,31 @@ const AgendaPage = () => {
         .eq("user_id", user!.id)
         .order("start_at");
       if (error) throw error;
-      return data;
+
+      // For events linked to cards, fetch board names
+      const cardIds = data.filter((e: any) => e.card_id).map((e: any) => e.card_id);
+      let boardMap: Record<string, string> = {};
+      if (cardIds.length > 0) {
+        const { data: cards } = await supabase
+          .from("board_cards")
+          .select("id, board_id")
+          .in("id", cardIds);
+        if (cards && cards.length > 0) {
+          const boardIds = [...new Set(cards.map((c: any) => c.board_id))];
+          const { data: boards } = await supabase
+            .from("boards")
+            .select("id, title")
+            .in("id", boardIds);
+          const boardTitleMap: Record<string, string> = {};
+          boards?.forEach((b: any) => { boardTitleMap[b.id] = b.title; });
+          cards.forEach((c: any) => { boardMap[c.id] = boardTitleMap[c.board_id] || "Board"; });
+        }
+      }
+
+      return data.map((e: any) => ({
+        ...e,
+        board_name: e.card_id ? (boardMap[e.card_id] || null) : null,
+      }));
     },
   });
 
