@@ -23,6 +23,16 @@ const WorkspaceList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
+
+  const handleNewBoard = () => {
+    if (!limits.canCreateBoard) {
+      setUpgradeOpen(true);
+      return;
+    }
+    setDialogOpen(true);
+  };
 
   const { data: boards, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
