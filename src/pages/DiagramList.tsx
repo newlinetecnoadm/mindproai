@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const typeIcons: Record<string, React.ReactNode> = {
   mindmap: <Brain className="w-5 h-5" />,
