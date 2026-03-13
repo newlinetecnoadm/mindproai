@@ -240,6 +240,11 @@ const DiagramList = () => {
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-sm truncate flex-1">{d.title}</h3>
+                      {d.user_id !== user?.id && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          Compartilhado
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="text-[10px] shrink-0">
                         {typeLabels[d.type] || d.type}
                       </Badge>
