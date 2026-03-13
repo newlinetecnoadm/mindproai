@@ -318,6 +318,38 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }, 150);
   }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout]);
 
+  // Add special node (diamond / sticky)
+  const handleAddSpecialNode = useCallback((type: "diamond" | "sticky") => {
+    takeSnapshot();
+    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const centerX = 300 + Math.random() * 200;
+    const centerY = 200 + Math.random() * 200;
+
+    const newNode: Node = {
+      id: newId,
+      type,
+      position: { x: centerX, y: centerY },
+      data: {
+        label: type === "diamond" ? "Sim / Não?" : "Nota...",
+        color: type === "diamond" ? "default" : "default",
+      },
+      selected: true,
+    };
+
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
+
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
+  }, [takeSnapshot, setNodes]);
+
+  // Change default edge type for new connections
+  const handleEdgeTypeChange = useCallback((type: string) => {
+    setCurrentEdgeType(type);
+    // Also update all existing edges
+    setEdges((eds) => eds.map((e) => ({ ...e, type })));
+  }, [setEdges]);
+
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
     const selected = selectedNodes[0];
