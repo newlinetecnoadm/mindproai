@@ -675,6 +675,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onRedo={redo}
         onExportPng={handleExportPng}
         onExportPdf={handleExportPdf}
+        canExportPdf={limits.exportPdf}
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
         currentThemeId={theme.id}
