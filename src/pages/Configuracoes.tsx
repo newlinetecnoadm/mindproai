@@ -43,6 +43,7 @@ const Configuracoes = () => {
   useEffect(() => {
     if (profile) {
       setName(profile.full_name || "");
+      setNotifyComments((profile as any).notify_comments ?? true);
     }
   }, [profile]);
 
