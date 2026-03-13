@@ -134,8 +134,8 @@ const NewDiagram = () => {
                 onClick={() => handleSelectTemplate(tpl)}
               >
                 <CardContent className="p-5">
-                  <div className="h-24 bg-muted rounded-lg mb-3 flex items-center justify-center text-xs text-muted-foreground">
-                    {tpl.nodes.length} nós · {tpl.edges.length} conexões
+                  <div className="h-24 bg-muted/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                    <TemplateThumbnail template={tpl} />
                   </div>
                   <h3 className="font-semibold text-sm mb-1">{tpl.name}</h3>
                   <p className="text-xs text-muted-foreground">{tpl.description}</p>
