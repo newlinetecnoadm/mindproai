@@ -232,6 +232,39 @@ const Configuracoes = () => {
               </div>
             </TabsContent>
 
+            <TabsContent value="notifications" className="space-y-6">
+              <div className="p-6 rounded-xl border border-border bg-card space-y-6">
+                <div>
+                  <h3 className="font-semibold mb-1">Notificações por e-mail</h3>
+                  <p className="text-sm text-muted-foreground">Escolha quais notificações deseja receber no seu e-mail.</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Comentários em cards</p>
+                    <p className="text-xs text-muted-foreground">Receba um e-mail quando alguém comentar em um card dos seus boards.</p>
+                  </div>
+                  <Switch
+                    checked={notifyComments}
+                    onCheckedChange={async (checked) => {
+                      setNotifyComments(checked);
+                      const { error } = await supabase
+                        .from("user_profiles")
+                        .update({ notify_comments: checked } as any)
+                        .eq("user_id", user!.id);
+                      if (error) {
+                        toast.error("Erro ao salvar preferência");
+                        setNotifyComments(!checked);
+                      } else {
+                        toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+                        queryClient.invalidateQueries({ queryKey: ["user-profile", user?.id] });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="billing" className="space-y-6">
               <div className="p-6 rounded-xl border border-border bg-card">
                 <h3 className="font-semibold mb-4">Plano Atual</h3>
