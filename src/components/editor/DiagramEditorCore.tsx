@@ -710,6 +710,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
         onAddNode={handleAddChild}
+        onAddSpecialNode={handleAddSpecialNode}
         onDelete={handleDelete}
         onSave={handleSave}
         onZoomIn={() => zoomIn()}
@@ -723,7 +724,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         canExportPdf={limits.exportPdf}
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
+        onEdgeTypeChange={handleEdgeTypeChange}
         currentThemeId={theme.id}
+        currentEdgeType={currentEdgeType}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
