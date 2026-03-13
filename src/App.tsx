@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
+import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
@@ -17,6 +18,8 @@ import BoardDetail from "./pages/boards/BoardDetail.tsx";
 import AgendaPage from "./pages/AgendaPage.tsx";
 import AssinaturasPage from "./pages/AssinaturasPage.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
+import InboxPage from "./pages/InboxPage.tsx";
+import PlannerPage from "./pages/PlannerPage.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminPlans from "./pages/admin/AdminPlans.tsx";
@@ -43,6 +46,8 @@ const App = () => (
           <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
           <Route path="/boards/:id" element={<ProtectedRoute><BoardDetail /></ProtectedRoute>} />
           <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+          <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
+          <Route path="/planner" element={<ProtectedRoute><PlannerPage /></ProtectedRoute>} />
           <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
           {/* Admin */}
@@ -53,6 +58,7 @@ const App = () => (
           <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <FloatingNavBar />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
