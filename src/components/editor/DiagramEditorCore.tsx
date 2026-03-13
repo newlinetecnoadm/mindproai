@@ -743,6 +743,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: 2 } }}
