@@ -200,8 +200,9 @@ const BoardDetail = () => {
   const addCardMut = useMutation({
     mutationFn: async ({ columnId, title }: { columnId: string; title: string }) => {
       const columnCards = cards.filter((c) => c.column_id === columnId);
-      const { error } = await supabase.from("board_cards").insert({ board_id: id!, column_id: columnId, title, position: columnCards.length });
+      const { data: newCard, error } = await supabase.from("board_cards").insert({ board_id: id!, column_id: columnId, title, position: columnCards.length }).select("id").single();
       if (error) throw error;
+      if (newCard) await logActivity(newCard.id, "created");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
     onError: () => toast.error("Erro ao criar card"),
