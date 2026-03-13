@@ -26,17 +26,20 @@ const colorMap: Record<string, string> = {
   default: "border-border bg-card text-foreground",
 };
 
-function FlowchartNode({ data, selected }: NodeProps & { data: FlowchartNodeData }) {
+const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
+
+function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNodeData }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
+
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
+    const handler = (e: Event) => { if ((e as CustomEvent).detail?.nodeId === id) setEditing(true); };
+    window.addEventListener("mindmap-edit-node", handler);
+    return () => window.removeEventListener("mindmap-edit-node", handler);
+  }, [id]);
 
   const shape = data.shape || "rectangle";
   const colorClass = colorMap[data.color || "default"] || colorMap.default;
@@ -52,31 +55,29 @@ function FlowchartNode({ data, selected }: NodeProps & { data: FlowchartNodeData
     <div
       className={cn(
         "border-2 shadow-sm transition-all cursor-pointer min-w-[100px] min-h-[50px] flex items-center justify-center",
-        shapeStyles[shape],
-        colorClass,
+        shapeStyles[shape], colorClass,
         isDiamond ? "w-[100px] h-[100px]" : "px-5 py-3",
         selected && "ring-2 ring-primary/50 shadow-md"
       )}
       onDoubleClick={() => setEditing(true)}
     >
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
+      <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="source" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="source" position={Position.Right} id="right" className={handleStyle} />
+      <Handle type="target" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="target" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="target" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="target" position={Position.Right} id="right" className={handleStyle} />
+
       <div className={cn(isDiamond && "-rotate-45", shape === "parallelogram" && "skew-x-[12deg]")}>
         {editing ? (
-          <input
-            ref={inputRef}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-medium"
-          />
+          <input ref={inputRef} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown}
+            className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-medium" />
         ) : (
           <span className="text-sm font-medium text-center block">{label}</span>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
-      <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
-      <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-muted-foreground/40 !border-none" />
     </div>
   );
 }
