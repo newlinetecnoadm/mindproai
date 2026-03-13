@@ -77,6 +77,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [nodes, setNodes, onNodesChange] = useNodesState(initialLayout.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayout.edges);
   const [exporting, setExporting] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
   const [theme, setTheme] = useState<EditorTheme>(
     editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
   );
