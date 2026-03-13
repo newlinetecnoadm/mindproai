@@ -59,6 +59,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
+  const [exporting, setExporting] = useState(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
