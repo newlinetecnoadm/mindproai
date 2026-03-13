@@ -102,6 +102,10 @@ const WorkspaceList = () => {
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : error ? (
+          <div className="rounded-xl border border-border bg-card p-10 text-center">
+            <p className="text-sm text-destructive">Erro ao carregar boards. Tente novamente em instantes.</p>
+          </div>
         ) : count === 0 ? (
           <div className="rounded-xl border border-border bg-card p-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4">
