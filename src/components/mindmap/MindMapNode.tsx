@@ -51,6 +51,8 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
   const colorClass = colorMap[data.color || "default"] || colorMap.default;
   const isRoot = data.isRoot;
 
+  const handleStyle = "!w-2 !h-2 !bg-muted-foreground/40 !border-none";
+
   return (
     <div
       className={cn(
@@ -61,11 +63,17 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
       )}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-2 !h-2 !bg-muted-foreground/40 !border-none"
-      />
+      {/* 4 handles — each acts as both source and target */}
+      <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="source" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="source" position={Position.Right} id="right" className={handleStyle} />
+
+      <Handle type="target" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="target" position={Position.Bottom} id="bottom" className={handleStyle} />
+      <Handle type="target" position={Position.Left} id="left" className={handleStyle} />
+      <Handle type="target" position={Position.Right} id="right" className={handleStyle} />
+
       {editing ? (
         <input
           ref={inputRef}
@@ -81,11 +89,6 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
           {label}
         </span>
       )}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-2 !h-2 !bg-muted-foreground/40 !border-none"
-      />
     </div>
   );
 }
