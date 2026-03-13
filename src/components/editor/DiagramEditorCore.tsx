@@ -94,6 +94,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [nodes, edges, theme, onSave]);
 
+  // Apply remote updates from other users
+  const remoteUpdateRef = useRef(false);
+  useEffect(() => {
+    if (remoteNodes && remoteNodes.length > 0) {
+      remoteUpdateRef.current = true;
+      setNodes(remoteNodes);
+      setEdges(remoteEdges || []);
+      if (remoteThemeId) {
+        const newTheme = editorThemes.find((t) => t.id === remoteThemeId);
+        if (newTheme) setTheme(newTheme);
+      }
+      // Reset flag after React processes the state update
+      requestAnimationFrame(() => { remoteUpdateRef.current = false; });
+    }
+  }, [remoteNodes, remoteEdges, remoteThemeId, setNodes, setEdges]);
+
   const onConnect = useCallback(
     (params: Connection) => {
       takeSnapshot();
