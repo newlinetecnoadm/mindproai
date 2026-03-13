@@ -61,8 +61,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasChanges = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
+
+  // Autosave with 2s debounce
+  useEffect(() => {
+    // Skip initial render
+    if (!hasChanges.current) {
+      hasChanges.current = true;
+      return;
+    }
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      try {
+        await onSave(nodes, edges);
+        setLastSavedAt(new Date());
+      } catch {
+        // silent fail — manual save still available
+      }
+    }, 2000);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+  }, [nodes, edges, onSave]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -266,6 +288,19 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
+      {/* Autosave indicator */}
+      {saving && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          Salvando...
+        </div>
+      )}
+      {!saving && lastSavedAt && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          Salvo às {lastSavedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      )}
       <NodeFloatingToolbar
         selectedNodes={selectedNodes}
         diagramType={diagramType}
