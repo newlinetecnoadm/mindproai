@@ -1,140 +1,63 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Inbox, X, SlidersHorizontal, MoreHorizontal, AlertCircle, Clock, Calendar, Kanban } from "lucide-react";
+import { Inbox, X, Plus, GripVertical, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 
 interface InboxPanelProps {
   onClose: () => void;
+  boardId?: string;
 }
 
-const InboxPanel = ({ onClose }: InboxPanelProps) => {
+const InboxPanel = ({ onClose, boardId }: InboxPanelProps) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [quickAdd, setQuickAdd] = useState("");
 
-  const { data: dueCards = [] } = useQuery({
-    queryKey: ["inbox-due-cards", user?.id],
+  const { data: items = [] } = useQuery({
+    queryKey: ["inbox-items", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("board_cards")
-        .select("id, title, due_date, is_complete, board_id")
-        .not("due_date", "is", null)
-        .eq("is_complete", false)
-        .order("due_date");
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: invitations = [] } = useQuery({
-    queryKey: ["inbox-invitations", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("email")
-        .eq("user_id", user!.id)
-        .single();
-      if (!profile?.email) return [];
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("invited_email", profile.email)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: todayEvents = [] } = useQuery({
-    queryKey: ["inbox-events", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-      const { data, error } = await supabase
-        .from("events")
+        .from("inbox_items")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("start_at", startOfDay)
-        .lt("start_at", endOfDay)
-        .order("start_at");
+        .order("position");
       if (error) throw error;
       return data || [];
     },
   });
 
-  const now = new Date();
-  const items: Array<{
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    date: string;
-    link?: string;
-    icon: typeof Inbox;
-    color: string;
-  }> = [];
-
-  dueCards.forEach((card) => {
-    const dueDate = new Date(card.due_date!);
-    const isOverdue = dueDate < now;
-    const diffHours = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    const isDueSoon = !isOverdue && diffHours <= 48;
-    if (isOverdue || isDueSoon) {
-      items.push({
-        id: `card-${card.id}`,
-        type: isOverdue ? "overdue" : "due_soon",
-        title: card.title,
-        description: isOverdue
-          ? `Venceu ${formatDistanceToNow(dueDate, { locale: ptBR, addSuffix: true })}`
-          : `Vence ${formatDistanceToNow(dueDate, { locale: ptBR, addSuffix: true })}`,
-        date: card.due_date!,
-        link: `/boards/${card.board_id}`,
-        icon: isOverdue ? AlertCircle : Clock,
-        color: isOverdue ? "text-destructive" : "text-warning",
+  const addItem = useMutation({
+    mutationFn: async (title: string) => {
+      const { error } = await supabase.from("inbox_items").insert({
+        user_id: user!.id,
+        title,
+        position: items.length,
       });
-    }
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setQuickAdd("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-items"] });
+    },
   });
 
-  invitations.forEach((inv) => {
-    items.push({
-      id: `inv-${inv.id}`,
-      type: "invitation",
-      title: `Convite para ${inv.resource_type === "board" ? "Board" : "Diagrama"}`,
-      description: `Você foi convidado como ${inv.role}`,
-      date: inv.created_at!,
-      link: `/convite?token=${inv.token}`,
-      icon: Kanban,
-      color: "text-primary",
-    });
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inbox_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox-items"] }),
   });
 
-  todayEvents.forEach((ev) => {
-    items.push({
-      id: `event-${ev.id}`,
-      type: "event_today",
-      title: ev.title,
-      description: `Hoje às ${new Date(ev.start_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
-      date: ev.start_at,
-      link: "/agenda",
-      icon: Calendar,
-      color: "text-success",
-    });
-  });
-
-  items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const handleDragStart = (e: React.DragEvent, item: any) => {
+    e.dataTransfer.setData("application/inbox-item", JSON.stringify(item));
+    e.dataTransfer.effectAllowed = "move";
+  };
 
   return (
     <motion.div
@@ -149,65 +72,80 @@ const InboxPanel = ({ onClose }: InboxPanelProps) => {
         <div className="flex items-center gap-2">
           <Inbox className="w-4 h-4 text-muted-foreground" />
           <span className="font-semibold text-sm">Inbox</span>
+          {items.length > 0 && (
+            <span className="text-xs text-muted-foreground">({items.length})</span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <MoreHorizontal className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <X className="w-3.5 h-3.5" />
+        </Button>
       </div>
 
       {/* Quick add */}
       <div className="p-3 border-b border-border">
-        <Input
-          placeholder="Add a card"
-          value={quickAdd}
-          onChange={(e) => setQuickAdd(e.target.value)}
-          className="h-8 text-sm bg-muted/50 border-border"
-        />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (quickAdd.trim()) addItem.mutate(quickAdd.trim());
+          }}
+          className="flex gap-1.5"
+        >
+          <Input
+            placeholder="Nova tarefa..."
+            value={quickAdd}
+            onChange={(e) => setQuickAdd(e.target.value)}
+            className="h-8 text-sm bg-muted/50 border-border flex-1"
+          />
+          <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={!quickAdd.trim()}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </form>
       </div>
 
       {/* Items */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {items.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm font-medium mb-1">Consolidate your to-dos</p>
+          <div className="text-center py-8 px-3">
+            <Inbox className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm font-medium mb-1">Inbox vazio</p>
             <p className="text-xs text-muted-foreground">
-              Email it, say it, forward it — however it comes, get it into MindPro fast.
+              Adicione tarefas e arraste-as para o board.
             </p>
           </div>
         ) : (
-          items.map((item, i) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              onClick={() => item.link && navigate(item.link)}
-              className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-              <div className={`mt-0.5 ${item.color}`}>
-                <item.icon className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{item.title}</p>
-                <p className="text-[11px] text-muted-foreground">{item.description}</p>
-              </div>
-            </motion.div>
-          ))
+          <AnimatePresence>
+            {items.map((item: any, i: number) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ delay: i * 0.02 }}
+                draggable
+                onDragStart={(e) => handleDragStart(e as any, item)}
+                className="flex items-center gap-1.5 p-2 rounded-lg hover:bg-muted/50 cursor-grab active:cursor-grabbing transition-colors group border border-transparent hover:border-border"
+              >
+                <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                <span className="text-xs font-medium flex-1 truncate">{item.title}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteItem.mutate(item.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 transition-all"
+                >
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </div>
 
       {/* Footer */}
       <div className="px-3 py-2 border-t border-border">
         <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-          🔒 Inbox is only visible to you
+          🔒 Inbox é visível apenas para você
         </p>
       </div>
     </motion.div>
