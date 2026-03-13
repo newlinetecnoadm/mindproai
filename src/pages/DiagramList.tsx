@@ -53,13 +53,34 @@ const DiagramList = () => {
     queryKey: ["diagrams", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Own diagrams
+      const { data: own, error } = await supabase
         .from("diagrams")
-        .select("id, title, type, updated_at, created_at")
+        .select("id, title, type, updated_at, created_at, user_id")
         .eq("user_id", user!.id)
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Shared diagrams (via collaborator)
+      const { data: collabs } = await supabase
+        .from("diagram_collaborators")
+        .select("diagram_id")
+        .eq("user_id", user!.id);
+
+      let shared: typeof own = [];
+      if (collabs && collabs.length > 0) {
+        const sharedIds = collabs.map((c) => c.diagram_id);
+        const { data: sharedData } = await supabase
+          .from("diagrams")
+          .select("id, title, type, updated_at, created_at, user_id")
+          .in("id", sharedIds);
+        shared = sharedData || [];
+      }
+
+      // Merge, dedup
+      const allMap = new Map<string, (typeof own)[0]>();
+      [...(own || []), ...shared].forEach((d) => allMap.set(d.id, d));
+      return Array.from(allMap.values());
     },
   });
 

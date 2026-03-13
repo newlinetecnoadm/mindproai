@@ -50,6 +50,7 @@ const App = () => (
           <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/planos" element={<AdminRoute><AdminPlans /></AdminRoute>} />
           <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -152,6 +152,14 @@ const DiagramEditor = () => {
 
         {/* Online users presence */}
         <div className="flex items-center gap-1 ml-auto">
+          {id && (
+            <ShareDiagramDialog
+              diagramId={id}
+              diagramTitle={title}
+              isPublic={isPublic}
+              publicToken={publicToken}
+            />
+          )}
           {onlineUsers.length > 0 && (
             <TooltipProvider>
               <div className="flex -space-x-2 mr-3">
