@@ -45,11 +45,14 @@ interface EditorToolbarProps {
   onColorChange: (color: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onExportPng: () => void;
+  onExportPdf: () => void;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
   hasSelection: boolean;
   diagramType: string;
+  exporting: boolean;
 }
 
 const EditorToolbar = ({
