@@ -226,9 +226,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
     for (const id of [...toDelete]) addDescendants(id);
 
-    setNodes(nodes.filter((n) => !toDelete.has(n.id)));
-    setEdges(edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target)));
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot]);
+    const nextNodes = nodes.filter((n) => !toDelete.has(n.id));
+    const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target));
+    applyMindmapLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyMindmapLayout]);
 
   const handleColorChange = useCallback(
     (color: string) => {
