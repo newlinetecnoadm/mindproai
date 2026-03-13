@@ -49,7 +49,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   return (
     <div
       className={cn(
-        "bg-card border border-border border-l-4 rounded-lg shadow-sm transition-all cursor-pointer w-[180px]",
+        "bg-card border border-border border-l-4 rounded-lg shadow-sm transition-all cursor-pointer w-[200px]",
         colorClass,
         selected && "ring-2 ring-primary/50 shadow-md"
       )}
