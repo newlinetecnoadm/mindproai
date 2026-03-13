@@ -71,25 +71,51 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
   return build(rootId, 0);
 }
 
-// ─── Mindmap layout (horizontal tree, root → right) ─────
+// ─── Mindmap layout (balanced: root center, children alternating sides) ─────
 
-function layoutMindmapTree(
+function getGroupHeight(group: TreeNode[]): number {
+  if (group.length === 0) return 0;
+  return group.reduce((sum, node) => sum + node.subtreeHeight, 0) + (group.length - 1) * V_GAP;
+}
+
+function layoutMindmapBranch(
   tree: TreeNode,
   x: number,
   yStart: number,
+  direction: 1 | -1,
   positions: Map<string, { x: number; y: number }>
 ) {
-  const nodeH = tree.isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
-  const nodeW = tree.isRoot ? ROOT_WIDTH : NODE_WIDTH;
-
-  const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
+  const y = yStart + tree.subtreeHeight / 2 - NODE_HEIGHT / 2;
   positions.set(tree.id, { x, y });
 
   if (tree.children.length === 0) return;
+
   let childY = yStart;
   for (const child of tree.children) {
-    layoutMindmapTree(child, x + nodeW + H_GAP, childY, positions);
+    const childX = direction === 1 ? x + NODE_WIDTH + H_GAP : x - NODE_WIDTH - H_GAP;
+    layoutMindmapBranch(child, childX, childY, direction, positions);
     childY += child.subtreeHeight + V_GAP;
+  }
+}
+
+function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
+  positions.set(tree.id, { x: -ROOT_WIDTH / 2, y: -ROOT_HEIGHT / 2 });
+
+  if (tree.children.length === 0) return;
+
+  const rightChildren = tree.children.filter((_, index) => index % 2 === 0);
+  const leftChildren = tree.children.filter((_, index) => index % 2 === 1);
+
+  let rightY = -getGroupHeight(rightChildren) / 2;
+  for (const child of rightChildren) {
+    layoutMindmapBranch(child, ROOT_WIDTH / 2 + H_GAP, rightY, 1, positions);
+    rightY += child.subtreeHeight + V_GAP;
+  }
+
+  let leftY = -getGroupHeight(leftChildren) / 2;
+  for (const child of leftChildren) {
+    layoutMindmapBranch(child, -(ROOT_WIDTH / 2 + H_GAP + NODE_WIDTH), leftY, -1, positions);
+    leftY += child.subtreeHeight + V_GAP;
   }
 }
 
