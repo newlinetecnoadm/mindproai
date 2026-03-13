@@ -397,9 +397,25 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [nodes, edges, selectedNodes, setNodes, fitView]);
 
+  // Select and focus a node by ID (used by search)
+  const handleSearchSelect = useCallback((nodeId: string) => {
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+    setTimeout(() => fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 250 }), 10);
+  }, [setNodes, fitView]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ctrl+F always works, even in inputs
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if (e.key === "Escape" && searchOpen) {
+        setSearchOpen(false);
+        return;
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
       if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
@@ -422,7 +438,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, searchOpen]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
