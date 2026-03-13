@@ -20,26 +20,45 @@ interface NotificationPref {
   description: string;
 }
 
-const NOTIFICATION_PREFS: NotificationPref[] = [
+interface NotificationModule {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  prefs: NotificationPref[];
+}
+
+const NOTIFICATION_MODULES: NotificationModule[] = [
   {
-    key: "notify_comments",
-    label: "Comentários em cards",
-    description: "Receba um e-mail quando alguém comentar em um card dos seus boards.",
+    id: "boards",
+    label: "Boards",
+    icon: Kanban,
+    prefs: [
+      { key: "notify_comments", label: "Comentários em cards", description: "Quando alguém comentar em um card dos seus boards." },
+      { key: "notify_card_moved", label: "Card movido", description: "Quando um card for movido entre colunas." },
+      { key: "notify_due_soon", label: "Prazo próximo", description: "Quando a data de entrega de um card estiver a menos de 24h." },
+      { key: "notify_member_added", label: "Adicionado como membro", description: "Quando for adicionado como membro de um card." },
+      { key: "notify_board_card_assigned", label: "Card atribuído", description: "Quando um card for atribuído a você." },
+      { key: "notify_board_checklist_done", label: "Checklist concluída", description: "Quando todas as tarefas de uma checklist forem concluídas." },
+      { key: "notify_board_label_changed", label: "Label alterada", description: "Quando uma label for adicionada ou removida de um card seu." },
+    ],
   },
   {
-    key: "notify_card_moved",
-    label: "Card movido",
-    description: "Receba um e-mail quando um card for movido entre colunas.",
+    id: "diagrams",
+    label: "Diagramas",
+    icon: Brain,
+    prefs: [
+      { key: "notify_diagram_shared", label: "Diagrama compartilhado", description: "Quando alguém compartilhar um diagrama com você." },
+      { key: "notify_diagram_commented", label: "Comentário em diagrama", description: "Quando alguém comentar em um diagrama seu." },
+    ],
   },
   {
-    key: "notify_due_soon",
-    label: "Prazo próximo",
-    description: "Receba um e-mail quando a data de entrega de um card estiver próxima (24h).",
-  },
-  {
-    key: "notify_member_added",
-    label: "Adicionado como membro",
-    description: "Receba um e-mail quando for adicionado como membro de um card.",
+    id: "agenda",
+    label: "Agenda",
+    icon: CalendarDays,
+    prefs: [
+      { key: "notify_agenda_reminders", label: "Lembretes de eventos", description: "Receber lembrete antes de eventos agendados." },
+      { key: "notify_agenda_event_updated", label: "Evento atualizado", description: "Quando um evento compartilhado for alterado." },
+    ],
   },
 ];
 
