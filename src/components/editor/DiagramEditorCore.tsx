@@ -95,23 +95,27 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave with 2s debounce
+  // Autosave: only on explicit inactivity (10s debounce), not on every keystroke
+  const pendingChanges = useRef(false);
   useEffect(() => {
     // Skip initial render
     if (!hasChanges.current) {
       hasChanges.current = true;
       return;
     }
+    pendingChanges.current = true;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(async () => {
+      if (!pendingChanges.current) return;
       try {
         const thumb = await captureThumbnail();
         await onSave(nodes, edges, theme.id, thumb);
         setLastSavedAt(new Date());
+        pendingChanges.current = false;
       } catch {
         // silent fail — manual save still available
       }
-    }, 2000);
+    }, 10000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [nodes, edges, theme, onSave, captureThumbnail]);
 
