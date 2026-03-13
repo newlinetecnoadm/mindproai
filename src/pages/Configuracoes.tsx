@@ -72,12 +72,10 @@ const Configuracoes = () => {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [prefs, setPrefs] = useState<Record<string, boolean>>({
-    notify_comments: true,
-    notify_card_moved: true,
-    notify_due_soon: true,
-    notify_member_added: true,
-  });
+  const allPrefKeys = NOTIFICATION_MODULES.flatMap((m) => m.prefs.map((p) => p.key));
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(
+    Object.fromEntries(allPrefKeys.map((k) => [k, true]))
+  );
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["user-profile", user?.id],
