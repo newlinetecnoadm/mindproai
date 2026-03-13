@@ -134,11 +134,30 @@ const ShareDiagramDialog = ({
         .single();
 
       const inviteLink = inv ? `${window.location.origin}/convite?token=${inv.token}` : null;
+
+      // Send email via edge function
       if (inviteLink) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("full_name")
+          .eq("user_id", user!.id)
+          .single();
+
+        supabase.functions.invoke("send-invite", {
+          body: {
+            to: email.trim().toLowerCase(),
+            inviterName: profile?.full_name || user!.email,
+            resourceTitle: diagramTitle,
+            resourceType: "diagram",
+            role,
+            inviteLink,
+          },
+        }).catch((err) => console.error("Email send error:", err));
+
         navigator.clipboard.writeText(inviteLink);
-        toast.success(`Convite enviado para ${email}. Link copiado!`);
+        toast.success(`Convite enviado por email para ${email}. Link copiado!`);
       } else {
-        toast.success(`Convite enviado para ${email}`);
+        toast.success(`Convite criado para ${email}`);
       }
       setEmail("");
       queryClient.invalidateQueries({ queryKey: ["diagram-invitations", diagramId] });
