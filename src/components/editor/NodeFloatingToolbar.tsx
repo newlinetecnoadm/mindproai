@@ -57,9 +57,9 @@ const NodeFloatingToolbar = ({
       const bounds = getNodesBounds(selectedNodes);
       const screenPos = flowToScreenPosition({
         x: bounds.x + bounds.width / 2,
-        y: bounds.y,
+        y: bounds.y + bounds.height,
       });
-      return { x: screenPos.x, y: screenPos.y - 12 };
+      return { x: screenPos.x, y: screenPos.y + 12 };
     } catch {
       return null;
     }
