@@ -120,8 +120,26 @@ const ShareDiagramDialog = ({
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success(`Convite enviado para ${email}`);
+    onSuccess: async () => {
+      // Get the created invitation to provide the link
+      const { data: inv } = await supabase
+        .from("invitations")
+        .select("token")
+        .eq("resource_id", diagramId)
+        .eq("resource_type", "diagram")
+        .eq("invited_email", email.trim().toLowerCase())
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      const inviteLink = inv ? `${window.location.origin}/convite?token=${inv.token}` : null;
+      if (inviteLink) {
+        navigator.clipboard.writeText(inviteLink);
+        toast.success(`Convite enviado para ${email}. Link copiado!`);
+      } else {
+        toast.success(`Convite enviado para ${email}`);
+      }
       setEmail("");
       queryClient.invalidateQueries({ queryKey: ["diagram-invitations", diagramId] });
     },
