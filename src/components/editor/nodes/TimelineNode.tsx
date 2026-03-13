@@ -30,7 +30,13 @@ function TimelineNode({ data, selected, id }: NodeProps & { data: TimelineNodeDa
   useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
 
   useEffect(() => {
-    const handler = (e: Event) => { if ((e as CustomEvent).detail?.nodeId === id) setEditing(true); };
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.nodeId === id) {
+        if (detail?.replaceText) setLabel("");
+        setEditing(true);
+      }
+    };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
   }, [id]);

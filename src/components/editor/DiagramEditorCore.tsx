@@ -294,6 +294,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
 
     applyAutoLayout(nextNodes, nextEdges);
+
+    // Auto-enter edit mode on the new node
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
   }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
@@ -325,6 +330,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
     applyAutoLayout(nextNodes, nextEdges);
+
+    // Auto-enter edit mode on the new node
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
   }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout]);
 
   const handleDelete = useCallback(() => {
@@ -545,6 +555,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if (e.key === "F2" && selectedNodes.length === 1) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id } }));
+        return;
+      }
+      // Type-to-edit: printable character starts editing the selected node
+      if (
+        selectedNodes.length === 1 &&
+        !e.ctrlKey && !e.metaKey && !e.altKey &&
+        e.key.length === 1
+      ) {
+        window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id, replaceText: true } }));
       }
     };
     window.addEventListener("keydown", handler);

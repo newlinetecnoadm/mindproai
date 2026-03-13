@@ -35,6 +35,9 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId === id) {
+        if (detail?.replaceText) {
+          setLabel("");
+        }
         setEditing(true);
       }
     };
