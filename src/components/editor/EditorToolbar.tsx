@@ -48,6 +48,8 @@ interface EditorToolbarProps {
   onRedo: () => void;
   onExportPng: () => void;
   onExportPdf: () => void;
+  onThemeChange: (theme: EditorTheme) => void;
+  currentThemeId: string;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
