@@ -133,6 +133,17 @@ const NewDiagram = () => {
           </div>
         )}
       </div>
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={(open) => {
+          setUpgradeOpen(open);
+          if (!open) navigate("/diagramas");
+        }}
+        resource="diagrama"
+        currentCount={limits.currentDiagrams}
+        maxCount={limits.maxDiagrams}
+        planName={limits.displayName}
+      />
     </DashboardLayout>
   );
 };
