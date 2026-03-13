@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -76,6 +76,7 @@ interface EditorToolbarProps {
   onExportPng: () => void;
   onExportPdf: () => void;
   onThemeChange: (theme: EditorTheme) => void;
+  onReLayout: () => void;
   currentThemeId: string;
   canUndo: boolean;
   canRedo: boolean;
@@ -88,7 +89,7 @@ interface EditorToolbarProps {
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, currentThemeId,
+  onThemeChange, onReLayout, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting,
 }: EditorToolbarProps) => {
   return (
@@ -136,6 +137,9 @@ const EditorToolbar = ({
       </Button>
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView} title="Ajustar visão">
         <Maximize className="w-4 h-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReLayout} title="Reorganizar layout automático">
+        <LayoutGrid className="w-4 h-4" />
       </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
