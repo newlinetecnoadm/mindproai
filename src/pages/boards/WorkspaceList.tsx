@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
