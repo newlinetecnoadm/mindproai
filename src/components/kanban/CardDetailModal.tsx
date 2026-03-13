@@ -206,6 +206,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const deleteCard = useMutation({
     mutationFn: async () => {
       // Delete related data first
+      await supabase.from("card_activities").delete().eq("card_id", cardId!);
       await supabase.from("events").delete().eq("card_id", cardId!);
       await supabase.from("card_comments").delete().eq("card_id", cardId!);
       const cls = checklists.map((c: any) => c.id);
@@ -229,6 +230,11 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     mutationFn: async (content: string) => {
       const { error } = await supabase.from("card_comments").insert({ card_id: cardId!, user_id: user!.id, content });
       if (error) throw error;
+      // Send email notification (fire-and-forget)
+      const boardUrl = `${window.location.origin}/boards/${boardId}`;
+      supabase.functions.invoke("notify-card-comment", {
+        body: { card_id: cardId, comment: content, board_url: boardUrl },
+      }).catch(() => { /* silent */ });
     },
     onSuccess: () => {
       setNewComment("");
