@@ -27,6 +27,8 @@ const DiagramEditor = () => {
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
   const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const [savedRecently, setSavedRecently] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Remote sync state
@@ -137,7 +139,9 @@ const DiagramEditor = () => {
           .eq("id", id!);
 
         if (error) throw error;
-        toast.success("Salvo!");
+        setSavedRecently(true);
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSavedRecently(false), 2000);
       } catch (err: any) {
         toast.error("Erro ao salvar: " + (err.message || "desconhecido"));
       } finally {
@@ -220,8 +224,8 @@ const DiagramEditor = () => {
               </div>
             </TooltipProvider>
           )}
-          <span className="text-xs text-muted-foreground">
-            {saving ? "Salvando..." : "Ctrl+S para salvar"}
+          <span className="text-xs text-muted-foreground transition-opacity">
+            {saving ? "Salvando..." : savedRecently ? "✓ Salvo" : ""}
           </span>
         </div>
       </div>

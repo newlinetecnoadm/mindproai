@@ -134,7 +134,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
-  const handleAddNode = useCallback(() => {
+  const handleAddChild = useCallback(() => {
     takeSnapshot();
     const parent = selectedNodes[0] || nodes[0];
     const colorIdx = nodes.length % childColors.length;
@@ -146,8 +146,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
     else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
 
+    const siblings = edges.filter((e) => e.source === (parent?.id || "")).length;
     const pos = parent
-      ? { x: parent.position.x + 250, y: parent.position.y + 20 }
+      ? { x: parent.position.x + 250, y: parent.position.y + siblings * 80 }
       : { x: 100, y: 100 };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
@@ -162,6 +163,41 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setEdges(nextEdges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot]);
+
+  // Add sibling node (Enter) — creates a node with the same parent as the selected node
+  const handleAddSibling = useCallback(() => {
+    const selected = selectedNodes[0];
+    if (!selected) return;
+
+    // Find the parent of the selected node
+    const parentEdge = edges.find((e) => e.target === selected.id);
+    if (!parentEdge) {
+      // Selected is root, can't add sibling — add child instead
+      handleAddChild();
+      return;
+    }
+
+    takeSnapshot();
+    const parentId = parentEdge.source;
+    const colorIdx = nodes.length % childColors.length;
+    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
+
+    const pos = { x: selected.position.x, y: selected.position.y + 80 };
+
+    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
+    const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
+    const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
+
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
@@ -295,7 +331,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "Tab") { e.preventDefault(); handleAddNode(); }
+      if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
+      if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
       if (e.key === "Delete" || e.key === "Backspace") handleDelete();
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
@@ -305,12 +342,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddNode, handleDelete, handleSave, undo, redo, handleDuplicate]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
-        onAddNode={handleAddNode}
+        onAddNode={handleAddChild}
         onDelete={handleDelete}
         onSave={handleSave}
         onZoomIn={() => zoomIn()}
@@ -356,7 +393,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onShapeChange={handleShapeChange}
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
-        onAddChild={handleAddNode}
+        onAddChild={handleAddChild}
       />
       <ReactFlow
         nodes={nodes}
