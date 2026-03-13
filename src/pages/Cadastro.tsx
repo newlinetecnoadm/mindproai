@@ -94,7 +94,7 @@ const Cadastro = () => {
             <img src={logoVerticalColor} alt="Mind Pro AI" className="h-24 mx-auto" />
           </Link>
           <h1 className="text-2xl font-display font-bold mb-2">Crie sua conta</h1>
-          <p className="text-muted-foreground">Comece com 14 dias de trial gratuito</p>
+          <p className="text-muted-foreground">Comece gratuitamente, sem cartão de crédito</p>
         </div>
 
         <div className="space-y-4">
