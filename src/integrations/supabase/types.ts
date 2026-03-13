@@ -738,6 +738,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_board: {
+        Args: { _board_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_card: {
+        Args: { _card_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_checklist: {
+        Args: { _checklist_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -17,16 +17,17 @@ const WorkspaceList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: boards, isLoading } = useQuery({
+  const { data: boards, isLoading, error } = useQuery({
     queryKey: ["boards", user?.id],
     enabled: !!user,
+    retry: 1,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
-        .select("*")
-        .eq("user_id", user!.id)
+        .select("id, title, cover_color, updated_at, is_closed")
         .eq("is_closed", false)
         .order("updated_at", { ascending: false });
+
       if (error) throw error;
       return data;
     },
@@ -34,11 +35,13 @@ const WorkspaceList = () => {
 
   const createBoardMut = useMutation({
     mutationFn: async () => {
+      if (!user?.id) throw new Error("Sessão expirada. Faça login novamente.");
+
       const color = defaultColors[Math.floor(Math.random() * defaultColors.length)];
       const { data, error } = await supabase
         .from("boards")
         .insert({
-          user_id: user!.id,
+          user_id: user.id,
           title: "Novo Board",
           cover_color: color,
         })
@@ -46,14 +49,18 @@ const WorkspaceList = () => {
         .single();
       if (error) throw error;
 
-      // Create default columns
       const defaultCols = ["A Fazer", "Em Progresso", "Concluído"];
-      for (let i = 0; i < defaultCols.length; i++) {
-        await supabase.from("board_columns").insert({
+      const { error: colsError } = await supabase.from("board_columns").insert(
+        defaultCols.map((title, position) => ({
           board_id: data.id,
-          title: defaultCols[i],
-          position: i,
-        });
+          title,
+          position,
+        }))
+      );
+
+      if (colsError) {
+        await supabase.from("boards").delete().eq("id", data.id);
+        throw colsError;
       }
 
       return data.id;
@@ -62,7 +69,7 @@ const WorkspaceList = () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
       navigate(`/boards/${boardId}`);
     },
-    onError: () => toast.error("Erro ao criar board"),
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar board"),
   });
 
   const deleteMut = useMutation({
@@ -94,6 +101,10 @@ const WorkspaceList = () => {
         {isLoading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-border bg-card p-10 text-center">
+            <p className="text-sm text-destructive">Erro ao carregar boards. Tente novamente em instantes.</p>
           </div>
         ) : count === 0 ? (
           <div className="rounded-xl border border-border bg-card p-16 text-center">
