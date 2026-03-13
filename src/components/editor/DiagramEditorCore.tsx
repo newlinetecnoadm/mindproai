@@ -401,9 +401,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
 
   const handleSave = useCallback(async () => {
+    const snapshot = buildContentSnapshot(nodes, edges, theme.id);
+    if (snapshot === lastPersistedSnapshot.current) return;
+
     const thumb = await captureThumbnail();
-    onSave(nodes, edges, theme.id, thumb);
-  }, [nodes, edges, theme, onSave, captureThumbnail]);
+    await onSave(nodes, edges, theme.id, thumb);
+    lastPersistedSnapshot.current = snapshot;
+    setLastSavedAt(new Date());
+  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;
