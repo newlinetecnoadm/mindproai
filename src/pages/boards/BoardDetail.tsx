@@ -250,13 +250,6 @@ const BoardDetail = () => {
     );
   }
 
-  // Apply dark theme only inside boards
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-    return () => {
-      document.documentElement.classList.remove("dark");
-    };
-  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-background">
