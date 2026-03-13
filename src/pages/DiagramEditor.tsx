@@ -20,6 +20,8 @@ const DiagramEditor = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [title, setTitle] = useState("Sem título");
+  const [isPublic, setIsPublic] = useState(false);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [diagramType, setDiagramType] = useState("mindmap");
   const [initialNodes, setInitialNodes] = useState<Node[] | undefined>();
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
