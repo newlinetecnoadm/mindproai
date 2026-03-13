@@ -18,7 +18,7 @@ const WorkspaceList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: boards, isLoading, error } = useQuery({
+  const { data: boards, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
     enabled: !!user,
     retry: 1,
