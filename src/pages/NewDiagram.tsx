@@ -31,6 +31,8 @@ const NewDiagram = () => {
 
   const templates = selectedType ? getTemplatesByType(selectedType) : [];
 
+  const isBlankTemplate = (tpl: DiagramTemplate) => tpl.name === "Em branco";
+
   const handleSelectTemplate = async (template: DiagramTemplate) => {
     if (!user || creating) return;
     setCreating(true);
@@ -56,7 +58,7 @@ const NewDiagram = () => {
       const { data, error } = await supabase
         .from("diagrams")
         .insert({
-          title: template.name === "Em branco" ? "Sem título" : template.name,
+          title: isBlankTemplate(template) ? "Sem título" : template.name,
           type: template.type as any,
           data: diagramData,
           user_id: user.id,
@@ -66,7 +68,16 @@ const NewDiagram = () => {
         .single();
 
       if (error) throw error;
-      toast.success("Diagrama criado!");
+
+      if (isBlankTemplate(template)) {
+        toast.info("💡 Dica rápida", {
+          description: "Clique duas vezes no nó central para editar. Use Tab para criar ramificações e Enter para nós irmãos.",
+          duration: 8000,
+        });
+      } else {
+        toast.success("Diagrama criado!");
+      }
+
       navigate(`/diagramas/${data.id}`, { replace: true });
     } catch (err: any) {
       toast.error("Erro ao criar: " + (err.message || "desconhecido"));
