@@ -77,7 +77,7 @@ const DiagramEditor = () => {
       try {
         const { error } = await supabase
           .from("diagrams")
-          .update({ title, data: diagramData, updated_at: new Date().toISOString() })
+          .update({ title, data: diagramData, theme: themeId, updated_at: new Date().toISOString() })
           .eq("id", id!);
 
         if (error) throw error;
