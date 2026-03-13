@@ -170,6 +170,9 @@ const WeekView = ({ currentDate, events, onDayClick, onEventClick }: Omit<Calend
                         className="w-full text-left text-[11px] leading-tight px-1.5 py-1 rounded text-white font-medium truncate"
                         style={{ backgroundColor: ev.color || "#6366f1" }}
                       >
+                        {ev.board_name && (
+                          <span className="inline-block bg-white/25 text-[9px] rounded px-1 mr-1 align-middle">{ev.board_name}</span>
+                        )}
                         {ev.title}
                       </button>
                     ))}
