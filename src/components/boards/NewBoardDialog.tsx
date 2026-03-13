@@ -205,9 +205,9 @@ const NewBoardDialog = ({ open, onOpenChange, onCreateBoard, isPending }: NewBoa
           {/* Preview */}
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <p className="text-xs text-muted-foreground mb-2 font-medium">Prévia das colunas:</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
               {template.columns.map((col) => (
-                <div key={col} className="shrink-0 w-32 rounded-md bg-card border border-border p-2">
+                <div key={col} className="rounded-md bg-card border border-border p-2 min-w-0">
                   <p className="text-xs font-semibold truncate mb-1">{col}</p>
                   {template.cards?.[col]?.slice(0, 2).map((card) => (
                     <div key={card} className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-1 mb-1 truncate">
