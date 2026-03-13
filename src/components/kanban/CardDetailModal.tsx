@@ -719,8 +719,79 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </div>
           </div>
 
-          {/* Delete card */}
-          <div className="border-t border-border pt-4">
+          {/* Card actions */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {/* Copy card */}
+              <Popover open={showCopyCard} onOpenChange={setShowCopyCard}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                    <Copy className="w-3.5 h-3.5" /> Copiar
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <p className="text-xs font-medium mb-3">Copiar card</p>
+                  <div className="space-y-2 mb-3">
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox checked={copyChecklists} onCheckedChange={(v) => setCopyChecklists(!!v)} />
+                      Copiar checklists ({checklists.length})
+                    </label>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <Checkbox checked={copyLabels} onCheckedChange={(v) => setCopyLabels(!!v)} />
+                      Copiar labels ({cardLabelIds.length})
+                    </label>
+                  </div>
+                  <Button size="sm" className="w-full h-7 text-xs" onClick={() => copyCardMut.mutate()} disabled={copyCardMut.isPending}>
+                    {copyCardMut.isPending ? "Copiando..." : "Criar cópia"}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+
+              {/* Move card */}
+              <Popover open={showMoveCard} onOpenChange={(o) => { setShowMoveCard(o); if (!o) { setMoveTargetBoardId(""); setMoveTargetColumns([]); } }}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <p className="text-xs font-medium mb-3">Mover para outro board</p>
+                  <div className="space-y-2 mb-3">
+                    <Select value={moveTargetBoardId} onValueChange={loadTargetColumns}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Selecionar board..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allBoards.filter((b: any) => b.id !== boardId).map((b: any) => (
+                          <SelectItem key={b.id} value={b.id} className="text-xs">{b.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {moveTargetColumns.length > 0 && (
+                      <Select value={moveTargetColumnId} onValueChange={setMoveTargetColumnId}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Selecionar coluna..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {moveTargetColumns.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs">{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    disabled={!moveTargetColumnId || moveCardToBoardMut.isPending}
+                    onClick={() => moveCardToBoardMut.mutate()}
+                  >
+                    {moveCardToBoardMut.isPending ? "Movendo..." : "Mover card"}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
               <Trash2 className="w-3.5 h-3.5" /> Excluir card
             </Button>
