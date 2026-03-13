@@ -203,7 +203,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setEdges((eds) => [...eds, ...newEdges]);
   }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
 
-  const handleSave = useCallback(() => onSave(nodes, edges), [nodes, edges, onSave]);
+  const handleSave = useCallback(() => onSave(nodes, edges, theme.id), [nodes, edges, theme, onSave]);
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;
