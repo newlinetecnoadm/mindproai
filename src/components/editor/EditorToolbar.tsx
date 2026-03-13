@@ -115,9 +115,32 @@ const EditorToolbar = ({
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onAddNode} title={addLabels[diagramType] || "Adicionar nó (Tab)"}>
-        <Plus className="w-4 h-4" />
-      </Button>
+      {/* Add node dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={addLabels[diagramType] || "Adicionar nó (Tab)"}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={onAddNode}>
+            <Plus className="w-3.5 h-3.5 mr-2" />
+            {addLabels[diagramType] || "Adicionar nó"}
+          </DropdownMenuItem>
+          {onAddSpecialNode && (
+            <>
+              <DropdownMenuItem onClick={() => onAddSpecialNode("diamond")}>
+                <Diamond className="w-3.5 h-3.5 mr-2" />
+                Decisão (Losango)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddSpecialNode("sticky")}>
+                <StickyNote className="w-3.5 h-3.5 mr-2" />
+                Nota Adesiva
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} disabled={!hasSelection} title="Excluir (Delete)">
         <Trash2 className="w-4 h-4" />
@@ -138,6 +161,30 @@ const EditorToolbar = ({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Edge type picker */}
+      {onEdgeTypeChange && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Tipo de aresta">
+              <Spline className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[140px]">
+            {edgeTypeOptions.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                onClick={() => onEdgeTypeChange(opt.value)}
+                className={currentEdgeType === opt.value ? "bg-accent" : ""}
+              >
+                <opt.icon className="w-3.5 h-3.5 mr-2" />
+                {opt.label}
+                {currentEdgeType === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <div className="w-px h-5 bg-border mx-1" />
 
