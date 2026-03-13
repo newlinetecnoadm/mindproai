@@ -482,12 +482,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     let targetId: string | null = null;
 
     if (direction === "left") {
-      // Go to parent
       if (parentEdge) targetId = parentEdge.source;
     } else if (direction === "right") {
-      // Go to first child
       if (childEdges.length > 0) {
-        // Pick child closest to current Y position
         const children = childEdges
           .map((e) => nodes.find((n) => n.id === e.target))
           .filter(Boolean) as Node[];
@@ -495,7 +492,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         targetId = children[0]?.id || null;
       }
     } else if (direction === "up" || direction === "down") {
-      // Navigate siblings (nodes sharing the same parent)
       if (parentEdge) {
         const siblingEdges = edges.filter((e) => e.source === parentEdge.source);
         const siblings = siblingEdges
@@ -510,13 +506,95 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     if (targetId) {
       setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === targetId })));
-      // Center view on the newly selected node
       const targetNode = nodes.find((n) => n.id === targetId);
       if (targetNode) {
         setTimeout(() => fitView({ nodes: [{ id: targetId! }], padding: 0.5, duration: 250 }), 10);
       }
     }
   }, [nodes, edges, selectedNodes, setNodes, fitView]);
+
+  // Move node between branches (Alt+Arrow)
+  const handleMoveNode = useCallback((direction: "up" | "down" | "left" | "right") => {
+    const selected = selectedNodes[0];
+    if (!selected || (selected.data as any).isRoot) return;
+
+    const parentEdge = edges.find((e) => e.target === selected.id);
+    if (!parentEdge) return;
+
+    const parentId = parentEdge.source;
+
+    if (direction === "up" || direction === "down") {
+      // Reorder among siblings: swap edge order
+      const siblingEdges = edges.filter((e) => e.source === parentId);
+      const siblings = siblingEdges
+        .map((e) => nodes.find((n) => n.id === e.target))
+        .filter(Boolean) as Node[];
+      siblings.sort((a, b) => a.position.y - b.position.y);
+      const idx = siblings.findIndex((n) => n.id === selected.id);
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= siblings.length) return;
+
+      takeSnapshot();
+      // Swap positions in edges array to affect layout order
+      const swapNodeId = siblings[swapIdx].id;
+      const reorderedEdges = edges.map((e) => {
+        if (e.source === parentId && e.target === selected.id) return { ...e, target: swapNodeId };
+        if (e.source === parentId && e.target === swapNodeId) return { ...e, target: selected.id };
+        return e;
+      });
+      // Fix edge IDs after swap
+      const fixedEdges = reorderedEdges.map((e) => {
+        if (e.source === parentId && (e.target === selected.id || e.target === swapNodeId)) {
+          return { ...e, id: `e-${e.source}-${e.target}` };
+        }
+        return e;
+      });
+      applyAutoLayout(nodes, fixedEdges);
+      toast.info(direction === "up" ? "Movido para cima" : "Movido para baixo");
+    } else if (direction === "left") {
+      // Promote: move to grandparent (become sibling of current parent)
+      const grandparentEdge = edges.find((e) => e.target === parentId);
+      if (!grandparentEdge) {
+        toast.info("Não é possível promover — o pai é a raiz.");
+        return;
+      }
+
+      takeSnapshot();
+      const grandparentId = grandparentEdge.source;
+      const nextEdges = edges.map((e) => {
+        if (e.target === selected.id && e.source === parentId) {
+          return { ...e, id: `e-${grandparentId}-${selected.id}`, source: grandparentId };
+        }
+        return e;
+      });
+      applyAutoLayout(nodes, nextEdges);
+      toast.info("Nó promovido ao nível superior");
+    } else if (direction === "right") {
+      // Demote: move under previous sibling
+      const siblingEdges = edges.filter((e) => e.source === parentId);
+      const siblings = siblingEdges
+        .map((e) => nodes.find((n) => n.id === e.target))
+        .filter(Boolean) as Node[];
+      siblings.sort((a, b) => a.position.y - b.position.y);
+      const idx = siblings.findIndex((n) => n.id === selected.id);
+      // Find the previous sibling to become the new parent
+      const newParent = idx > 0 ? siblings[idx - 1] : (idx < siblings.length - 1 ? siblings[idx + 1] : null);
+      if (!newParent) {
+        toast.info("Não há irmão disponível para rebaixar.");
+        return;
+      }
+
+      takeSnapshot();
+      const nextEdges = edges.map((e) => {
+        if (e.target === selected.id && e.source === parentId) {
+          return { ...e, id: `e-${newParent.id}-${selected.id}`, source: newParent.id };
+        }
+        return e;
+      });
+      applyAutoLayout(nodes, nextEdges);
+      toast.info(`Nó movido para dentro de "${(newParent.data as any).label}"`);
+    }
+  }, [nodes, edges, selectedNodes, takeSnapshot, applyAutoLayout]);
 
   // Select and focus a node by ID (used by search)
   const handleSearchSelect = useCallback((nodeId: string) => {
@@ -546,6 +624,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
+      // Alt+Arrow: move node between branches
+      if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); handleMoveNode("up"); return; }
+      if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); handleMoveNode("down"); return; }
+      if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); handleMoveNode("left"); return; }
+      if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); handleMoveNode("right"); return; }
       // Arrow navigation
       if (e.key === "ArrowUp") { e.preventDefault(); handleArrowNav("up"); }
       if (e.key === "ArrowDown") { e.preventDefault(); handleArrowNav("down"); }
@@ -568,7 +651,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, searchOpen]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, searchOpen]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
