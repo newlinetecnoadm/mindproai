@@ -24,6 +24,7 @@ const Configuracoes = () => {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [notifyComments, setNotifyComments] = useState(true);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["user-profile", user?.id],
