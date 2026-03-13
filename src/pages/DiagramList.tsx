@@ -72,7 +72,7 @@ const DiagramList = () => {
         const sharedIds = collabs.map((c) => c.diagram_id);
         const { data: sharedData } = await supabase
           .from("diagrams")
-          .select("id, title, type, updated_at, created_at, user_id")
+          .select("id, title, type, updated_at, created_at, user_id, thumbnail")
           .in("id", sharedIds);
         shared = sharedData || [];
       }
