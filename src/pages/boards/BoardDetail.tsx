@@ -11,6 +11,7 @@ import KanbanBoard from "@/components/kanban/KanbanBoard";
 import CardDetailModal from "@/components/kanban/CardDetailModal";
 import BoardFilters, { type BoardFilterState, EMPTY_FILTERS } from "@/components/kanban/BoardFilters";
 import InboxPanel from "@/components/boards/InboxPanel";
+import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
@@ -264,7 +265,8 @@ const BoardDetail = () => {
           onBlur={() => { if (boardTitle.trim() && boardTitle !== board.title) updateTitleMut.mutate(boardTitle); }}
           className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ShareBoardDialog boardId={id!} boardTitle={board.title} />
           <BoardFilters
             filters={filters}
             onChange={setFilters}
