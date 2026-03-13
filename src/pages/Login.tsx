@@ -7,7 +7,7 @@ import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { lovable } from "@/integrations/lovable/index";
+
 import { toast } from "sonner";
 import logoVerticalColor from "@/assets/logo-vertical-color.png";
 
