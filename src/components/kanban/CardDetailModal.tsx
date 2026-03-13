@@ -131,6 +131,31 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
+  // All board users (including current user, for member picker)
+  const { data: allBoardUsers = [] } = useQuery<MentionUser[]>({
+    queryKey: ["board-all-users", boardId],
+    enabled: !!boardId && open,
+    queryFn: async () => {
+      const { data: board } = await supabase.from("boards").select("user_id").eq("id", boardId).single();
+      const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", boardId);
+      const allIds = [...new Set([board?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+      if (!allIds.length) return [];
+      const { data: profiles } = await supabase.from("user_profiles").select("user_id, full_name, email").in("user_id", allIds);
+      return (profiles || []) as MentionUser[];
+    },
+  });
+
+  // Card members
+  const { data: cardMemberIds = [] } = useQuery({
+    queryKey: ["card-members", cardId],
+    enabled: !!cardId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("card_members").select("user_id").eq("card_id", cardId!);
+      if (error) throw error;
+      return data.map((d: any) => d.user_id);
+    },
+  });
+
   // Attachments
   const { data: attachments = [] } = useQuery({
     queryKey: ["card-attachments", cardId],
