@@ -44,6 +44,7 @@ const addLabels: Record<string, string> = {
 const shortcuts = [
   { keys: ["Tab"], desc: "Adicionar nó filho" },
   { keys: ["Enter"], desc: "Adicionar nó irmão" },
+  { keys: ["F2"], desc: "Editar texto do nó" },
   { keys: ["←"], desc: "Ir para o nó pai" },
   { keys: ["→"], desc: "Ir para o primeiro filho" },
   { keys: ["↑"], desc: "Irmão anterior" },

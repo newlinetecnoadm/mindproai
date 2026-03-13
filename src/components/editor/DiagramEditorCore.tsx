@@ -413,6 +413,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if (e.key === "ArrowDown") { e.preventDefault(); handleArrowNav("down"); }
       if (e.key === "ArrowLeft") { e.preventDefault(); handleArrowNav("left"); }
       if (e.key === "ArrowRight") { e.preventDefault(); handleArrowNav("right"); }
+      // F2 to edit selected node
+      if (e.key === "F2" && selectedNodes.length === 1) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id } }));
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
