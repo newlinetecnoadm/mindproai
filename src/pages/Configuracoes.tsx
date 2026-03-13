@@ -95,12 +95,11 @@ const Configuracoes = () => {
     if (profile) {
       setName(profile.full_name || "");
       const p = profile as any;
-      setPrefs({
-        notify_comments: p.notify_comments ?? true,
-        notify_card_moved: p.notify_card_moved ?? true,
-        notify_due_soon: p.notify_due_soon ?? true,
-        notify_member_added: p.notify_member_added ?? true,
-      });
+      const newPrefs: Record<string, boolean> = {};
+      for (const key of allPrefKeys) {
+        newPrefs[key] = p[key] ?? true;
+      }
+      setPrefs(newPrefs);
     }
   }, [profile]);
 
