@@ -115,6 +115,21 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
+  // Board members for @mentions
+  const { data: mentionUsers = [] } = useQuery<MentionUser[]>({
+    queryKey: ["board-mention-users", boardId],
+    enabled: !!boardId && open,
+    queryFn: async () => {
+      // Get board owner + members
+      const { data: board } = await supabase.from("boards").select("user_id").eq("id", boardId).single();
+      const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", boardId);
+      const allIds = [...new Set([board?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+      if (!allIds.length) return [];
+      const { data: profiles } = await supabase.from("user_profiles").select("user_id, full_name, email").in("user_id", allIds);
+      return (profiles || []).filter((p: any) => p.user_id !== user?.id) as MentionUser[];
+    },
+  });
+
   // Attachments
   const { data: attachments = [] } = useQuery({
     queryKey: ["card-attachments", cardId],
