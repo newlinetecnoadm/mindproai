@@ -53,7 +53,7 @@ interface DiagramEditorCoreProps {
   initialNodes?: Node[];
   initialEdges?: Edge[];
   initialThemeId?: string;
-  onSave: (nodes: Node[], edges: Edge[], themeId: string) => Promise<void>;
+  onSave: (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string) => Promise<void>;
   saving: boolean;
   remoteNodes?: Node[];
   remoteEdges?: Edge[];
