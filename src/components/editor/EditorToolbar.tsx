@@ -84,6 +84,7 @@ interface EditorToolbarProps {
   hasSelection: boolean;
   diagramType: string;
   exporting: boolean;
+  canExportPdf?: boolean;
 }
 
 const EditorToolbar = ({
