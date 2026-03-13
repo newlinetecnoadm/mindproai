@@ -233,26 +233,37 @@ const Configuracoes = () => {
             </TabsContent>
 
             <TabsContent value="notifications" className="space-y-6">
-              <div className="p-6 rounded-xl border border-border bg-card space-y-6">
-                <div>
-                  <h3 className="font-semibold mb-1">Notificações por e-mail</h3>
-                  <p className="text-sm text-muted-foreground">Escolha quais notificações deseja receber no seu e-mail.</p>
+              <div className="p-6 rounded-xl border border-border bg-card space-y-2">
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-1">Notificações</h3>
+                  <p className="text-sm text-muted-foreground">Configure quais notificações deseja receber por módulo.</p>
                 </div>
 
-                <div className="space-y-3">
-                  {NOTIFICATION_PREFS.map((pref) => (
-                    <div key={pref.key} className="flex items-center justify-between p-4 rounded-lg border border-border">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium">{pref.label}</p>
-                        <p className="text-xs text-muted-foreground">{pref.description}</p>
+                {NOTIFICATION_MODULES.map((mod) => {
+                  const Icon = mod.icon;
+                  return (
+                    <div key={mod.id} className="space-y-2">
+                      <div className="flex items-center gap-2 pt-3 pb-1">
+                        <Icon className="w-4 h-4 text-primary" />
+                        <h4 className="text-sm font-semibold">{mod.label}</h4>
                       </div>
-                      <Switch
-                        checked={prefs[pref.key] ?? true}
-                        onCheckedChange={(checked) => handleTogglePref(pref.key, checked)}
-                      />
+                      <div className="space-y-1">
+                        {mod.prefs.map((pref) => (
+                          <div key={pref.key} className="flex items-center justify-between py-3 px-4 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                            <div className="space-y-0.5 pr-4">
+                              <p className="text-sm font-medium">{pref.label}</p>
+                              <p className="text-xs text-muted-foreground">{pref.description}</p>
+                            </div>
+                            <Switch
+                              checked={prefs[pref.key] ?? true}
+                              onCheckedChange={(checked) => handleTogglePref(pref.key, checked)}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </TabsContent>
 
