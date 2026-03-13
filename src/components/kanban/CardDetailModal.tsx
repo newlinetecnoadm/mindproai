@@ -274,9 +274,11 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   // Delete checklist
   const deleteChecklist = useMutation({
     mutationFn: async (checklistId: string) => {
+      const cl = checklists.find((c: any) => c.id === checklistId);
       await supabase.from("checklist_items").delete().eq("checklist_id", checklistId);
       const { error } = await supabase.from("card_checklists").delete().eq("id", checklistId);
       if (error) throw error;
+      if (cardId) await logActivity(cardId, "checklist_removed", { checklist_title: (cl as any)?.title || "" });
     },
     onSuccess: invalidateAll,
   });
