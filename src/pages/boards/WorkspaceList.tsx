@@ -144,10 +144,10 @@ const WorkspaceList = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {boards!.map((board) => (
+              <StaggerItem key={board.id}>
               <div
-                key={board.id}
                 className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/boards/${board.id}`)}
               >
