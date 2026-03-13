@@ -451,6 +451,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [getFlowElement]);
 
   const handleExportPdf = useCallback(async () => {
+    if (!limits.exportPdf) {
+      setUpgradeOpen(true);
+      return;
+    }
     const el = getFlowElement();
     if (!el) return;
     setExporting(true);
@@ -473,7 +477,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     } finally {
       setExporting(false);
     }
-  }, [getFlowElement]);
+  }, [getFlowElement, limits.exportPdf]);
 
   // Arrow key navigation between nodes
   const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
