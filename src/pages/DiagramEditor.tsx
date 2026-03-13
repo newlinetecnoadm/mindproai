@@ -224,8 +224,8 @@ const DiagramEditor = () => {
               </div>
             </TooltipProvider>
           )}
-          <span className="text-xs text-muted-foreground">
-            {saving ? "Salvando..." : "Ctrl+S para salvar"}
+          <span className="text-xs text-muted-foreground transition-opacity">
+            {saving ? "Salvando..." : savedRecently ? "✓ Salvo" : ""}
           </span>
         </div>
       </div>
