@@ -81,10 +81,15 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
   const sortedCards = [...cards].sort((a, b) => a.position - b.position);
 
   return (
-    <div className={cn(
-      "flex flex-col w-72 shrink-0 bg-muted/50 rounded-xl border border-border",
-      isOver && "ring-2 ring-primary/30"
-    )}>
+    <div
+      className={cn(
+        "flex flex-col w-72 shrink-0 bg-muted/50 rounded-xl border border-border transition-all",
+        (isOver || nativeDragOver) && "ring-2 ring-primary/30"
+      )}
+      onDragOver={handleNativeDragOver}
+      onDragLeave={handleNativeDragLeave}
+      onDrop={handleNativeDrop}
+    >
       {/* Column header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         {editingTitle ? (
