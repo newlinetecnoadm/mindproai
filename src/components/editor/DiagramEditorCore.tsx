@@ -62,6 +62,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
+  const [theme, setTheme] = useState<EditorTheme>(editorThemes[0]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
