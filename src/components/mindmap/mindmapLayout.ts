@@ -383,10 +383,19 @@ export function rerouteDiagramEdges(
     const { w: srcW, h: srcH } = getNodeDimensions(srcNode);
     const { w: tgtW, h: tgtH } = getNodeDimensions(tgtNode);
 
-    const { sourceHandle, targetHandle } =
-      diagramType === "mindmap"
-        ? getMindmapHandles(srcPos, tgtPos)
-        : getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
+    let handles: { sourceHandle: string; targetHandle: string };
+
+    if (diagramType === "mindmap") {
+      handles = getMindmapHandles(srcPos, tgtPos);
+    } else if (diagramType === "orgchart") {
+      handles = { sourceHandle: "bottom", targetHandle: "top" };
+    } else if (diagramType === "timeline") {
+      handles = { sourceHandle: "right", targetHandle: "left" };
+    } else {
+      handles = getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
+    }
+
+    const { sourceHandle, targetHandle } = handles;
 
     return {
       ...edge,

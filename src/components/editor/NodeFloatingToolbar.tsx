@@ -71,7 +71,7 @@ const NodeFloatingToolbar = ({
 
   return (
     <div
-      className="absolute z-20 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-1 shadow-lg -translate-x-1/2 -translate-y-full pointer-events-auto"
+      className="absolute z-20 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-1 shadow-lg -translate-x-1/2 pointer-events-auto"
       style={{ left: position.x, top: position.y }}
     >
       <Button
