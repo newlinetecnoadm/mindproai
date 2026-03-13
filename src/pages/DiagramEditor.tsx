@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeDiagram, type PresenceUser } from "@/hooks/useRealtimeDiagram";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import DiagramEditorCore from "@/components/editor/DiagramEditorCore";
 import type { Node, Edge } from "@xyflow/react";
 import type { Json } from "@/integrations/supabase/types";
@@ -23,6 +25,11 @@ const DiagramEditor = () => {
   const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Remote sync state
+  const [remoteNodes, setRemoteNodes] = useState<Node[] | undefined>();
+  const [remoteEdges, setRemoteEdges] = useState<Edge[] | undefined>();
+  const [remoteThemeId, setRemoteThemeId] = useState<string | undefined>();
 
   useEffect(() => {
     const loadDiagram = async () => {
@@ -51,6 +58,25 @@ const DiagramEditor = () => {
 
     loadDiagram();
   }, [id, navigate]);
+
+  // Realtime: presence + sync
+  const handleRemoteUpdate = useCallback(
+    (nodes: Node[], edges: Edge[], theme: string | null) => {
+      setRemoteNodes(nodes);
+      setRemoteEdges(edges);
+      setRemoteThemeId(theme || undefined);
+    },
+    []
+  );
+
+  const { onlineUsers } = useRealtimeDiagram({
+    diagramId: id || "",
+    userId: user?.id || "",
+    userEmail: user?.email || "",
+    userName: user?.user_metadata?.full_name,
+    userAvatar: user?.user_metadata?.avatar_url,
+    onRemoteUpdate: handleRemoteUpdate,
+  });
 
   const handleSave = useCallback(
     async (nodes: Node[], edges: Edge[], themeId: string) => {
@@ -118,9 +144,48 @@ const DiagramEditor = () => {
             {typeInfo.icon} {typeInfo.name}
           </Badge>
         )}
-        <span className="text-xs text-muted-foreground ml-auto">
-          {saving ? "Salvando..." : "Ctrl+S para salvar"}
-        </span>
+
+        {/* Online users presence */}
+        <div className="flex items-center gap-1 ml-auto">
+          {onlineUsers.length > 0 && (
+            <TooltipProvider>
+              <div className="flex -space-x-2 mr-3">
+                {onlineUsers.slice(0, 5).map((u) => (
+                  <Tooltip key={u.userId}>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="w-7 h-7 rounded-full border-2 border-card flex items-center justify-center text-[10px] font-bold text-white cursor-default"
+                        style={{ backgroundColor: u.color }}
+                      >
+                        {u.avatarUrl ? (
+                          <img
+                            src={u.avatarUrl}
+                            alt={u.fullName || u.email}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          (u.fullName || u.email).charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs font-medium">{u.fullName || u.email}</p>
+                      <p className="text-xs text-muted-foreground">Online agora</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+                {onlineUsers.length > 5 && (
+                  <div className="w-7 h-7 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                    +{onlineUsers.length - 5}
+                  </div>
+                )}
+              </div>
+            </TooltipProvider>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {saving ? "Salvando..." : "Ctrl+S para salvar"}
+          </span>
+        </div>
       </div>
 
       <div className="flex-1">
@@ -131,6 +196,9 @@ const DiagramEditor = () => {
           initialThemeId={initialThemeId}
           onSave={handleSave}
           saving={saving}
+          remoteNodes={remoteNodes}
+          remoteEdges={remoteEdges}
+          remoteThemeId={remoteThemeId}
         />
       </div>
     </div>
