@@ -301,10 +301,9 @@ export function autoLayoutMindMap(
   if (!tree) return { nodes, edges };
 
   const positions = new Map<string, { x: number; y: number }>();
-  layoutMindmapTree(tree, 0, 0, positions);
-  centerPositions(positions);
+  layoutMindmapBalanced(tree, positions);
 
-  return applyPositions(nodes, edges, positions);
+  return applyPositions(nodes, edges, positions, "mindmap");
 }
 
 export function autoLayoutDiagram(
@@ -317,7 +316,8 @@ export function autoLayoutDiagram(
   let positions: Map<string, { x: number; y: number }>;
 
   switch (diagramType) {
-    case "mindmap": return autoLayoutMindMap(nodes, edges);
+    case "mindmap":
+      return autoLayoutMindMap(nodes, edges);
 
     case "orgchart": {
       const tree = buildOrgTree(nodes, edges);
@@ -340,10 +340,11 @@ export function autoLayoutDiagram(
       break;
     }
 
-    default: return autoLayoutMindMap(nodes, edges);
+    default:
+      return autoLayoutMindMap(nodes, edges);
   }
 
-  return applyPositions(nodes, edges, positions);
+  return applyPositions(nodes, edges, positions, diagramType);
 }
 
 function getNodeDimensions(node: Node): { w: number; h: number } {
