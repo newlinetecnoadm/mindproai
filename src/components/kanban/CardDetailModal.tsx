@@ -7,8 +7,9 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
