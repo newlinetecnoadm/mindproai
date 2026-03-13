@@ -1,0 +1,5 @@
+
+ALTER TABLE public.user_profiles 
+  ADD COLUMN IF NOT EXISTS notify_card_moved BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS notify_due_soon BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS notify_member_added BOOLEAN NOT NULL DEFAULT true;
