@@ -139,6 +139,7 @@ const WorkspaceList = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board-count"] });
       toast.success("Board arquivado");
     },
   });
