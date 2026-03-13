@@ -119,13 +119,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get emails for these users
+    // Get emails for these users (only those with notify_comments enabled)
     const { data: profiles } = await supabase
       .from("user_profiles")
-      .select("user_id, email, full_name")
+      .select("user_id, email, full_name, notify_comments")
       .in("user_id", Array.from(notifySet));
 
-    if (!profiles?.length) {
+    // Filter to only users who have notifications enabled
+    const notifiableProfiles = (profiles || []).filter(
+      (p: any) => p.email && p.notify_comments !== false
+    );
+
+    if (!notifiableProfiles.length) {
       return new Response(JSON.stringify({ success: true, notified: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
