@@ -87,6 +87,9 @@ const MonthView = ({ currentDate, events, onDayClick, onEventClick }: Omit<Calen
                     className="w-full text-left text-[11px] leading-tight px-1.5 py-0.5 rounded truncate text-white font-medium"
                     style={{ backgroundColor: ev.color || "#6366f1" }}
                   >
+                    {ev.board_name && (
+                      <span className="inline-block bg-white/25 text-[9px] rounded px-1 mr-1 align-middle">{ev.board_name}</span>
+                    )}
                     {ev.title}
                   </button>
                 ))}
