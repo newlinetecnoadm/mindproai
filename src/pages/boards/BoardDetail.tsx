@@ -324,6 +324,7 @@ const BoardDetail = () => {
           className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
         />
         <div className="ml-auto flex items-center gap-2">
+          <NotificationBell />
           <BoardThemePicker
             currentTheme={(board as any).theme || "default"}
             onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
