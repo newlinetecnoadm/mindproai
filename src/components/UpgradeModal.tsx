@@ -12,21 +12,25 @@ import { Crown, ArrowRight } from "lucide-react";
 interface UpgradeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  resource: "diagrama" | "board";
-  currentCount: number;
-  maxCount: number;
+  resource: "diagrama" | "board" | "feature";
+  currentCount?: number;
+  maxCount?: number;
   planName: string;
+  featureLabel?: string;
 }
 
 const UpgradeModal = ({
   open,
   onOpenChange,
   resource,
-  currentCount,
-  maxCount,
+  currentCount = 0,
+  maxCount = 0,
   planName,
+  featureLabel,
 }: UpgradeModalProps) => {
   const navigate = useNavigate();
+
+  const isFeatureGate = resource === "feature";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,12 +39,27 @@ const UpgradeModal = ({
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
             <Crown className="w-7 h-7 text-primary" />
           </div>
-          <DialogTitle className="text-xl">Limite atingido</DialogTitle>
+          <DialogTitle className="text-xl">
+            {isFeatureGate ? "Recurso exclusivo Pro" : "Limite atingido"}
+          </DialogTitle>
           <DialogDescription className="text-center">
-            Você atingiu o limite de <strong>{maxCount} {resource === "diagrama" ? "diagramas" : "boards"}</strong> do plano{" "}
-            <strong>{planName}</strong>. Atualmente você tem{" "}
-            <strong>{currentCount}</strong> {resource === "diagrama" ? "diagrama" : "board"}
-            {currentCount !== 1 ? "s" : ""}.
+            {isFeatureGate ? (
+              <>
+                <strong>{featureLabel || "Este recurso"}</strong> está disponível apenas no plano{" "}
+                <strong>Pro</strong>. Você está no plano <strong>{planName}</strong>.
+              </>
+            ) : (
+              <>
+                Você atingiu o limite de{" "}
+                <strong>
+                  {maxCount} {resource === "diagrama" ? "diagramas" : "boards"}
+                </strong>{" "}
+                do plano <strong>{planName}</strong>. Atualmente você tem{" "}
+                <strong>{currentCount}</strong>{" "}
+                {resource === "diagrama" ? "diagrama" : "board"}
+                {currentCount !== 1 ? "s" : ""}.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 

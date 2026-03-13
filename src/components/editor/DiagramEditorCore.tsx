@@ -2,6 +2,8 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import UpgradeModal from "@/components/UpgradeModal";
 import { autoLayoutDiagram, rerouteDiagramEdges } from "@/components/mindmap/mindmapLayout";
 import {
   ReactFlow,
@@ -75,6 +77,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [nodes, setNodes, onNodesChange] = useNodesState(initialLayout.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayout.edges);
   const [exporting, setExporting] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
   const [theme, setTheme] = useState<EditorTheme>(
     editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
   );
@@ -447,6 +451,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [getFlowElement]);
 
   const handleExportPdf = useCallback(async () => {
+    if (!limits.exportPdf) {
+      setUpgradeOpen(true);
+      return;
+    }
     const el = getFlowElement();
     if (!el) return;
     setExporting(true);
@@ -469,7 +477,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     } finally {
       setExporting(false);
     }
-  }, [getFlowElement]);
+  }, [getFlowElement, limits.exportPdf]);
 
   // Arrow key navigation between nodes
   const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
@@ -667,6 +675,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onRedo={redo}
         onExportPng={handleExportPng}
         onExportPdf={handleExportPdf}
+        canExportPdf={limits.exportPdf}
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
         currentThemeId={theme.id}
@@ -741,6 +750,13 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           nodeColor={theme.minimapNode}
         />
       </ReactFlow>
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        resource="feature"
+        featureLabel="Exportação para PDF"
+        planName={limits.displayName}
+      />
     </div>
   );
 }

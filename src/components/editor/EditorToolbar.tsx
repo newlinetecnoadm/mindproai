@@ -84,13 +84,14 @@ interface EditorToolbarProps {
   hasSelection: boolean;
   diagramType: string;
   exporting: boolean;
+  canExportPdf?: boolean;
 }
 
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
   onThemeChange, onReLayout, currentThemeId,
-  canUndo, canRedo, saving, hasSelection, diagramType, exporting,
+  canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md">
@@ -182,6 +183,9 @@ const EditorToolbar = ({
           <DropdownMenuItem onClick={onExportPdf}>
             <FileText className="w-3.5 h-3.5 mr-2" />
             Exportar PDF
+            {!canExportPdf && (
+              <span className="ml-auto text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRO</span>
+            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
