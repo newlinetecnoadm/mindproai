@@ -52,17 +52,20 @@ interface DiagramEditorCoreProps {
   diagramType: string;
   initialNodes?: Node[];
   initialEdges?: Edge[];
-  onSave: (nodes: Node[], edges: Edge[]) => Promise<void>;
+  initialThemeId?: string;
+  onSave: (nodes: Node[], edges: Edge[], themeId: string) => Promise<void>;
   saving: boolean;
 }
 
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, saving }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving }: DiagramEditorCoreProps) {
   const defaultNodes = initialNodes || [];
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
-  const [theme, setTheme] = useState<EditorTheme>(editorThemes[0]);
+  const [theme, setTheme] = useState<EditorTheme>(
+    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
+  );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
@@ -79,14 +82,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(async () => {
       try {
-        await onSave(nodes, edges);
+        await onSave(nodes, edges, theme.id);
         setLastSavedAt(new Date());
       } catch {
         // silent fail — manual save still available
       }
     }, 2000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [nodes, edges, onSave]);
+  }, [nodes, edges, theme, onSave]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -200,7 +203,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
     setEdges((eds) => [...eds, ...newEdges]);
   }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
 
-  const handleSave = useCallback(() => onSave(nodes, edges), [nodes, edges, onSave]);
+  const handleSave = useCallback(() => onSave(nodes, edges, theme.id), [nodes, edges, theme, onSave]);
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;

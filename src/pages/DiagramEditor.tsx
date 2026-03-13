@@ -20,6 +20,7 @@ const DiagramEditor = () => {
   const [diagramType, setDiagramType] = useState("mindmap");
   const [initialNodes, setInitialNodes] = useState<Node[] | undefined>();
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
+  const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +40,7 @@ const DiagramEditor = () => {
 
       setTitle(data.title);
       setDiagramType(data.type);
+      setInitialThemeId(data.theme || undefined);
       const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
       if (diagramData?.nodes?.length) {
         setInitialNodes(diagramData.nodes);
@@ -51,7 +53,7 @@ const DiagramEditor = () => {
   }, [id, navigate]);
 
   const handleSave = useCallback(
-    async (nodes: Node[], edges: Edge[]) => {
+    async (nodes: Node[], edges: Edge[], themeId: string) => {
       if (!user) return;
       setSaving(true);
 
@@ -75,7 +77,7 @@ const DiagramEditor = () => {
       try {
         const { error } = await supabase
           .from("diagrams")
-          .update({ title, data: diagramData, updated_at: new Date().toISOString() })
+          .update({ title, data: diagramData, theme: themeId, updated_at: new Date().toISOString() })
           .eq("id", id!);
 
         if (error) throw error;
@@ -126,6 +128,7 @@ const DiagramEditor = () => {
           diagramType={diagramType}
           initialNodes={initialNodes}
           initialEdges={initialEdges}
+          initialThemeId={initialThemeId}
           onSave={handleSave}
           saving={saving}
         />
