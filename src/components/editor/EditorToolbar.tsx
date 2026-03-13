@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { editorThemes, type EditorTheme } from "./editorThemes";
 
 const nodeColors = [
   { name: "Padrão", value: "default" },
@@ -47,6 +48,8 @@ interface EditorToolbarProps {
   onRedo: () => void;
   onExportPng: () => void;
   onExportPdf: () => void;
+  onThemeChange: (theme: EditorTheme) => void;
+  currentThemeId: string;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
@@ -58,6 +61,7 @@ interface EditorToolbarProps {
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
+  onThemeChange, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting,
 }: EditorToolbarProps) => {
   return (
@@ -106,6 +110,30 @@ const EditorToolbar = ({
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView} title="Ajustar visão">
         <Maximize className="w-4 h-4" />
       </Button>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
+      {/* Theme picker */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Tema do editor">
+            <SwatchBook className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[160px]">
+          {editorThemes.map((t) => (
+            <DropdownMenuItem
+              key={t.id}
+              onClick={() => onThemeChange(t)}
+              className={currentThemeId === t.id ? "bg-accent" : ""}
+            >
+              <span className="mr-2">{t.emoji}</span>
+              {t.name}
+              {currentThemeId === t.id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div className="w-px h-5 bg-border mx-1" />
 

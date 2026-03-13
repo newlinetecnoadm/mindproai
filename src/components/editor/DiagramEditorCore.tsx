@@ -26,6 +26,7 @@ import ConceptNode from "./nodes/ConceptNode";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
+import { editorThemes, type EditorTheme } from "./editorThemes";
 
 const nodeTypes = {
   mindmap: MindMapNode as any,
@@ -61,6 +62,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [exporting, setExporting] = useState(false);
+  const [theme, setTheme] = useState<EditorTheme>(editorThemes[0]);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
@@ -268,7 +270,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   }, [handleAddNode, handleDelete, handleSave, undo, redo, handleDuplicate]);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
         onAddNode={handleAddNode}
         onDelete={handleDelete}
@@ -281,6 +283,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         onRedo={redo}
         onExportPng={handleExportPng}
         onExportPdf={handleExportPdf}
+        onThemeChange={setTheme}
+        currentThemeId={theme.id}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
@@ -290,14 +294,20 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
       />
       {/* Autosave indicator */}
       {saving && (
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <div
+          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
+          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.cardText, border: `1px solid ${theme.cardBorder}` }}
+        >
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.nodeColor }} />
           Salvando...
         </div>
       )}
       {!saving && lastSavedAt && (
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+        <div
+          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
+          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.cardText, border: `1px solid ${theme.cardBorder}` }}
+        >
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
           Salvo às {lastSavedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
       )}
@@ -319,19 +329,21 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
-        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: "hsl(var(--border))", strokeWidth: 2 } }}
+        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: 2 } }}
         proOptions={{ hideAttribution: true }}
-        className="bg-background"
+        style={{ backgroundColor: theme.bg }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
         <Controls
           showInteractive={false}
-          className="!bg-card !border-border !rounded-xl !shadow-md [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground"
+          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderRadius: 12 }}
+          className="!rounded-xl !shadow-md [&>button]:!border-0"
         />
         <MiniMap
-          className="!bg-card !border-border !rounded-xl !shadow-md"
-          maskColor="hsl(var(--muted) / 0.7)"
-          nodeColor="hsl(var(--primary))"
+          style={{ backgroundColor: theme.minimapBg, borderColor: theme.cardBorder, borderRadius: 12 }}
+          className="!rounded-xl !shadow-md"
+          maskColor={theme.minimapMask}
+          nodeColor={theme.minimapNode}
         />
       </ReactFlow>
     </div>
