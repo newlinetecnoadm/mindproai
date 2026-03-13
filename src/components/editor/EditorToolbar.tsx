@@ -65,6 +65,7 @@ const Kbd = ({ children }: { children: string }) => (
 
 interface EditorToolbarProps {
   onAddNode: () => void;
+  onAddSpecialNode?: (type: "diamond" | "sticky") => void;
   onDelete: () => void;
   onSave: () => void;
   onZoomIn: () => void;
@@ -77,7 +78,9 @@ interface EditorToolbarProps {
   onExportPdf: () => void;
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
+  onEdgeTypeChange?: (type: string) => void;
   currentThemeId: string;
+  currentEdgeType?: string;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
@@ -87,10 +90,18 @@ interface EditorToolbarProps {
   canExportPdf?: boolean;
 }
 
+const edgeTypeOptions = [
+  { value: "smoothstep", label: "Padrão", icon: MoveRight },
+  { value: "curved", label: "Curva", icon: Spline },
+  { value: "straight", label: "Reta", icon: ArrowIcon },
+  { value: "orthogonal", label: "Ortogonal", icon: GitBranch },
+  { value: "hierarchy", label: "Hierarquia", icon: GitBranch },
+];
+
 const EditorToolbar = ({
-  onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
+  onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, onReLayout, currentThemeId,
+  onThemeChange, onReLayout, onEdgeTypeChange, currentThemeId, currentEdgeType = "smoothstep",
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
   return (
