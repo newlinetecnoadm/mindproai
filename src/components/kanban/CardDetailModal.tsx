@@ -741,6 +741,15 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </div>
           </div>
 
+          {/* Activity Feed */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Atividade</span>
+            </div>
+            <CardActivityFeed cardId={cardId!} />
+          </div>
+
           {/* Card actions */}
           <div className="border-t border-border pt-4 space-y-3">
             <div className="flex flex-wrap gap-2">

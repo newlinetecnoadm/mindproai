@@ -210,6 +210,9 @@ const BoardDetail = () => {
 
   const moveCardMut = useMutation({
     mutationFn: async ({ cardId, newColumnId, newPosition }: { cardId: string; newColumnId: string; newPosition: number }) => {
+      const oldCard = cards.find((c) => c.id === cardId);
+      const oldCol = columns.find((c) => c.id === oldCard?.column_id);
+      const newCol = columns.find((c) => c.id === newColumnId);
       const { error } = await supabase.from("board_cards").update({ column_id: newColumnId, position: newPosition }).eq("id", cardId);
       if (error) throw error;
       const targetCards = cards.filter((c) => c.column_id === newColumnId && c.id !== cardId).sort((a, b) => a.position - b.position);
@@ -218,6 +221,9 @@ const BoardDetail = () => {
         if (targetCards[i].position !== pos) {
           await supabase.from("board_cards").update({ position: pos }).eq("id", targetCards[i].id);
         }
+      }
+      if (oldCol && newCol && oldCol.id !== newCol.id) {
+        await logActivity(cardId, "moved", { from: oldCol.title, to: newCol.title });
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
