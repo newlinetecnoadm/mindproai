@@ -7,7 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users,
 } from "lucide-react";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
@@ -128,6 +128,31 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       if (!allIds.length) return [];
       const { data: profiles } = await supabase.from("user_profiles").select("user_id, full_name, email").in("user_id", allIds);
       return (profiles || []).filter((p: any) => p.user_id !== user?.id) as MentionUser[];
+    },
+  });
+
+  // All board users (including current user, for member picker)
+  const { data: allBoardUsers = [] } = useQuery<MentionUser[]>({
+    queryKey: ["board-all-users", boardId],
+    enabled: !!boardId && open,
+    queryFn: async () => {
+      const { data: board } = await supabase.from("boards").select("user_id").eq("id", boardId).single();
+      const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", boardId);
+      const allIds = [...new Set([board?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+      if (!allIds.length) return [];
+      const { data: profiles } = await supabase.from("user_profiles").select("user_id, full_name, email").in("user_id", allIds);
+      return (profiles || []) as MentionUser[];
+    },
+  });
+
+  // Card members
+  const { data: cardMemberIds = [] } = useQuery({
+    queryKey: ["card-members", cardId],
+    enabled: !!cardId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("card_members").select("user_id").eq("card_id", cardId!);
+      if (error) throw error;
+      return data.map((d: any) => d.user_id);
     },
   });
 
@@ -336,6 +361,30 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       } else {
         await supabase.from("card_label_assignments").insert({ card_id: cardId!, label_id: labelId });
         if (cardId) await logActivity(cardId, "label_added", { label_name: label?.name || "Sem nome", label_color: label?.color });
+      }
+    },
+    onSuccess: invalidateAll,
+  });
+
+  // Toggle card member
+  const toggleMember = useMutation({
+    mutationFn: async (userId: string) => {
+      if (cardMemberIds.includes(userId)) {
+        await supabase.from("card_members").delete().eq("card_id", cardId!).eq("user_id", userId);
+        if (cardId) await logActivity(cardId, "member_removed", {});
+      } else {
+        await supabase.from("card_members").insert({ card_id: cardId!, user_id: userId });
+        if (cardId) await logActivity(cardId, "member_added", {});
+        // Notify the added member
+        const cardTitle = title || card?.title || "Card";
+        const boardUrl = `${window.location.origin}/boards/${boardId}`;
+        supabase.functions.invoke("notify-board-event", {
+          body: {
+            type: "member_added",
+            user_ids: [userId],
+            data: { card_title: cardTitle, board_url: boardUrl },
+          },
+        }).catch(() => {});
       }
     },
     onSuccess: invalidateAll,
@@ -596,6 +645,56 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                   <Button size="sm" className="h-7 text-xs w-full" onClick={() => { if (newLabelName.trim()) createLabel.mutate({ name: newLabelName, color: newLabelColor }); }}>
                     Criar label
                   </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Members */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Membros</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {allBoardUsers
+                .filter((u: any) => cardMemberIds.includes(u.user_id))
+                .map((u: any) => (
+                  <Badge
+                    key={u.user_id}
+                    variant="outline"
+                    className="text-xs cursor-pointer hover:bg-destructive/10"
+                    onClick={() => toggleMember.mutate(u.user_id)}
+                  >
+                    {u.full_name || u.email} ×
+                  </Badge>
+                ))}
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Adicionar membro
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3" align="start">
+                <p className="text-xs font-medium mb-2">Membros do board</p>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {allBoardUsers.map((u: any) => (
+                    <button
+                      key={u.user_id}
+                      onClick={() => toggleMember.mutate(u.user_id)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
+                        cardMemberIds.includes(u.user_id) ? "bg-muted ring-1 ring-primary/30" : "hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                        {(u.full_name || u.email || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate">{u.full_name || u.email}</span>
+                      {cardMemberIds.includes(u.user_id) && <CheckSquare className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />}
+                    </button>
+                  ))}
                 </div>
               </PopoverContent>
             </Popover>

@@ -788,7 +788,10 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
+          notify_card_moved: boolean
           notify_comments: boolean
+          notify_due_soon: boolean
+          notify_member_added: boolean
           onboarding_done: boolean | null
           updated_at: string | null
           user_id: string
@@ -798,7 +801,10 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          notify_card_moved?: boolean
           notify_comments?: boolean
+          notify_due_soon?: boolean
+          notify_member_added?: boolean
           onboarding_done?: boolean | null
           updated_at?: string | null
           user_id: string
@@ -808,7 +814,10 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          notify_card_moved?: boolean
           notify_comments?: boolean
+          notify_due_soon?: boolean
+          notify_member_added?: boolean
           onboarding_done?: boolean | null
           updated_at?: string | null
           user_id?: string
