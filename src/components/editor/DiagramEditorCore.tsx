@@ -270,8 +270,13 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [nodes, setEdges, diagramType]);
 
   const handleAddChild = useCallback(() => {
+    const parent = selectedNodes[0];
+    if (!parent) {
+      toast.info("Selecione um nó para adicionar um filho.");
+      return;
+    }
+
     takeSnapshot();
-    const parent = selectedNodes[0] || nodes[0];
     const colorIdx = nodes.length % childColors.length;
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
@@ -282,20 +287,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
 
     // Temporary position — layout will fix it
-    const pos = parent
-      ? { x: parent.position.x + 250, y: parent.position.y }
-      : { x: 100, y: 100 };
+    const pos = { x: parent.position.x + 250, y: parent.position.y };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-
-    let nextEdges = edges;
-    if (parent) {
-      nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
-    }
+    const nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
 
     applyAutoLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyAutoLayout]);
+  }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
