@@ -141,8 +141,8 @@ const AcceptInvite = () => {
             <XCircle className="w-10 h-10 text-destructive mx-auto mb-4" />
             <h2 className="text-lg font-semibold mb-2">Erro</h2>
             <p className="text-sm text-muted-foreground mb-4">{message}</p>
-            <Button variant="outline" onClick={() => navigate("/diagramas")}>
-              Ir para diagramas
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              Ir para o Dashboard
             </Button>
           </>
         )}
