@@ -30,6 +30,18 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     }
   }, [editing]);
 
+  // Listen for F2 edit event from editor
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.nodeId === id) {
+        setEditing(true);
+      }
+    };
+    window.addEventListener("mindmap-edit-node", handler);
+    return () => window.removeEventListener("mindmap-edit-node", handler);
+  }, [id]);
+
   const handleDoubleClick = () => setEditing(true);
 
   const handleBlur = () => {
