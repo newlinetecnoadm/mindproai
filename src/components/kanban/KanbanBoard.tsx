@@ -40,6 +40,7 @@ const KanbanBoard = ({
   onAddColumn,
   onDeleteColumn,
   onRenameColumn,
+  onDropInboxItem,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
