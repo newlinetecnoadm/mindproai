@@ -289,7 +289,54 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onSuccess: invalidateAll,
   });
 
-  if (!card) return null;
+  // Upload attachment
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length || !cardId) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `${cardId}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("card-attachments").upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("card-attachments").getPublicUrl(path);
+        await supabase.from("card_attachments").insert({
+          card_id: cardId,
+          name: file.name,
+          url: urlData.publicUrl,
+          mime_type: file.type || null,
+        });
+      }
+      invalidateAll();
+      toast.success("Anexo(s) adicionado(s)");
+    } catch {
+      toast.error("Erro ao fazer upload");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  // Delete attachment
+  const deleteAttachment = useMutation({
+    mutationFn: async (att: { id: string; url: string }) => {
+      // Extract storage path from URL
+      const urlParts = att.url.split("/card-attachments/");
+      if (urlParts[1]) {
+        await supabase.storage.from("card-attachments").remove([decodeURIComponent(urlParts[1])]);
+      }
+      const { error } = await supabase.from("card_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Anexo removido");
+    },
+    onError: () => toast.error("Erro ao remover anexo"),
+  });
+
 
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
 
