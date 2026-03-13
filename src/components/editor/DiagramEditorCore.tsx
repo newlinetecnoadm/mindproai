@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
-import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
+import { autoLayoutDiagram, rerouteDiagramEdges } from "@/components/mindmap/mindmapLayout";
 import {
   ReactFlow,
   addEdge,
