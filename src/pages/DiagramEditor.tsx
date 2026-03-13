@@ -137,7 +137,6 @@ const DiagramEditor = () => {
           .eq("id", id!);
 
         if (error) throw error;
-        toast.success("Salvo!");
       } catch (err: any) {
         toast.error("Erro ao salvar: " + (err.message || "desconhecido"));
       } finally {
