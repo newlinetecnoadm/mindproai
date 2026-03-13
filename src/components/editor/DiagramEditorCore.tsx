@@ -55,9 +55,12 @@ interface DiagramEditorCoreProps {
   initialThemeId?: string;
   onSave: (nodes: Node[], edges: Edge[], themeId: string) => Promise<void>;
   saving: boolean;
+  remoteNodes?: Node[];
+  remoteEdges?: Edge[];
+  remoteThemeId?: string;
 }
 
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
   const defaultNodes = initialNodes || [];
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
