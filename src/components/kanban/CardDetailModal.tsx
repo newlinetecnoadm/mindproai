@@ -206,6 +206,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const deleteCard = useMutation({
     mutationFn: async () => {
       // Delete related data first
+      await supabase.from("card_activities").delete().eq("card_id", cardId!);
       await supabase.from("events").delete().eq("card_id", cardId!);
       await supabase.from("card_comments").delete().eq("card_id", cardId!);
       const cls = checklists.map((c: any) => c.id);
