@@ -109,6 +109,24 @@ const EditorToolbar = ({
 
       <div className="w-px h-5 bg-border mx-1" />
 
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={exporting} title="Exportar">
+            <Download className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={onExportPng}>
+            <Image className="w-3.5 h-3.5 mr-2" />
+            Exportar PNG
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onExportPdf}>
+            <FileText className="w-3.5 h-3.5 mr-2" />
+            Exportar PDF
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onSave} disabled={saving}>
         <Save className="w-4 h-4" />
         {saving ? "Salvando..." : "Salvar"}
