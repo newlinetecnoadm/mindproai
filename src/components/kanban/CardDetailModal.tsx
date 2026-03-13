@@ -537,6 +537,56 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </Button>
           </div>
 
+          {/* Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Anexos</span>
+                {attachments.length > 0 && (
+                  <span className="text-xs text-muted-foreground">({attachments.length})</span>
+                )}
+              </div>
+              <label className="cursor-pointer">
+                <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploading ? "Enviando..." : "Adicionar"}
+                </span>
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                {attachments.map((att: any) => {
+                  const isImage = att.mime_type?.startsWith("image/");
+                  return (
+                    <div key={att.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/30 group">
+                      {isImage ? (
+                        <img src={att.url} alt={att.name} className="w-16 h-12 object-cover rounded shrink-0" />
+                      ) : (
+                        <div className="w-16 h-12 flex items-center justify-center rounded bg-muted shrink-0">
+                          <FileText className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{att.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {att.created_at && format(new Date(att.created_at), "dd MMM, HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-muted transition-colors" title="Download">
+                        <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                      </a>
+                      <button onClick={() => deleteAttachment.mutate({ id: att.id, url: att.url })} className="p-1.5 rounded hover:bg-destructive/10 transition-colors" title="Excluir">
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Comments */}
           <div>
             <div className="flex items-center gap-2 mb-3">
