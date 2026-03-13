@@ -143,6 +143,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["checklist-items", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-comments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-label-assignments", cardId] });
+    queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
     onCardUpdated();
   };
