@@ -241,6 +241,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     mutationFn: async (clTitle: string) => {
       const { error } = await supabase.from("card_checklists").insert({ card_id: cardId!, title: clTitle, position: checklists.length });
       if (error) throw error;
+      if (cardId) await logActivity(cardId, "checklist_added", { checklist_title: clTitle });
     },
     onSuccess: () => {
       setNewChecklistTitle("");
