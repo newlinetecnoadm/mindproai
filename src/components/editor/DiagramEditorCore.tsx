@@ -179,8 +179,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
     }
 
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyAutoLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
@@ -210,8 +210,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
@@ -234,8 +234,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const nextNodes = nodes.filter((n) => !toDelete.has(n.id));
     const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target));
-    applyMindmapLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyMindmapLayout]);
+    applyAutoLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyAutoLayout]);
 
   const handleColorChange = useCallback(
     (color: string) => {
