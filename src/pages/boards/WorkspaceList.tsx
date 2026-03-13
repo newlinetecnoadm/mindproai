@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Kanban, Trash2, Star, Clock } from "lucide-react";
+import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +18,7 @@ const WorkspaceList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: boards, isLoading, error } = useQuery({
+  const { data: boards, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
     enabled: !!user,
     retry: 1,
@@ -98,13 +99,35 @@ const WorkspaceList = () => {
           </Button>
         </div>
 
+        {isFetching && !isLoading && (
+          <Progress value={75} className="h-1 mb-4 w-48 mx-auto" />
+        )}
+
         {isLoading ? (
-          <div className="flex justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Carregando boards…</p>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-border bg-card p-10 text-center">
-            <p className="text-sm text-destructive">Erro ao carregar boards. Tente novamente em instantes.</p>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6 text-destructive" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm mb-1">Erro ao carregar boards</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-1", isFetching && "animate-spin")} />
+              Tentar novamente
+            </Button>
           </div>
         ) : count === 0 ? (
           <div className="rounded-xl border border-border bg-card p-16 text-center">
