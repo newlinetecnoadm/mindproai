@@ -26,6 +26,7 @@ import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
+import NodeSearchBar from "./NodeSearchBar";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
