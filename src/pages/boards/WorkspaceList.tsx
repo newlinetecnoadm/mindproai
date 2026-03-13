@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import NewBoardDialog, { type BoardTemplate } from "@/components/boards/NewBoardDialog";
 
 const defaultColors = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#eab308"];
 
@@ -18,6 +20,7 @@ const WorkspaceList = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: boards, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
@@ -30,7 +33,6 @@ const WorkspaceList = () => {
         .eq("is_closed", false)
         .order("is_starred", { ascending: false })
         .order("updated_at", { ascending: false });
-
       if (error) throw error;
       return data;
     },
@@ -45,26 +47,26 @@ const WorkspaceList = () => {
   });
 
   const createBoardMut = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ title, template }: { title: string; template: BoardTemplate }) => {
       if (!user?.id) throw new Error("Sessão expirada. Faça login novamente.");
 
-      const color = defaultColors[Math.floor(Math.random() * defaultColors.length)];
+      const color = template.color || defaultColors[Math.floor(Math.random() * defaultColors.length)];
       const { data, error } = await supabase
         .from("boards")
         .insert({
           user_id: user.id,
-          title: "Novo Board",
+          title,
           cover_color: color,
         })
         .select("id")
         .single();
       if (error) throw error;
 
-      const defaultCols = ["A Fazer", "Em Progresso", "Concluído"];
+      // Create columns
       const { error: colsError } = await supabase.from("board_columns").insert(
-        defaultCols.map((title, position) => ({
+        template.columns.map((colTitle, position) => ({
           board_id: data.id,
-          title,
+          title: colTitle,
           position,
         }))
       );
@@ -74,10 +76,45 @@ const WorkspaceList = () => {
         throw colsError;
       }
 
+      // Create template cards if any
+      if (template.cards && Object.keys(template.cards).length > 0) {
+        // Fetch created columns to get their IDs
+        const { data: createdCols } = await supabase
+          .from("board_columns")
+          .select("id, title")
+          .eq("board_id", data.id)
+          .order("position");
+
+        if (createdCols) {
+          const colMap: Record<string, string> = {};
+          createdCols.forEach((c) => { colMap[c.title] = c.id; });
+
+          const cardsToInsert: { board_id: string; column_id: string; title: string; position: number }[] = [];
+          for (const [colTitle, cardTitles] of Object.entries(template.cards)) {
+            const colId = colMap[colTitle];
+            if (colId) {
+              cardTitles.forEach((cardTitle, pos) => {
+                cardsToInsert.push({
+                  board_id: data.id,
+                  column_id: colId,
+                  title: cardTitle,
+                  position: pos,
+                });
+              });
+            }
+          }
+
+          if (cardsToInsert.length > 0) {
+            await supabase.from("board_cards").insert(cardsToInsert);
+          }
+        }
+      }
+
       return data.id;
     },
     onSuccess: (boardId) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      setDialogOpen(false);
       navigate(`/boards/${boardId}`);
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao criar board"),
@@ -104,7 +141,7 @@ const WorkspaceList = () => {
             <h1 className="text-2xl font-display font-bold mb-1">Meus Boards</h1>
             <p className="text-muted-foreground">{count} board{count !== 1 ? "s" : ""}</p>
           </div>
-          <Button variant="hero" onClick={() => createBoardMut.mutate()} disabled={createBoardMut.isPending}>
+          <Button variant="hero" onClick={() => setDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-1" /> Novo Board
           </Button>
         </div>
@@ -129,14 +166,8 @@ const WorkspaceList = () => {
                 Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
-              <RefreshCw className={cn("w-4 h-4 mr-1", isFetching && "animate-spin")} />
-              Tentar novamente
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={cn("w-4 h-4 mr-1", isFetching && "animate-spin")} /> Tentar novamente
             </Button>
           </div>
         ) : count === 0 ? (
@@ -148,7 +179,7 @@ const WorkspaceList = () => {
             <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
               Organize tarefas e projetos com boards Kanban completos, estilo Trello.
             </p>
-            <Button variant="hero" onClick={() => createBoardMut.mutate()} disabled={createBoardMut.isPending}>
+            <Button variant="hero" onClick={() => setDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> Novo Board
             </Button>
           </div>
@@ -156,51 +187,58 @@ const WorkspaceList = () => {
           <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {boards!.map((board) => (
               <StaggerItem key={board.id}>
-              <div
-                className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
-                onClick={() => navigate(`/boards/${board.id}`)}
-              >
                 <div
-                  className="h-24 flex items-end p-3"
-                  style={{ backgroundColor: board.cover_color || "#1e293b" }}
+                  className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                  onClick={() => navigate(`/boards/${board.id}`)}
                 >
-                  <h3 className="text-sm font-bold text-white drop-shadow-sm truncate">{board.title}</h3>
-                </div>
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatDistanceToNow(new Date(board.updated_at!), { addSuffix: true, locale: ptBR })}
-                  </span>
-                  <div className="flex items-center gap-0.5">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleStarMut.mutate({ boardId: board.id, starred: !board.is_starred });
-                      }}
-                    >
-                      <Star className={cn("w-3.5 h-3.5", board.is_starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
+                  <div
+                    className="h-24 flex items-end p-3"
+                    style={{ backgroundColor: board.cover_color || "#1e293b" }}
+                  >
+                    <h3 className="text-sm font-bold text-white drop-shadow-sm truncate">{board.title}</h3>
+                  </div>
+                  <div className="px-3 py-2 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatDistanceToNow(new Date(board.updated_at!), { addSuffix: true, locale: ptBR })}
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStarMut.mutate({ boardId: board.id, starred: !board.is_starred });
+                        }}
+                      >
+                        <Star className={cn("w-3.5 h-3.5", board.is_starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
               </StaggerItem>
             ))}
           </StaggerContainer>
         )}
+
+        <NewBoardDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onCreateBoard={(title, template) => createBoardMut.mutate({ title, template })}
+          isPending={createBoardMut.isPending}
+        />
       </PageTransition>
     </DashboardLayout>
   );
