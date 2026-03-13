@@ -13,6 +13,8 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import NewBoardDialog, { type BoardTemplate } from "@/components/boards/NewBoardDialog";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const defaultColors = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#eab308"];
 
@@ -21,6 +23,16 @@ const WorkspaceList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
+
+  const handleNewBoard = () => {
+    if (!limits.canCreateBoard) {
+      setUpgradeOpen(true);
+      return;
+    }
+    setDialogOpen(true);
+  };
 
   const { data: boards, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
@@ -141,7 +153,7 @@ const WorkspaceList = () => {
             <h1 className="text-2xl font-display font-bold mb-1">Meus Boards</h1>
             <p className="text-muted-foreground">{count} board{count !== 1 ? "s" : ""}</p>
           </div>
-          <Button variant="hero" onClick={() => setDialogOpen(true)}>
+          <Button variant="hero" onClick={handleNewBoard}>
             <Plus className="w-4 h-4 mr-1" /> Novo Board
           </Button>
         </div>
@@ -238,6 +250,14 @@ const WorkspaceList = () => {
           onOpenChange={setDialogOpen}
           onCreateBoard={(title, template) => createBoardMut.mutate({ title, template })}
           isPending={createBoardMut.isPending}
+        />
+        <UpgradeModal
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          resource="board"
+          currentCount={limits.currentBoards}
+          maxCount={limits.maxBoards}
+          planName={limits.displayName}
         />
       </PageTransition>
     </DashboardLayout>

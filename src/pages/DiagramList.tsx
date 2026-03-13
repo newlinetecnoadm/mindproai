@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const typeIcons: Record<string, React.ReactNode> = {
   mindmap: <Brain className="w-5 h-5" />,
@@ -50,6 +52,16 @@ const DiagramList = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
+
+  const handleNewDiagram = () => {
+    if (!limits.canCreateDiagram) {
+      setUpgradeOpen(true);
+      return;
+    }
+    navigate("/diagramas/novo");
+  };
 
   const { data: diagrams, isLoading } = useQuery({
     queryKey: ["diagrams", user?.id],
@@ -143,7 +155,7 @@ const DiagramList = () => {
             <h1 className="text-2xl font-display font-bold mb-1">Meus Diagramas</h1>
             <p className="text-muted-foreground">{totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
           </div>
-          <Button variant="hero" onClick={() => navigate("/diagramas/novo")}>
+          <Button variant="hero" onClick={handleNewDiagram}>
             <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
           </Button>
         </div>
@@ -200,7 +212,7 @@ const DiagramList = () => {
             <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
               Escolha entre mapas mentais, fluxogramas, organogramas e mais.
             </p>
-            <Button variant="hero" onClick={() => navigate("/diagramas/novo")}>
+            <Button variant="hero" onClick={handleNewDiagram}>
               <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
             </Button>
           </div>
@@ -285,6 +297,14 @@ const DiagramList = () => {
           </>
         )}
       </PageTransition>
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        resource="diagrama"
+        currentCount={limits.currentDiagrams}
+        maxCount={limits.maxDiagrams}
+        planName={limits.displayName}
+      />
     </DashboardLayout>
   );
 };
