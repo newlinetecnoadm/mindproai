@@ -169,6 +169,16 @@ Deno.serve(async (req) => {
             remind_at: card.due_date,
             sent: true,
           });
+          // Create in-app notifications for due_soon
+          for (const profile of notifiable) {
+            await supabase.from("notifications").insert({
+              user_id: profile.user_id,
+              type: "due_soon",
+              title: `Prazo próximo: "${card.title}" — ${dueStr}`,
+              board_id: card.board_id,
+              card_id: card.id,
+            });
+          }
         }
       }
     }

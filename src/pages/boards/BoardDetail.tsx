@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCardActivity } from "@/hooks/useCardActivity";
+import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import InboxPanel from "@/components/boards/InboxPanel";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import BoardThemePicker, { applyBoardTheme, removeBoardTheme } from "@/components/boards/BoardThemePicker";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
@@ -30,6 +32,7 @@ const BoardDetail = () => {
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
   const [activePanel, setActivePanel] = useState<"inbox" | "planner" | null>(null);
   const { logActivity } = useCardActivity();
+  const { createNotification } = useNotifications();
 
   const handleTogglePanel = (panel: "inbox" | "planner") => {
     setActivePanel((prev) => (prev === panel ? null : panel));
@@ -241,6 +244,18 @@ const BoardDetail = () => {
             data: { card_title: oldCard?.title || "", from_column: oldCol.title, to_column: newCol.title, board_url: boardUrl },
           },
         }).catch(() => {});
+        // In-app notifications for card move
+        const cardTitle = oldCard?.title || "Card";
+        for (const uid of allUserIds) {
+          if (uid === user?.id) continue;
+          supabase.from("notifications").insert({
+            user_id: uid,
+            type: "card_moved",
+            title: `"${cardTitle}" movido de ${oldCol.title} para ${newCol.title}`,
+            board_id: id,
+            card_id: cardId,
+          }).then(() => {});
+        }
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
@@ -321,6 +336,7 @@ const BoardDetail = () => {
           className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
         />
         <div className="ml-auto flex items-center gap-2">
+          <NotificationBell />
           <BoardThemePicker
             currentTheme={(board as any).theme || "default"}
             onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
