@@ -105,6 +105,7 @@ const DiagramList = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diagrams"] });
+      queryClient.invalidateQueries({ queryKey: ["diagram-count"] });
       toast.success("Diagrama excluído");
     },
     onError: () => toast.error("Erro ao excluir diagrama"),

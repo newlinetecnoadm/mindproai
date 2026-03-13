@@ -126,6 +126,7 @@ const WorkspaceList = () => {
     },
     onSuccess: (boardId) => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board-count"] });
       setDialogOpen(false);
       navigate(`/boards/${boardId}`);
     },
@@ -139,6 +140,7 @@ const WorkspaceList = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: ["board-count"] });
       toast.success("Board arquivado");
     },
   });
