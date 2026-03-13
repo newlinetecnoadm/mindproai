@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const NewDiagram = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
+
+  // Redirect if over limit
+  useEffect(() => {
+    if (!limits.canCreateDiagram && !upgradeOpen) {
+      setUpgradeOpen(true);
+    }
+  }, [limits.canCreateDiagram]);
 
   const templates = selectedType ? getTemplatesByType(selectedType) : [];
 
