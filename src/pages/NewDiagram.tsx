@@ -12,6 +12,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
+import TemplateThumbnail from "@/components/editor/TemplateThumbnail";
 
 const NewDiagram = () => {
   const navigate = useNavigate();
@@ -29,6 +30,8 @@ const NewDiagram = () => {
   }, [limits.canCreateDiagram]);
 
   const templates = selectedType ? getTemplatesByType(selectedType) : [];
+
+  const isBlankTemplate = (tpl: DiagramTemplate) => tpl.name === "Em branco";
 
   const handleSelectTemplate = async (template: DiagramTemplate) => {
     if (!user || creating) return;
@@ -55,7 +58,7 @@ const NewDiagram = () => {
       const { data, error } = await supabase
         .from("diagrams")
         .insert({
-          title: template.name === "Em branco" ? "Sem título" : template.name,
+          title: isBlankTemplate(template) ? "Sem título" : template.name,
           type: template.type as any,
           data: diagramData,
           user_id: user.id,
@@ -65,7 +68,16 @@ const NewDiagram = () => {
         .single();
 
       if (error) throw error;
-      toast.success("Diagrama criado!");
+
+      if (isBlankTemplate(template)) {
+        toast.info("💡 Dica rápida", {
+          description: "Clique duas vezes no nó central para editar. Use Tab para criar ramificações e Enter para nós irmãos.",
+          duration: 8000,
+        });
+      } else {
+        toast.success("Diagrama criado!");
+      }
+
       navigate(`/diagramas/${data.id}`, { replace: true });
     } catch (err: any) {
       toast.error("Erro ao criar: " + (err.message || "desconhecido"));
@@ -122,8 +134,8 @@ const NewDiagram = () => {
                 onClick={() => handleSelectTemplate(tpl)}
               >
                 <CardContent className="p-5">
-                  <div className="h-24 bg-muted rounded-lg mb-3 flex items-center justify-center text-xs text-muted-foreground">
-                    {tpl.nodes.length} nós · {tpl.edges.length} conexões
+                  <div className="h-24 bg-muted/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                    <TemplateThumbnail template={tpl} />
                   </div>
                   <h3 className="font-semibold text-sm mb-1">{tpl.name}</h3>
                   <p className="text-xs text-muted-foreground">{tpl.description}</p>
