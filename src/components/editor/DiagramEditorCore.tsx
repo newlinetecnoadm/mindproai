@@ -752,9 +752,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       <UpgradeModal
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
-        resource="diagrama"
-        currentCount={limits.currentDiagrams}
-        maxCount={limits.maxDiagrams}
+        resource="feature"
+        featureLabel="Exportação para PDF"
         planName={limits.displayName}
       />
     </div>
