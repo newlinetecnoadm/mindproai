@@ -8,10 +8,10 @@ const H_GAP = 80;
 const V_GAP = 24;
 
 // Org chart constants
-const ORG_NODE_WIDTH = 180;
+const ORG_NODE_WIDTH = 200;
 const ORG_NODE_HEIGHT = 60;
-const ORG_H_GAP = 40;
-const ORG_V_GAP = 60;
+const ORG_H_GAP = 60;
+const ORG_V_GAP = 70;
 
 // Timeline constants
 const TL_NODE_WIDTH = 180;
