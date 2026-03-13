@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminPlans from "./pages/admin/AdminPlans.tsx";
 import AdminSettings from "./pages/admin/AdminSettings.tsx";
+import AcceptInvite from "./pages/AcceptInvite.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();

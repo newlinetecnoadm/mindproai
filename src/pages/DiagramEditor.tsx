@@ -50,6 +50,8 @@ const DiagramEditor = () => {
 
       setTitle(data.title);
       setDiagramType(data.type);
+      setIsPublic(data.is_public ?? false);
+      setPublicToken(data.public_token ?? null);
       setInitialThemeId(data.theme || undefined);
       const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
       if (diagramData?.nodes?.length) {
