@@ -102,6 +102,8 @@ const DiagramEditor = () => {
           source: e.source,
           target: e.target,
           type: e.type,
+          ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
+          ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
           ...(e.label ? { label: e.label } : {}),
         })) as unknown as Json,
         viewport: {},
