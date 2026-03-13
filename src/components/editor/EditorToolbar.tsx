@@ -57,7 +57,8 @@ interface EditorToolbarProps {
 
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onColorChange, onUndo, onRedo, canUndo, canRedo, saving, hasSelection, diagramType,
+  onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
+  canUndo, canRedo, saving, hasSelection, diagramType, exporting,
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md">
