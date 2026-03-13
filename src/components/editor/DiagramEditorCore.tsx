@@ -21,6 +21,8 @@ import OrgNode from "./nodes/OrgNode";
 import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import EditorToolbar from "./EditorToolbar";
+import NodeFloatingToolbar from "./NodeFloatingToolbar";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 
 const nodeTypes = {
   mindmap: MindMapNode as any,
@@ -32,7 +34,6 @@ const nodeTypes = {
 
 const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
 
-// Map diagram_type slug to the node type key used in React Flow
 const typeToNodeType: Record<string, string> = {
   mindmap: "mindmap",
   flowchart: "flowchart",
@@ -57,32 +58,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, type: "smoothstep" }, eds)),
-    [setEdges]
+    (params: Connection) => {
+      takeSnapshot();
+      setEdges((eds) => addEdge({ ...params, type: "smoothstep" }, eds));
+    },
+    [setEdges, takeSnapshot]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
   const handleAddNode = useCallback(() => {
+    takeSnapshot();
     const parent = selectedNodes[0] || nodes[0];
     const colorIdx = nodes.length % childColors.length;
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
-    if (nodeType === "org") {
-      newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
-    } else if (nodeType === "timeline") {
-      newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
-    } else if (nodeType === "flowchart") {
-      newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
-    } else if (nodeType === "concept") {
-      newData = { label: "Novo conceito", color: childColors[colorIdx] };
-    } else if (nodeType === "mindmap") {
-      newData = { label: "Novo tópico", color: childColors[colorIdx] };
-    }
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
 
     const pos = parent
       ? { x: parent.position.x + 250, y: parent.position.y + 20 }
@@ -93,29 +92,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
 
     let nextEdges = edges;
     if (parent) {
-      const newEdge: Edge = {
-        id: `e-${parent.id}-${newId}`,
-        source: parent.id,
-        target: newId,
-        type: "smoothstep",
-      };
-      nextEdges = [...edges, newEdge];
+      nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
     }
 
     setNodes(nextNodes);
     setEdges(nextEdges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType]);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
-    // Don't delete root nodes in mindmaps
     for (const n of selectedNodes) {
       if ((n.data as any).isRoot) toDelete.delete(n.id);
     }
     if (toDelete.size === 0) return;
 
-    // Also delete descendants
+    takeSnapshot();
     const childMap = new Map<string, string[]>();
     for (const e of edges) {
       const arr = childMap.get(e.source) || [];
@@ -123,26 +115,62 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
       childMap.set(e.source, arr);
     }
     function addDescendants(id: string) {
-      for (const c of childMap.get(id) || []) {
-        toDelete.add(c);
-        addDescendants(c);
-      }
+      for (const c of childMap.get(id) || []) { toDelete.add(c); addDescendants(c); }
     }
     for (const id of [...toDelete]) addDescendants(id);
 
     setNodes(nodes.filter((n) => !toDelete.has(n.id)));
     setEdges(edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target)));
-  }, [nodes, edges, selectedNodes, setNodes, setEdges]);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot]);
 
   const handleColorChange = useCallback(
     (color: string) => {
+      takeSnapshot();
       const ids = new Set(selectedNodes.map((n) => n.id));
-      setNodes((nds) =>
-        nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, color } } : n)
-      );
+      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, color } } : n));
     },
-    [selectedNodes, setNodes]
+    [selectedNodes, setNodes, takeSnapshot]
   );
+
+  const handleShapeChange = useCallback(
+    (shape: string) => {
+      takeSnapshot();
+      const ids = new Set(selectedNodes.map((n) => n.id));
+      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, shape } } : n));
+    },
+    [selectedNodes, setNodes, takeSnapshot]
+  );
+
+  const handleDuplicate = useCallback(() => {
+    if (selectedNodes.length === 0) return;
+    takeSnapshot();
+    const newNodes: Node[] = [];
+    const newEdges: Edge[] = [];
+
+    for (const node of selectedNodes) {
+      const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      newNodes.push({
+        ...node,
+        id: newId,
+        position: { x: node.position.x + 40, y: node.position.y + 40 },
+        selected: true,
+        data: { ...node.data },
+      });
+      // Copy edges from this node's parent
+      const parentEdge = edges.find((e) => e.target === node.id);
+      if (parentEdge) {
+        newEdges.push({
+          id: `e-${parentEdge.source}-${newId}`,
+          source: parentEdge.source,
+          target: newId,
+          type: parentEdge.type || "smoothstep",
+        });
+      }
+    }
+
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+    setEdges((eds) => [...eds, ...newEdges]);
+  }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
 
   const handleSave = useCallback(() => onSave(nodes, edges), [nodes, edges, onSave]);
 
@@ -153,10 +181,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
       if (e.key === "Tab") { e.preventDefault(); handleAddNode(); }
       if (e.key === "Delete" || e.key === "Backspace") handleDelete();
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddNode, handleDelete, handleSave]);
+  }, [handleAddNode, handleDelete, handleSave, undo, redo, handleDuplicate]);
 
   return (
     <div className="w-full h-full relative">
@@ -168,9 +200,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         onZoomOut={() => zoomOut()}
         onFitView={() => fitView({ padding: 0.2, duration: 300 })}
         onColorChange={handleColorChange}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         saving={saving}
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
+      />
+      <NodeFloatingToolbar
+        selectedNodes={selectedNodes}
+        diagramType={diagramType}
+        onColorChange={handleColorChange}
+        onShapeChange={handleShapeChange}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
+        onAddChild={handleAddNode}
       />
       <ReactFlow
         nodes={nodes}
