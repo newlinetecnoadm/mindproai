@@ -26,6 +26,9 @@ import FlowchartNode from "./nodes/FlowchartNode";
 import OrgNode from "./nodes/OrgNode";
 import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
+import DiamondNode from "./nodes/DiamondNode";
+import StickyNoteNode from "./nodes/StickyNoteNode";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
@@ -38,6 +41,15 @@ const nodeTypes = {
   org: OrgNode as any,
   timeline: TimelineNode as any,
   concept: ConceptNode as any,
+  diamond: DiamondNode as any,
+  sticky: StickyNoteNode as any,
+};
+
+const edgeTypes = {
+  curved: CurvedEdge as any,
+  orthogonal: OrthogonalEdge as any,
+  straight: StraightEdge as any,
+  hierarchy: HierarchyEdge as any,
 };
 
 const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
@@ -84,6 +96,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [currentEdgeType, setCurrentEdgeType] = useState("smoothstep");
   const pinnedPositions = useRef<Set<string>>(new Set());
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChanges = useRef(false);
@@ -214,9 +227,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const onConnect = useCallback(
     (params: Connection) => {
       takeSnapshot();
-      setEdges((eds) => addEdge({ ...params, type: "smoothstep" }, eds));
+      setEdges((eds) => addEdge({ ...params, type: currentEdgeType }, eds));
     },
-    [setEdges, takeSnapshot]
+    [setEdges, takeSnapshot, currentEdgeType]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
@@ -304,6 +317,38 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
     }, 150);
   }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout]);
+
+  // Add special node (diamond / sticky)
+  const handleAddSpecialNode = useCallback((type: "diamond" | "sticky") => {
+    takeSnapshot();
+    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const centerX = 300 + Math.random() * 200;
+    const centerY = 200 + Math.random() * 200;
+
+    const newNode: Node = {
+      id: newId,
+      type,
+      position: { x: centerX, y: centerY },
+      data: {
+        label: type === "diamond" ? "Sim / Não?" : "Nota...",
+        color: type === "diamond" ? "default" : "default",
+      },
+      selected: true,
+    };
+
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
+
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
+  }, [takeSnapshot, setNodes]);
+
+  // Change default edge type for new connections
+  const handleEdgeTypeChange = useCallback((type: string) => {
+    setCurrentEdgeType(type);
+    // Also update all existing edges
+    setEdges((eds) => eds.map((e) => ({ ...e, type })));
+  }, [setEdges]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
@@ -665,6 +710,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
         onAddNode={handleAddChild}
+        onAddSpecialNode={handleAddSpecialNode}
         onDelete={handleDelete}
         onSave={handleSave}
         onZoomIn={() => zoomIn()}
@@ -678,7 +724,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         canExportPdf={limits.exportPdf}
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
+        onEdgeTypeChange={handleEdgeTypeChange}
         currentThemeId={theme.id}
+        currentEdgeType={currentEdgeType}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
@@ -731,6 +779,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: 2 } }}
