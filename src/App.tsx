@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminPlans from "./pages/admin/AdminPlans.tsx";
 import AdminSettings from "./pages/admin/AdminSettings.tsx";
+import AcceptInvite from "./pages/AcceptInvite.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/planos" element={<AdminRoute><AdminPlans /></AdminRoute>} />
           <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

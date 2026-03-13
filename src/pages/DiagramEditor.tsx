@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeDiagram, type PresenceUser } from "@/hooks/useRealtimeDiagram";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import ShareDiagramDialog from "@/components/editor/ShareDiagramDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,8 @@ const DiagramEditor = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [title, setTitle] = useState("Sem título");
+  const [isPublic, setIsPublic] = useState(false);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [diagramType, setDiagramType] = useState("mindmap");
   const [initialNodes, setInitialNodes] = useState<Node[] | undefined>();
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
@@ -47,6 +50,8 @@ const DiagramEditor = () => {
 
       setTitle(data.title);
       setDiagramType(data.type);
+      setIsPublic(data.is_public ?? false);
+      setPublicToken(data.public_token ?? null);
       setInitialThemeId(data.theme || undefined);
       const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
       if (diagramData?.nodes?.length) {
@@ -147,6 +152,14 @@ const DiagramEditor = () => {
 
         {/* Online users presence */}
         <div className="flex items-center gap-1 ml-auto">
+          {id && (
+            <ShareDiagramDialog
+              diagramId={id}
+              diagramTitle={title}
+              isPublic={isPublic}
+              publicToken={publicToken}
+            />
+          )}
           {onlineUsers.length > 0 && (
             <TooltipProvider>
               <div className="flex -space-x-2 mr-3">

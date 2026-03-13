@@ -1,0 +1,1 @@
+ALTER TABLE public.diagram_collaborators ADD CONSTRAINT diagram_collaborators_diagram_user_unique UNIQUE (diagram_id, user_id);
