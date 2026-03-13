@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, CreditCard, Camera, Loader2 } from "lucide-react";
+import { User, CreditCard, Camera, Loader2, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,7 @@ const Configuracoes = () => {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [notifyComments, setNotifyComments] = useState(true);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["user-profile", user?.id],
@@ -41,6 +43,7 @@ const Configuracoes = () => {
   useEffect(() => {
     if (profile) {
       setName(profile.full_name || "");
+      setNotifyComments((profile as any).notify_comments ?? true);
     }
   }, [profile]);
 
@@ -130,6 +133,9 @@ const Configuracoes = () => {
             <TabsList className="bg-muted">
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" /> Perfil
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-2">
+                <Bell className="w-4 h-4" /> Notificações
               </TabsTrigger>
               <TabsTrigger value="billing" className="gap-2">
                 <CreditCard className="w-4 h-4" /> Plano & Billing
@@ -223,6 +229,39 @@ const Configuracoes = () => {
                 <Button variant="destructive" size="sm">
                   Excluir Conta
                 </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="notifications" className="space-y-6">
+              <div className="p-6 rounded-xl border border-border bg-card space-y-6">
+                <div>
+                  <h3 className="font-semibold mb-1">Notificações por e-mail</h3>
+                  <p className="text-sm text-muted-foreground">Escolha quais notificações deseja receber no seu e-mail.</p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Comentários em cards</p>
+                    <p className="text-xs text-muted-foreground">Receba um e-mail quando alguém comentar em um card dos seus boards.</p>
+                  </div>
+                  <Switch
+                    checked={notifyComments}
+                    onCheckedChange={async (checked) => {
+                      setNotifyComments(checked);
+                      const { error } = await supabase
+                        .from("user_profiles")
+                        .update({ notify_comments: checked } as any)
+                        .eq("user_id", user!.id);
+                      if (error) {
+                        toast.error("Erro ao salvar preferência");
+                        setNotifyComments(!checked);
+                      } else {
+                        toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+                        queryClient.invalidateQueries({ queryKey: ["user-profile", user?.id] });
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </TabsContent>
 
