@@ -464,13 +464,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Arrow key navigation between nodes
   const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
     const selected = selectedNodes[0];
-    if (!selected) {
-      // Select first node if nothing selected
-      if (nodes.length > 0) {
-        setNodes((nds) => nds.map((n, i) => ({ ...n, selected: i === 0 })));
-      }
-      return;
-    }
+    if (!selected) return;
 
     const parentEdge = edges.find((e) => e.target === selected.id);
     const childEdges = edges.filter((e) => e.source === selected.id);
