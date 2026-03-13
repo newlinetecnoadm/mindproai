@@ -256,9 +256,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         onColorChange={handleColorChange}
         onUndo={undo}
         onRedo={redo}
+        onExportPng={handleExportPng}
+        onExportPdf={handleExportPdf}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
+        exporting={exporting}
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
