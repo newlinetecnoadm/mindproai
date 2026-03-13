@@ -347,7 +347,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
-        onAddNode={handleAddNode}
+        onAddNode={handleAddChild}
         onDelete={handleDelete}
         onSave={handleSave}
         onZoomIn={() => zoomIn()}
