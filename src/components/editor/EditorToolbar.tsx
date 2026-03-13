@@ -61,6 +61,7 @@ interface EditorToolbarProps {
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
+  onThemeChange, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting,
 }: EditorToolbarProps) => {
   return (
