@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
-import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
+import { autoLayoutDiagram, rerouteDiagramEdges } from "@/components/mindmap/mindmapLayout";
 import {
   ReactFlow,
   addEdge,
@@ -82,9 +82,45 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [searchOpen, setSearchOpen] = useState(false);
   const pinnedPositions = useRef<Set<string>>(new Set());
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasChanges = useRef(false);
+  const pendingChanges = useRef(false);
+  const lastPersistedSnapshot = useRef<string | null>(null);
+  const remoteUpdateRef = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
+
+  const buildContentSnapshot = useCallback((snapshotNodes: Node[], snapshotEdges: Edge[], themeId: string) => {
+    const round = (value: number) => Math.round(value * 100) / 100;
+
+    const normalizedNodes = snapshotNodes
+      .map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: {
+          x: round(node.position.x),
+          y: round(node.position.y),
+        },
+        data: node.data,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const normalizedEdges = snapshotEdges
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type || "smoothstep",
+        sourceHandle: edge.sourceHandle || null,
+        targetHandle: edge.targetHandle || null,
+        label: edge.label || null,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    return JSON.stringify({
+      themeId,
+      nodes: normalizedNodes,
+      edges: normalizedEdges,
+    });
+  }, []);
 
   // Capture thumbnail from the ReactFlow viewport
   const captureThumbnail = useCallback(async (): Promise<string | undefined> => {
@@ -98,45 +134,78 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave: only on explicit inactivity (10s debounce), not on every keystroke
-  const pendingChanges = useRef(false);
+  // Autosave: only when content actually changed
   useEffect(() => {
-    // Skip initial render
-    if (!hasChanges.current) {
-      hasChanges.current = true;
+    const currentSnapshot = buildContentSnapshot(nodes, edges, theme.id);
+
+    if (lastPersistedSnapshot.current === null) {
+      lastPersistedSnapshot.current = currentSnapshot;
       return;
     }
+
+    if (remoteUpdateRef.current) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      pendingChanges.current = false;
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      return;
+    }
+
+    if (currentSnapshot === lastPersistedSnapshot.current) {
+      pendingChanges.current = false;
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      return;
+    }
+
     pendingChanges.current = true;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+
     autosaveTimer.current = setTimeout(async () => {
       if (!pendingChanges.current) return;
+
+      const snapshotBeforeSave = buildContentSnapshot(nodes, edges, theme.id);
+      if (snapshotBeforeSave === lastPersistedSnapshot.current) {
+        pendingChanges.current = false;
+        return;
+      }
+
       try {
         const thumb = await captureThumbnail();
         await onSave(nodes, edges, theme.id, thumb);
         setLastSavedAt(new Date());
+        lastPersistedSnapshot.current = snapshotBeforeSave;
         pendingChanges.current = false;
       } catch {
         // silent fail — manual save still available
       }
     }, 10000);
-    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [nodes, edges, theme, onSave, captureThumbnail]);
+
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
 
   // Apply remote updates from other users
-  const remoteUpdateRef = useRef(false);
   useEffect(() => {
     if (remoteNodes && remoteNodes.length > 0) {
       remoteUpdateRef.current = true;
+      const nextRemoteEdges = remoteEdges || [];
+      const nextThemeId = remoteThemeId || theme.id;
+
       setNodes(remoteNodes);
-      setEdges(remoteEdges || []);
+      setEdges(nextRemoteEdges);
+      lastPersistedSnapshot.current = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
+
       if (remoteThemeId) {
         const newTheme = editorThemes.find((t) => t.id === remoteThemeId);
         if (newTheme) setTheme(newTheme);
       }
+
       // Reset flag after React processes the state update
-      requestAnimationFrame(() => { remoteUpdateRef.current = false; });
+      requestAnimationFrame(() => {
+        remoteUpdateRef.current = false;
+      });
     }
-  }, [remoteNodes, remoteEdges, remoteThemeId, setNodes, setEdges]);
+  }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -151,24 +220,33 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   // Auto-layout helper — respects manually pinned nodes
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    // Separate pinned nodes from unpinned
-    const unpinnedNodes = nextNodes.filter((n) => !pinnedPositions.current.has(n.id));
-    const pinnedNodes = nextNodes.filter((n) => pinnedPositions.current.has(n.id));
+    for (const pinnedId of [...pinnedPositions.current]) {
+      if (!nextNodes.some((node) => node.id === pinnedId)) {
+        pinnedPositions.current.delete(pinnedId);
+      }
+    }
 
-    if (unpinnedNodes.length > 0) {
-      const laid = autoLayoutDiagram(unpinnedNodes, nextEdges, diagramType);
-      // Merge: use laid positions for unpinned, keep pinned as-is
-      const laidMap = new Map(laid.nodes.map((n) => [n.id, n]));
-      const mergedNodes = nextNodes.map((n) => {
-        if (pinnedPositions.current.has(n.id)) return n;
-        return laidMap.get(n.id) || n;
-      });
-      setNodes(mergedNodes);
+    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
+
+    if (pinnedPositions.current.size === 0) {
+      setNodes(laid.nodes);
       setEdges(laid.edges);
     } else {
-      setNodes(nextNodes);
-      setEdges(nextEdges);
+      const pinnedMap = new Map(
+        nextNodes
+          .filter((node) => pinnedPositions.current.has(node.id))
+          .map((node) => [node.id, node.position])
+      );
+
+      const mergedNodes = laid.nodes.map((node) => {
+        const pinnedPosition = pinnedMap.get(node.id);
+        return pinnedPosition ? { ...node, position: pinnedPosition } : node;
+      });
+
+      setNodes(mergedNodes);
+      setEdges(rerouteDiagramEdges(mergedNodes, laid.edges, diagramType));
     }
+
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
@@ -185,11 +263,20 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Mark node as pinned when user drags it
   const handleNodeDragStop = useCallback((_event: any, node: Node) => {
     pinnedPositions.current.add(node.id);
-  }, []);
+    const updatedNodes = nodes.map((currentNode) =>
+      currentNode.id === node.id ? { ...currentNode, position: node.position } : currentNode
+    );
+    setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+  }, [nodes, setEdges, diagramType]);
 
   const handleAddChild = useCallback(() => {
+    const parent = selectedNodes[0];
+    if (!parent) {
+      toast.info("Selecione um nó para adicionar um filho.");
+      return;
+    }
+
     takeSnapshot();
-    const parent = selectedNodes[0] || nodes[0];
     const colorIdx = nodes.length % childColors.length;
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
@@ -200,20 +287,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
 
     // Temporary position — layout will fix it
-    const pos = parent
-      ? { x: parent.position.x + 250, y: parent.position.y }
-      : { x: 100, y: 100 };
+    const pos = { x: parent.position.x + 250, y: parent.position.y };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-
-    let nextEdges = edges;
-    if (parent) {
-      nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
-    }
+    const nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
 
     applyAutoLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyAutoLayout]);
+  }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
@@ -320,9 +401,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
 
   const handleSave = useCallback(async () => {
+    const snapshot = buildContentSnapshot(nodes, edges, theme.id);
+    if (snapshot === lastPersistedSnapshot.current) return;
+
     const thumb = await captureThumbnail();
-    onSave(nodes, edges, theme.id, thumb);
-  }, [nodes, edges, theme, onSave, captureThumbnail]);
+    await onSave(nodes, edges, theme.id, thumb);
+    lastPersistedSnapshot.current = snapshot;
+    setLastSavedAt(new Date());
+  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;
@@ -378,13 +464,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Arrow key navigation between nodes
   const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
     const selected = selectedNodes[0];
-    if (!selected) {
-      // Select first node if nothing selected
-      if (nodes.length > 0) {
-        setNodes((nds) => nds.map((n, i) => ({ ...n, selected: i === 0 })));
-      }
-      return;
-    }
+    if (!selected) return;
 
     const parentEdge = edges.find((e) => e.target === selected.id);
     const childEdges = edges.filter((e) => e.source === selected.id);

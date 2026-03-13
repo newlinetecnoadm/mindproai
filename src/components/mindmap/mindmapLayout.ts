@@ -71,25 +71,51 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
   return build(rootId, 0);
 }
 
-// ─── Mindmap layout (horizontal tree, root → right) ─────
+// ─── Mindmap layout (balanced: root center, children alternating sides) ─────
 
-function layoutMindmapTree(
+function getGroupHeight(group: TreeNode[]): number {
+  if (group.length === 0) return 0;
+  return group.reduce((sum, node) => sum + node.subtreeHeight, 0) + (group.length - 1) * V_GAP;
+}
+
+function layoutMindmapBranch(
   tree: TreeNode,
   x: number,
   yStart: number,
+  direction: 1 | -1,
   positions: Map<string, { x: number; y: number }>
 ) {
-  const nodeH = tree.isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
-  const nodeW = tree.isRoot ? ROOT_WIDTH : NODE_WIDTH;
-
-  const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
+  const y = yStart + tree.subtreeHeight / 2 - NODE_HEIGHT / 2;
   positions.set(tree.id, { x, y });
 
   if (tree.children.length === 0) return;
+
   let childY = yStart;
   for (const child of tree.children) {
-    layoutMindmapTree(child, x + nodeW + H_GAP, childY, positions);
+    const childX = direction === 1 ? x + NODE_WIDTH + H_GAP : x - NODE_WIDTH - H_GAP;
+    layoutMindmapBranch(child, childX, childY, direction, positions);
     childY += child.subtreeHeight + V_GAP;
+  }
+}
+
+function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
+  positions.set(tree.id, { x: -ROOT_WIDTH / 2, y: -ROOT_HEIGHT / 2 });
+
+  if (tree.children.length === 0) return;
+
+  const rightChildren = tree.children.filter((_, index) => index % 2 === 0);
+  const leftChildren = tree.children.filter((_, index) => index % 2 === 1);
+
+  let rightY = -getGroupHeight(rightChildren) / 2;
+  for (const child of rightChildren) {
+    layoutMindmapBranch(child, ROOT_WIDTH / 2 + H_GAP, rightY, 1, positions);
+    rightY += child.subtreeHeight + V_GAP;
+  }
+
+  let leftY = -getGroupHeight(leftChildren) / 2;
+  for (const child of leftChildren) {
+    layoutMindmapBranch(child, -(ROOT_WIDTH / 2 + H_GAP + NODE_WIDTH), leftY, -1, positions);
+    leftY += child.subtreeHeight + V_GAP;
   }
 }
 
@@ -275,10 +301,9 @@ export function autoLayoutMindMap(
   if (!tree) return { nodes, edges };
 
   const positions = new Map<string, { x: number; y: number }>();
-  layoutMindmapTree(tree, 0, 0, positions);
-  centerPositions(positions);
+  layoutMindmapBalanced(tree, positions);
 
-  return applyPositions(nodes, edges, positions);
+  return applyPositions(nodes, edges, positions, "mindmap");
 }
 
 export function autoLayoutDiagram(
@@ -291,7 +316,8 @@ export function autoLayoutDiagram(
   let positions: Map<string, { x: number; y: number }>;
 
   switch (diagramType) {
-    case "mindmap": return autoLayoutMindMap(nodes, edges);
+    case "mindmap":
+      return autoLayoutMindMap(nodes, edges);
 
     case "orgchart": {
       const tree = buildOrgTree(nodes, edges);
@@ -314,10 +340,11 @@ export function autoLayoutDiagram(
       break;
     }
 
-    default: return autoLayoutMindMap(nodes, edges);
+    default:
+      return autoLayoutMindMap(nodes, edges);
   }
 
-  return applyPositions(nodes, edges, positions);
+  return applyPositions(nodes, edges, positions, diagramType);
 }
 
 function getNodeDimensions(node: Node): { w: number; h: number } {
@@ -330,30 +357,58 @@ function getNodeDimensions(node: Node): { w: number; h: number } {
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
 }
 
+function getMindmapHandles(
+  sourcePos: { x: number; y: number },
+  targetPos: { x: number; y: number }
+): { sourceHandle: string; targetHandle: string } {
+  return targetPos.x >= sourcePos.x
+    ? { sourceHandle: "right", targetHandle: "left" }
+    : { sourceHandle: "left", targetHandle: "right" };
+}
+
+export function rerouteDiagramEdges(
+  nodes: Node[],
+  edges: Edge[],
+  diagramType: string
+): Edge[] {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+  return edges.map((edge) => {
+    const srcNode = nodeMap.get(edge.source);
+    const tgtNode = nodeMap.get(edge.target);
+    if (!srcNode || !tgtNode) return edge;
+
+    const srcPos = srcNode.position;
+    const tgtPos = tgtNode.position;
+    const { w: srcW, h: srcH } = getNodeDimensions(srcNode);
+    const { w: tgtW, h: tgtH } = getNodeDimensions(tgtNode);
+
+    const { sourceHandle, targetHandle } =
+      diagramType === "mindmap"
+        ? getMindmapHandles(srcPos, tgtPos)
+        : getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
+
+    return {
+      ...edge,
+      sourceHandle,
+      targetHandle,
+      type: edge.type || "smoothstep",
+    };
+  });
+}
+
 function applyPositions(
   nodes: Node[],
   edges: Edge[],
-  positions: Map<string, { x: number; y: number }>
+  positions: Map<string, { x: number; y: number }>,
+  diagramType: string
 ): { nodes: Node[]; edges: Edge[] } {
-  const newNodes = nodes.map((n) => {
-    const pos = positions.get(n.id);
-    return pos ? { ...n, position: pos } : n;
+  const newNodes = nodes.map((node) => {
+    const pos = positions.get(node.id);
+    return pos ? { ...node, position: pos } : node;
   });
 
-  const newEdges = edges.map((e) => {
-    const srcPos = positions.get(e.source);
-    const tgtPos = positions.get(e.target);
-    if (srcPos && tgtPos) {
-      const srcNode = nodes.find((n) => n.id === e.source);
-      const tgtNode = nodes.find((n) => n.id === e.target);
-      const { w: srcW, h: srcH } = srcNode ? getNodeDimensions(srcNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
-      const { w: tgtW, h: tgtH } = tgtNode ? getNodeDimensions(tgtNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
-
-      const { sourceHandle, targetHandle } = getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
-      return { ...e, sourceHandle, targetHandle, type: "smoothstep" };
-    }
-    return e;
-  });
+  const newEdges = rerouteDiagramEdges(newNodes, edges, diagramType);
 
   return { nodes: newNodes, edges: newEdges };
 }
