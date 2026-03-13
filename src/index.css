@@ -167,3 +167,21 @@
     @apply backdrop-blur-xl bg-card/80 border border-border/50;
   }
 }
+
+/* Hide ReactFlow handles by default, show on hover or when connected */
+.react-flow__node .react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.react-flow__node:hover .react-flow__handle,
+.react-flow__node.selected .react-flow__handle,
+.react-flow__handle.connectingto,
+.react-flow__handle.connectingfrom {
+  opacity: 1;
+}
+
+/* Always show handles that have connections */
+.react-flow__handle.react-flow__handle-connected {
+  opacity: 1;
+}
