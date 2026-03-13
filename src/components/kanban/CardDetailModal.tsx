@@ -745,17 +745,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                       {format(new Date(c.created_at), "dd MMM, HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  <p className="text-sm">{c.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {renderCommentWithMentions(c.content)}
+                  </p>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <Textarea
+              <MentionInput
                 value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escreva um comentário..."
-                rows={2}
-                className="resize-none text-sm flex-1"
+                onChange={setNewComment}
+                onSubmit={() => { if (newComment.trim()) addComment.mutate(newComment.trim()); }}
+                users={mentionUsers}
+                placeholder="Escreva um comentário... Use @ para mencionar"
               />
               <Button
                 size="sm"
@@ -766,6 +768,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               >
                 <Send className="w-4 h-4" />
               </Button>
+            </div>
             </div>
           </div>
 
