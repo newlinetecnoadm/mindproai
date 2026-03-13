@@ -27,6 +27,8 @@ const DiagramEditor = () => {
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
   const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const [savedRecently, setSavedRecently] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Remote sync state
