@@ -1,13 +1,33 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, Brain, Pencil, Trash2, Clock } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Brain, Trash2, Clock, GitBranch, Users, Timer, Link2, LayoutGrid } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const typeIcons: Record<string, React.ReactNode> = {
+  mindmap: <Brain className="w-5 h-5" />,
+  flowchart: <GitBranch className="w-5 h-5" />,
+  orgchart: <Users className="w-5 h-5" />,
+  timeline: <Timer className="w-5 h-5" />,
+  concept_map: <Link2 className="w-5 h-5" />,
+  swimlane: <LayoutGrid className="w-5 h-5" />,
+};
+
+const typeLabels: Record<string, string> = {
+  mindmap: "Mapa Mental",
+  flowchart: "Fluxograma",
+  orgchart: "Organograma",
+  timeline: "Linha do Tempo",
+  concept_map: "Mapa Conceitual",
+  swimlane: "Swimlane",
+  wireframe: "Wireframe",
+};
 
 const DiagramList = () => {
   const { user } = useAuth();
@@ -80,11 +100,16 @@ const DiagramList = () => {
                 className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/diagramas/${d.id}`)}
               >
-                <div className="h-32 bg-muted flex items-center justify-center">
-                  <Brain className="w-10 h-10 text-muted-foreground/30" />
+                <div className="h-32 bg-muted flex items-center justify-center text-muted-foreground/30">
+                  {typeIcons[d.type] || <Brain className="w-10 h-10" />}
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-sm truncate mb-1">{d.title}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-sm truncate flex-1">{d.title}</h3>
+                    <Badge variant="outline" className="text-[10px] shrink-0">
+                      {typeLabels[d.type] || d.type}
+                    </Badge>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3 h-3" />

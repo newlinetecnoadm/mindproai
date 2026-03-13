@@ -11,6 +11,7 @@ import Cadastro from "./pages/Cadastro.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import DiagramList from "./pages/DiagramList.tsx";
 import DiagramEditor from "./pages/DiagramEditor.tsx";
+import NewDiagram from "./pages/NewDiagram.tsx";
 import WorkspaceList from "./pages/boards/WorkspaceList.tsx";
 import BoardDetail from "./pages/boards/BoardDetail.tsx";
 import AgendaPage from "./pages/AgendaPage.tsx";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
+          <Route path="/diagramas/novo" element={<ProtectedRoute><NewDiagram /></ProtectedRoute>} />
           <Route path="/diagramas/:id" element={<ProtectedRoute><DiagramEditor /></ProtectedRoute>} />
           <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
           <Route path="/boards/:id" element={<ProtectedRoute><BoardDetail /></ProtectedRoute>} />
