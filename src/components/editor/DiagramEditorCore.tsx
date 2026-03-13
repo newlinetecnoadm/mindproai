@@ -89,7 +89,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       }
     }, 2000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
-  }, [nodes, edges, onSave]);
+  }, [nodes, edges, theme, onSave]);
 
   const onConnect = useCallback(
     (params: Connection) => {
