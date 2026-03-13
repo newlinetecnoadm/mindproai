@@ -2,7 +2,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Inbox, CalendarDays, Kanban, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +12,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const navItems = [
-  { icon: Inbox, label: "Inbox", path: "/inbox" },
-  { icon: CalendarDays, label: "Planner", path: "/planner" },
-  { icon: Kanban, label: "Board", path: "/boards" },
-];
+interface FloatingNavBarProps {
+  activePanel?: "inbox" | "planner" | null;
+  onTogglePanel?: (panel: "inbox" | "planner") => void;
+}
 
-const FloatingNavBar = () => {
+const FloatingNavBar = ({ activePanel, onTogglePanel }: FloatingNavBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,12 +39,27 @@ const FloatingNavBar = () => {
     },
   });
 
-  // Only show on relevant pages
-  const showOnPaths = ["/inbox", "/planner", "/boards", "/dashboard"];
-  const isRelevant = showOnPaths.some(
-    (p) => location.pathname === p || location.pathname.startsWith("/boards/")
-  );
-  if (!isRelevant) return null;
+  // Only show on board detail pages
+  const isBoardDetail = location.pathname.match(/^\/boards\/[^/]+$/);
+  if (!isBoardDetail) return null;
+
+  const navItems = [
+    {
+      icon: Inbox,
+      label: "Inbox",
+      panel: "inbox" as const,
+    },
+    {
+      icon: CalendarDays,
+      label: "Planner",
+      panel: "planner" as const,
+    },
+    {
+      icon: Kanban,
+      label: "Board",
+      panel: null,
+    },
+  ];
 
   return (
     <motion.div
@@ -56,15 +69,22 @@ const FloatingNavBar = () => {
     >
       <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-lg">
         {navItems.map((item) => {
-          const isActive =
-            location.pathname === item.path ||
-            (item.path === "/boards" && location.pathname.startsWith("/boards"));
+          const isActive = item.panel
+            ? activePanel === item.panel
+            : !activePanel;
           return (
             <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
+              key={item.label}
+              onClick={() => {
+                if (item.panel && onTogglePanel) {
+                  onTogglePanel(item.panel);
+                } else if (!item.panel && onTogglePanel) {
+                  // Close all panels
+                  if (activePanel) onTogglePanel(activePanel);
+                }
+              }}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                "relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive
                   ? "bg-secondary text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
