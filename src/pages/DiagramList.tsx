@@ -283,7 +283,7 @@ const DiagramList = () => {
             </div>
           </>
         )}
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };
