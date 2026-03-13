@@ -73,7 +73,7 @@ const Configuracoes = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };
