@@ -749,6 +749,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           nodeColor={theme.minimapNode}
         />
       </ReactFlow>
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        resource="diagrama"
+        currentCount={limits.currentDiagrams}
+        maxCount={limits.maxDiagrams}
+        planName={limits.displayName}
+      />
     </div>
   );
 }
