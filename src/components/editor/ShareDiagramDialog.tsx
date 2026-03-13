@@ -143,9 +143,10 @@ const ShareDiagramDialog = ({
           .eq("user_id", user!.id)
           .single();
 
-        supabase.functions.invoke("send-invite", {
+        supabase.functions.invoke("send-email", {
           body: {
             to: email.trim().toLowerCase(),
+            template: "invite",
             inviterName: profile?.full_name || user!.email,
             resourceTitle: diagramTitle,
             resourceType: "diagram",
