@@ -288,6 +288,19 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, onSave, s
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
+      {/* Autosave indicator */}
+      {saving && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          Salvando...
+        </div>
+      )}
+      {!saving && lastSavedAt && (
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-1.5 shadow-md text-xs text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          Salvo às {lastSavedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      )}
       <NodeFloatingToolbar
         selectedNodes={selectedNodes}
         diagramType={diagramType}
