@@ -10,8 +10,12 @@ import { Input } from "@/components/ui/input";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import CardDetailModal from "@/components/kanban/CardDetailModal";
 import BoardFilters, { type BoardFilterState, EMPTY_FILTERS } from "@/components/kanban/BoardFilters";
+import InboxPanel from "@/components/boards/InboxPanel";
+import PlannerPanel from "@/components/boards/PlannerPanel";
+import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
+import { AnimatePresence } from "framer-motion";
 
 const BoardDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +25,11 @@ const BoardDetail = () => {
   const [boardTitle, setBoardTitle] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
+  const [activePanel, setActivePanel] = useState<"inbox" | "planner" | null>(null);
+
+  const handleTogglePanel = (panel: "inbox" | "planner") => {
+    setActivePanel((prev) => (prev === panel ? null : panel));
+  };
 
   // Fetch board
   const { data: board, isLoading: boardLoading } = useQuery({
@@ -119,19 +128,16 @@ const BoardDetail = () => {
   const filteredCards = useMemo(() => {
     let result = cards;
     const { search, labelIds, dueDateFilter, memberIds } = filters;
-
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((c) => c.title.toLowerCase().includes(q));
     }
-
     if (labelIds.length > 0) {
       const cardIdsWithLabel = new Set(
         labelAssignments.filter((a: any) => labelIds.includes(a.label_id)).map((a: any) => a.card_id)
       );
       result = result.filter((c) => cardIdsWithLabel.has(c.id));
     }
-
     if (dueDateFilter === "overdue") {
       const now = new Date();
       result = result.filter((c) => c.due_date && new Date(c.due_date) < now && !c.is_complete);
@@ -140,18 +146,16 @@ const BoardDetail = () => {
     } else if (dueDateFilter === "no_date") {
       result = result.filter((c) => !c.due_date);
     }
-
     if (memberIds.length > 0) {
       const cardIdsWithMember = new Set(
         cardMembers.filter((m: any) => memberIds.includes(m.user_id)).map((m: any) => m.card_id)
       );
       result = result.filter((c) => cardIdsWithMember.has(c.id));
     }
-
     return result;
   }, [cards, filters, labelAssignments, cardMembers]);
 
-  // Add column
+  // Mutations
   const addColumnMut = useMutation({
     mutationFn: async (title: string) => {
       const { error } = await supabase.from("board_columns").insert({ board_id: id!, title, position: columns.length });
@@ -161,7 +165,6 @@ const BoardDetail = () => {
     onError: () => toast.error("Erro ao criar coluna"),
   });
 
-  // Delete column
   const deleteColumnMut = useMutation({
     mutationFn: async (columnId: string) => {
       await supabase.from("board_cards").delete().eq("column_id", columnId);
@@ -175,7 +178,6 @@ const BoardDetail = () => {
     onError: () => toast.error("Erro ao excluir coluna"),
   });
 
-  // Rename column
   const renameColumnMut = useMutation({
     mutationFn: async ({ columnId, title }: { columnId: string; title: string }) => {
       const { error } = await supabase.from("board_columns").update({ title }).eq("id", columnId);
@@ -184,7 +186,6 @@ const BoardDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-columns", id] }),
   });
 
-  // Add card
   const addCardMut = useMutation({
     mutationFn: async ({ columnId, title }: { columnId: string; title: string }) => {
       const columnCards = cards.filter((c) => c.column_id === columnId);
@@ -195,7 +196,6 @@ const BoardDetail = () => {
     onError: () => toast.error("Erro ao criar card"),
   });
 
-  // Move card to another column
   const moveCardMut = useMutation({
     mutationFn: async ({ cardId, newColumnId, newPosition }: { cardId: string; newColumnId: string; newPosition: number }) => {
       const { error } = await supabase.from("board_cards").update({ column_id: newColumnId, position: newPosition }).eq("id", cardId);
@@ -211,7 +211,6 @@ const BoardDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
-  // Reorder cards within column
   const reorderCardsMut = useMutation({
     mutationFn: async ({ columnId, cardIds }: { columnId: string; cardIds: string[] }) => {
       await Promise.all(cardIds.map((cid, i) => supabase.from("board_cards").update({ position: i }).eq("id", cid)));
@@ -219,7 +218,6 @@ const BoardDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
-  // Update board title
   const updateTitleMut = useMutation({
     mutationFn: async (title: string) => {
       const { error } = await supabase.from("boards").update({ title }).eq("id", id!);
@@ -267,19 +265,34 @@ const BoardDetail = () => {
         </div>
       </div>
 
-      {/* Board */}
-      <div className="flex-1 overflow-hidden">
-        <KanbanBoard
-          columns={columns}
-          cards={filteredCards}
-          onAddCard={(columnId, title) => addCardMut.mutate({ columnId, title })}
-          onMoveCard={(cardId, newColumnId, newPosition) => moveCardMut.mutate({ cardId, newColumnId, newPosition })}
-          onReorderCards={(columnId, cardIds) => reorderCardsMut.mutate({ columnId, cardIds })}
-          onCardClick={(card) => setSelectedCardId(card.id)}
-          onAddColumn={(title) => addColumnMut.mutate(title)}
-          onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
-          onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
-        />
+      {/* Main content with panels */}
+      <div className="flex-1 flex overflow-hidden">
+        <AnimatePresence>
+          {activePanel === "inbox" && (
+            <InboxPanel onClose={() => setActivePanel(null)} />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {activePanel === "planner" && (
+            <PlannerPanel onClose={() => setActivePanel(null)} />
+          )}
+        </AnimatePresence>
+
+        {/* Board */}
+        <div className="flex-1 overflow-hidden">
+          <KanbanBoard
+            columns={columns}
+            cards={filteredCards}
+            onAddCard={(columnId, title) => addCardMut.mutate({ columnId, title })}
+            onMoveCard={(cardId, newColumnId, newPosition) => moveCardMut.mutate({ cardId, newColumnId, newPosition })}
+            onReorderCards={(columnId, cardIds) => reorderCardsMut.mutate({ columnId, cardIds })}
+            onCardClick={(card) => setSelectedCardId(card.id)}
+            onAddColumn={(title) => addColumnMut.mutate(title)}
+            onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
+            onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
+          />
+        </div>
       </div>
 
       <CardDetailModal
@@ -289,6 +302,9 @@ const BoardDetail = () => {
         onOpenChange={(open) => { if (!open) setSelectedCardId(null); }}
         onCardUpdated={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
       />
+
+      {/* Floating nav within board */}
+      <FloatingNavBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
     </div>
   );
 };
