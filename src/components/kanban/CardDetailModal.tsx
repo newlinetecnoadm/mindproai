@@ -7,8 +7,10 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity,
 } from "lucide-react";
+import { useCardActivity } from "@/hooks/useCardActivity";
+import CardActivityFeed from "./CardActivityFeed";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -43,6 +45,7 @@ const LABEL_COLORS = [
 const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }: CardDetailModalProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { logActivity } = useCardActivity();
 
   // Card data
   const { data: card } = useQuery({
@@ -146,6 +149,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["card-label-assignments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
+    queryClient.invalidateQueries({ queryKey: ["card-activities", cardId] });
     onCardUpdated();
   };
 
@@ -178,6 +182,18 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       // Sync event when due_date changes
       if ("due_date" in updates) {
         await syncCardEvent(updates.due_date);
+      }
+      // Log activities
+      if (cardId) {
+        if ("is_complete" in updates) {
+          await logActivity(cardId, updates.is_complete ? "completed" : "uncompleted");
+        }
+        if ("due_date" in updates) {
+          await logActivity(cardId, updates.due_date ? "due_date_set" : "due_date_removed", updates.due_date ? { date: new Date(updates.due_date).toLocaleDateString("pt-BR") } : {});
+        }
+        if ("description" in updates) {
+          await logActivity(cardId, "description_updated");
+        }
       }
     },
     onSuccess: () => {
@@ -225,6 +241,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     mutationFn: async (clTitle: string) => {
       const { error } = await supabase.from("card_checklists").insert({ card_id: cardId!, title: clTitle, position: checklists.length });
       if (error) throw error;
+      if (cardId) await logActivity(cardId, "checklist_added", { checklist_title: clTitle });
     },
     onSuccess: () => {
       setNewChecklistTitle("");
@@ -257,9 +274,11 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   // Delete checklist
   const deleteChecklist = useMutation({
     mutationFn: async (checklistId: string) => {
+      const cl = checklists.find((c: any) => c.id === checklistId);
       await supabase.from("checklist_items").delete().eq("checklist_id", checklistId);
       const { error } = await supabase.from("card_checklists").delete().eq("id", checklistId);
       if (error) throw error;
+      if (cardId) await logActivity(cardId, "checklist_removed", { checklist_title: (cl as any)?.title || "" });
     },
     onSuccess: invalidateAll,
   });
@@ -281,10 +300,13 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   // Toggle label assignment
   const toggleLabel = useMutation({
     mutationFn: async (labelId: string) => {
+      const label = boardLabels.find((l: any) => l.id === labelId);
       if (cardLabelIds.includes(labelId)) {
         await supabase.from("card_label_assignments").delete().eq("card_id", cardId!).eq("label_id", labelId);
+        if (cardId) await logActivity(cardId, "label_removed", { label_name: label?.name || "Sem nome", label_color: label?.color });
       } else {
         await supabase.from("card_label_assignments").insert({ card_id: cardId!, label_id: labelId });
+        if (cardId) await logActivity(cardId, "label_added", { label_name: label?.name || "Sem nome", label_color: label?.color });
       }
     },
     onSuccess: invalidateAll,
@@ -717,6 +739,15 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+          </div>
+
+          {/* Activity Feed */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Atividade</span>
+            </div>
+            <CardActivityFeed cardId={cardId!} />
           </div>
 
           {/* Card actions */}

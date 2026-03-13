@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCardActivity } from "@/hooks/useCardActivity";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const BoardDetail = () => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
   const [activePanel, setActivePanel] = useState<"inbox" | "planner" | null>(null);
+  const { logActivity } = useCardActivity();
 
   const handleTogglePanel = (panel: "inbox" | "planner") => {
     setActivePanel((prev) => (prev === panel ? null : panel));
@@ -198,8 +200,9 @@ const BoardDetail = () => {
   const addCardMut = useMutation({
     mutationFn: async ({ columnId, title }: { columnId: string; title: string }) => {
       const columnCards = cards.filter((c) => c.column_id === columnId);
-      const { error } = await supabase.from("board_cards").insert({ board_id: id!, column_id: columnId, title, position: columnCards.length });
+      const { data: newCard, error } = await supabase.from("board_cards").insert({ board_id: id!, column_id: columnId, title, position: columnCards.length }).select("id").single();
       if (error) throw error;
+      if (newCard) await logActivity(newCard.id, "created");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
     onError: () => toast.error("Erro ao criar card"),
@@ -207,6 +210,9 @@ const BoardDetail = () => {
 
   const moveCardMut = useMutation({
     mutationFn: async ({ cardId, newColumnId, newPosition }: { cardId: string; newColumnId: string; newPosition: number }) => {
+      const oldCard = cards.find((c) => c.id === cardId);
+      const oldCol = columns.find((c) => c.id === oldCard?.column_id);
+      const newCol = columns.find((c) => c.id === newColumnId);
       const { error } = await supabase.from("board_cards").update({ column_id: newColumnId, position: newPosition }).eq("id", cardId);
       if (error) throw error;
       const targetCards = cards.filter((c) => c.column_id === newColumnId && c.id !== cardId).sort((a, b) => a.position - b.position);
@@ -215,6 +221,9 @@ const BoardDetail = () => {
         if (targetCards[i].position !== pos) {
           await supabase.from("board_cards").update({ position: pos }).eq("id", targetCards[i].id);
         }
+      }
+      if (oldCol && newCol && oldCol.id !== newCol.id) {
+        await logActivity(cardId, "moved", { from: oldCol.title, to: newCol.title });
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),

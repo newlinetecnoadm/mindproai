@@ -189,6 +189,41 @@ export type Database = {
         }
         Relationships: []
       }
+      card_activities: {
+        Row: {
+          action: string
+          card_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          card_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          card_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_activities_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "board_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_attachments: {
         Row: {
           card_id: string
