@@ -343,6 +343,59 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [getFlowElement]);
 
+  // Arrow key navigation between nodes
+  const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
+    const selected = selectedNodes[0];
+    if (!selected) {
+      // Select first node if nothing selected
+      if (nodes.length > 0) {
+        setNodes((nds) => nds.map((n, i) => ({ ...n, selected: i === 0 })));
+      }
+      return;
+    }
+
+    const parentEdge = edges.find((e) => e.target === selected.id);
+    const childEdges = edges.filter((e) => e.source === selected.id);
+
+    let targetId: string | null = null;
+
+    if (direction === "left") {
+      // Go to parent
+      if (parentEdge) targetId = parentEdge.source;
+    } else if (direction === "right") {
+      // Go to first child
+      if (childEdges.length > 0) {
+        // Pick child closest to current Y position
+        const children = childEdges
+          .map((e) => nodes.find((n) => n.id === e.target))
+          .filter(Boolean) as Node[];
+        children.sort((a, b) => a.position.y - b.position.y);
+        targetId = children[0]?.id || null;
+      }
+    } else if (direction === "up" || direction === "down") {
+      // Navigate siblings (nodes sharing the same parent)
+      if (parentEdge) {
+        const siblingEdges = edges.filter((e) => e.source === parentEdge.source);
+        const siblings = siblingEdges
+          .map((e) => nodes.find((n) => n.id === e.target))
+          .filter(Boolean) as Node[];
+        siblings.sort((a, b) => a.position.y - b.position.y);
+        const idx = siblings.findIndex((n) => n.id === selected.id);
+        if (direction === "up" && idx > 0) targetId = siblings[idx - 1].id;
+        if (direction === "down" && idx < siblings.length - 1) targetId = siblings[idx + 1].id;
+      }
+    }
+
+    if (targetId) {
+      setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === targetId })));
+      // Center view on the newly selected node
+      const targetNode = nodes.find((n) => n.id === targetId);
+      if (targetNode) {
+        setTimeout(() => fitView({ nodes: [{ id: targetId! }], padding: 0.5, duration: 250 }), 10);
+      }
+    }
+  }, [nodes, edges, selectedNodes, setNodes, fitView]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -355,10 +408,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
+      // Arrow navigation
+      if (e.key === "ArrowUp") { e.preventDefault(); handleArrowNav("up"); }
+      if (e.key === "ArrowDown") { e.preventDefault(); handleArrowNav("down"); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); handleArrowNav("left"); }
+      if (e.key === "ArrowRight") { e.preventDefault(); handleArrowNav("right"); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
