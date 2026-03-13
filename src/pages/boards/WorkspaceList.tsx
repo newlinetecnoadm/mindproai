@@ -153,7 +153,7 @@ const WorkspaceList = () => {
             <h1 className="text-2xl font-display font-bold mb-1">Meus Boards</h1>
             <p className="text-muted-foreground">{count} board{count !== 1 ? "s" : ""}</p>
           </div>
-          <Button variant="hero" onClick={() => setDialogOpen(true)}>
+          <Button variant="hero" onClick={handleNewBoard}>
             <Plus className="w-4 h-4 mr-1" /> Novo Board
           </Button>
         </div>
