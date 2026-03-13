@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     const html = buildHtml(commenterName, card.title, escapedComment, board_url || "");
 
     let sent = 0;
-    for (const profile of profiles) {
+    for (const profile of notifiableProfiles) {
       if (!profile.email) continue;
       try {
         await client.send({
