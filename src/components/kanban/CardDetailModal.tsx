@@ -300,10 +300,13 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   // Toggle label assignment
   const toggleLabel = useMutation({
     mutationFn: async (labelId: string) => {
+      const label = boardLabels.find((l: any) => l.id === labelId);
       if (cardLabelIds.includes(labelId)) {
         await supabase.from("card_label_assignments").delete().eq("card_id", cardId!).eq("label_id", labelId);
+        if (cardId) await logActivity(cardId, "label_removed", { label_name: label?.name || "Sem nome", label_color: label?.color });
       } else {
         await supabase.from("card_label_assignments").insert({ card_id: cardId!, label_id: labelId });
+        if (cardId) await logActivity(cardId, "label_added", { label_name: label?.name || "Sem nome", label_color: label?.color });
       }
     },
     onSuccess: invalidateAll,
