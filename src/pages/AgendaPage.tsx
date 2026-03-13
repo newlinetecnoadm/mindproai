@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalendarGrid from "@/components/agenda/CalendarGrid";
