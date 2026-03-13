@@ -48,7 +48,7 @@ serve(async (req) => {
     }
     logStep("Customer lookup", { customerId: customerId ?? "new" });
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = req.headers.get("origin") || "https://mindproai.com.br";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
