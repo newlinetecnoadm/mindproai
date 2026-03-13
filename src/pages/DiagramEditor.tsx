@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeDiagram, type PresenceUser } from "@/hooks/useRealtimeDiagram";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import ShareDiagramDialog from "@/components/editor/ShareDiagramDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
