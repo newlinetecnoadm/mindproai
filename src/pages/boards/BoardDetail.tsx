@@ -32,6 +32,7 @@ const BoardDetail = () => {
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
   const [activePanel, setActivePanel] = useState<"inbox" | "planner" | null>(null);
   const { logActivity } = useCardActivity();
+  const { createNotification } = useNotifications();
 
   const handleTogglePanel = (panel: "inbox" | "planner") => {
     setActivePanel((prev) => (prev === panel ? null : panel));
