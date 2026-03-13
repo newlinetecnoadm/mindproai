@@ -134,6 +134,9 @@ const Configuracoes = () => {
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" /> Perfil
               </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-2">
+                <Bell className="w-4 h-4" /> Notificações
+              </TabsTrigger>
               <TabsTrigger value="billing" className="gap-2">
                 <CreditCard className="w-4 h-4" /> Plano & Billing
               </TabsTrigger>
