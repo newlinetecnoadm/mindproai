@@ -149,13 +149,43 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
-  // Auto-layout helper for all diagram types
+  // Auto-layout helper — respects manually pinned nodes
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
+    // Separate pinned nodes from unpinned
+    const unpinnedNodes = nextNodes.filter((n) => !pinnedPositions.current.has(n.id));
+    const pinnedNodes = nextNodes.filter((n) => pinnedPositions.current.has(n.id));
+
+    if (unpinnedNodes.length > 0) {
+      const laid = autoLayoutDiagram(unpinnedNodes, nextEdges, diagramType);
+      // Merge: use laid positions for unpinned, keep pinned as-is
+      const laidMap = new Map(laid.nodes.map((n) => [n.id, n]));
+      const mergedNodes = nextNodes.map((n) => {
+        if (pinnedPositions.current.has(n.id)) return n;
+        return laidMap.get(n.id) || n;
+      });
+      setNodes(mergedNodes);
+      setEdges(laid.edges);
+    } else {
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+    }
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [diagramType, setNodes, setEdges, fitView]);
+
+  // Re-layout all nodes (clear pinned positions)
+  const handleReLayout = useCallback(() => {
+    takeSnapshot();
+    pinnedPositions.current.clear();
+    const laid = autoLayoutDiagram(nodes, edges, diagramType);
     setNodes(laid.nodes);
     setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [diagramType, setNodes, setEdges, fitView]);
+  }, [nodes, edges, diagramType, setNodes, setEdges, fitView, takeSnapshot]);
+
+  // Mark node as pinned when user drags it
+  const handleNodeDragStop = useCallback((_event: any, node: Node) => {
+    pinnedPositions.current.add(node.id);
+  }, []);
 
   const handleAddChild = useCallback(() => {
     takeSnapshot();
