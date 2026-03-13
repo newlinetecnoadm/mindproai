@@ -135,6 +135,19 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
+  // Auto-layout helper for mindmaps
+  const applyMindmapLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
+    if (diagramType === "mindmap") {
+      const laid = autoLayoutMindMap(nextNodes, nextEdges);
+      setNodes(laid.nodes);
+      setEdges(laid.edges);
+    } else {
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+    }
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [diagramType, setNodes, setEdges, fitView]);
+
   const handleAddChild = useCallback(() => {
     takeSnapshot();
     const parent = selectedNodes[0] || nodes[0];
@@ -147,9 +160,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
     else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
 
-    const siblings = edges.filter((e) => e.source === (parent?.id || "")).length;
+    // Temporary position — layout will fix it
     const pos = parent
-      ? { x: parent.position.x + 250, y: parent.position.y + siblings * 80 }
+      ? { x: parent.position.x + 250, y: parent.position.y }
       : { x: 100, y: 100 };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
@@ -160,20 +173,16 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
     }
 
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot]);
+    applyMindmapLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, applyMindmapLayout]);
 
   // Add sibling node (Enter) — creates a node with the same parent as the selected node
   const handleAddSibling = useCallback(() => {
     const selected = selectedNodes[0];
     if (!selected) return;
 
-    // Find the parent of the selected node
     const parentEdge = edges.find((e) => e.target === selected.id);
     if (!parentEdge) {
-      // Selected is root, can't add sibling — add child instead
       handleAddChild();
       return;
     }
@@ -195,10 +204,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild]);
+    applyMindmapLayout(nextNodes, nextEdges);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyMindmapLayout]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
