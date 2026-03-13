@@ -175,10 +175,11 @@ const WorkspaceList = () => {
                   </Button>
                 </div>
               </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         )}
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };

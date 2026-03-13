@@ -158,7 +158,7 @@ const AgendaPage = () => {
           onDelete={(id) => deleteMutation.mutate(id)}
           defaultDate={defaultDate}
         />
-      </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };

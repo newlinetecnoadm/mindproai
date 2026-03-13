@@ -279,8 +279,9 @@ const DiagramList = () => {
                     </div>
                   </div>
                 </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerContainer>
           </>
         )}
       </PageTransition>
