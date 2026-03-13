@@ -62,10 +62,17 @@ interface DiagramEditorCoreProps {
 }
 
 function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
-  const defaultNodes = initialNodes || [];
-  const defaultEdges = initialEdges || [];
-  const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
+  const getInitialLayout = () => {
+    const n = initialNodes || [];
+    const e = initialEdges || [];
+    if (diagramType === "mindmap" && n.length > 0) {
+      return autoLayoutMindMap(n, e);
+    }
+    return { nodes: n, edges: e };
+  };
+  const initialLayout = getInitialLayout();
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialLayout.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayout.edges);
   const [exporting, setExporting] = useState(false);
   const [theme, setTheme] = useState<EditorTheme>(
     editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
