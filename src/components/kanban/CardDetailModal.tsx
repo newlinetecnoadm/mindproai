@@ -45,6 +45,7 @@ const LABEL_COLORS = [
 const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }: CardDetailModalProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { logActivity } = useCardActivity();
 
   // Card data
   const { data: card } = useQuery({
