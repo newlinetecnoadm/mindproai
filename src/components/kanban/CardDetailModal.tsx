@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
+  Paperclip, Download, FileText, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -109,7 +110,17 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
-  // Local state
+  // Attachments
+  const { data: attachments = [] } = useQuery({
+    queryKey: ["card-attachments", cardId],
+    enabled: !!cardId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("card_attachments").select("*").eq("card_id", cardId!).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [newComment, setNewComment] = useState("");
@@ -132,6 +143,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["checklist-items", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-comments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-label-assignments", cardId] });
+    queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
     onCardUpdated();
   };
@@ -277,7 +289,54 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onSuccess: invalidateAll,
   });
 
-  if (!card) return null;
+  // Upload attachment
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length || !cardId) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `${cardId}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("card-attachments").upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("card-attachments").getPublicUrl(path);
+        await supabase.from("card_attachments").insert({
+          card_id: cardId,
+          name: file.name,
+          url: urlData.publicUrl,
+          mime_type: file.type || null,
+        });
+      }
+      invalidateAll();
+      toast.success("Anexo(s) adicionado(s)");
+    } catch {
+      toast.error("Erro ao fazer upload");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  // Delete attachment
+  const deleteAttachment = useMutation({
+    mutationFn: async (att: { id: string; url: string }) => {
+      // Extract storage path from URL
+      const urlParts = att.url.split("/card-attachments/");
+      if (urlParts[1]) {
+        await supabase.storage.from("card-attachments").remove([decodeURIComponent(urlParts[1])]);
+      }
+      const { error } = await supabase.from("card_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Anexo removido");
+    },
+    onError: () => toast.error("Erro ao remover anexo"),
+  });
+
 
   const assignedLabels = boardLabels.filter((l: any) => cardLabelIds.includes(l.id));
 
@@ -476,6 +535,56 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             >
               <CheckSquare className="w-3.5 h-3.5" /> Checklist
             </Button>
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Anexos</span>
+                {attachments.length > 0 && (
+                  <span className="text-xs text-muted-foreground">({attachments.length})</span>
+                )}
+              </div>
+              <label className="cursor-pointer">
+                <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploading ? "Enviando..." : "Adicionar"}
+                </span>
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                {attachments.map((att: any) => {
+                  const isImage = att.mime_type?.startsWith("image/");
+                  return (
+                    <div key={att.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/30 group">
+                      {isImage ? (
+                        <img src={att.url} alt={att.name} className="w-16 h-12 object-cover rounded shrink-0" />
+                      ) : (
+                        <div className="w-16 h-12 flex items-center justify-center rounded bg-muted shrink-0">
+                          <FileText className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{att.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {att.created_at && format(new Date(att.created_at), "dd MMM, HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-muted transition-colors" title="Download">
+                        <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                      </a>
+                      <button onClick={() => deleteAttachment.mutate({ id: att.id, url: att.url })} className="p-1.5 rounded hover:bg-destructive/10 transition-colors" title="Excluir">
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Comments */}
