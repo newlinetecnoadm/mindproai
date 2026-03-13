@@ -26,6 +26,7 @@ import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
+import NodeSearchBar from "./NodeSearchBar";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
@@ -78,6 +79,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
   );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasChanges = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -395,9 +397,25 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [nodes, edges, selectedNodes, setNodes, fitView]);
 
+  // Select and focus a node by ID (used by search)
+  const handleSearchSelect = useCallback((nodeId: string) => {
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+    setTimeout(() => fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 250 }), 10);
+  }, [setNodes, fitView]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ctrl+F always works, even in inputs
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if (e.key === "Escape" && searchOpen) {
+        setSearchOpen(false);
+        return;
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
       if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
@@ -420,7 +438,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, searchOpen]);
 
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
@@ -444,6 +462,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         exporting={exporting}
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
+      />
+      <NodeSearchBar
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        nodes={nodes}
+        onSelectNode={handleSearchSelect}
+        themeCardBg={theme.cardBg}
+        themeCardBorder={theme.cardBorder}
+        themeCardText={theme.cardText}
       />
       {/* Autosave indicator */}
       {saving && (

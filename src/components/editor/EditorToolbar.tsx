@@ -54,6 +54,7 @@ const shortcuts = [
   { keys: ["Ctrl", "Z"], desc: "Desfazer" },
   { keys: ["Ctrl", "⇧", "Z"], desc: "Refazer" },
   { keys: ["Ctrl", "D"], desc: "Duplicar nó" },
+  { keys: ["Ctrl", "F"], desc: "Buscar nó" },
 ];
 
 const Kbd = ({ children }: { children: string }) => (
