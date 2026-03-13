@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,6 +43,10 @@ interface EditorToolbarProps {
   onZoomOut: () => void;
   onFitView: () => void;
   onColorChange: (color: string) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   saving: boolean;
   hasSelection: boolean;
   diagramType: string;
@@ -50,10 +54,19 @@ interface EditorToolbarProps {
 
 const EditorToolbar = ({
   onAddNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onColorChange, saving, hasSelection, diagramType,
+  onColorChange, onUndo, onRedo, canUndo, canRedo, saving, hasSelection, diagramType,
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo} title="Desfazer (Ctrl+Z)">
+        <Undo2 className="w-4 h-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)">
+        <Redo2 className="w-4 h-4" />
+      </Button>
+
+      <div className="w-px h-5 bg-border mx-1" />
+
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onAddNode} title={addLabels[diagramType] || "Adicionar nó (Tab)"}>
         <Plus className="w-4 h-4" />
       </Button>
