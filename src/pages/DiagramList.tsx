@@ -297,6 +297,14 @@ const DiagramList = () => {
           </>
         )}
       </PageTransition>
+      <UpgradeModal
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        resource="diagrama"
+        currentCount={limits.currentDiagrams}
+        maxCount={limits.maxDiagrams}
+        planName={limits.displayName}
+      />
     </DashboardLayout>
   );
 };
