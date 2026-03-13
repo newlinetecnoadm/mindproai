@@ -650,6 +650,56 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </Popover>
           </div>
 
+          {/* Members */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Membros</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {allBoardUsers
+                .filter((u: any) => cardMemberIds.includes(u.user_id))
+                .map((u: any) => (
+                  <Badge
+                    key={u.user_id}
+                    variant="outline"
+                    className="text-xs cursor-pointer hover:bg-destructive/10"
+                    onClick={() => toggleMember.mutate(u.user_id)}
+                  >
+                    {u.full_name || u.email} ×
+                  </Badge>
+                ))}
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Adicionar membro
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3" align="start">
+                <p className="text-xs font-medium mb-2">Membros do board</p>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {allBoardUsers.map((u: any) => (
+                    <button
+                      key={u.user_id}
+                      onClick={() => toggleMember.mutate(u.user_id)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
+                        cardMemberIds.includes(u.user_id) ? "bg-muted ring-1 ring-primary/30" : "hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                        {(u.full_name || u.email || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate">{u.full_name || u.email}</span>
+                      {cardMemberIds.includes(u.user_id) && <CheckSquare className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Description */}
           <div>
             <div className="flex items-center gap-2 mb-2">
