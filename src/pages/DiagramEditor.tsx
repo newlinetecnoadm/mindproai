@@ -128,6 +128,7 @@ const DiagramEditor = () => {
           diagramType={diagramType}
           initialNodes={initialNodes}
           initialEdges={initialEdges}
+          initialThemeId={initialThemeId}
           onSave={handleSave}
           saving={saving}
         />
