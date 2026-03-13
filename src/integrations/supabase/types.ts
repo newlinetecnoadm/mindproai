@@ -839,8 +839,15 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
+          notify_agenda_event_updated: boolean
+          notify_agenda_reminders: boolean
+          notify_board_card_assigned: boolean
+          notify_board_checklist_done: boolean
+          notify_board_label_changed: boolean
           notify_card_moved: boolean
           notify_comments: boolean
+          notify_diagram_commented: boolean
+          notify_diagram_shared: boolean
           notify_due_soon: boolean
           notify_member_added: boolean
           onboarding_done: boolean | null
@@ -852,8 +859,15 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          notify_agenda_event_updated?: boolean
+          notify_agenda_reminders?: boolean
+          notify_board_card_assigned?: boolean
+          notify_board_checklist_done?: boolean
+          notify_board_label_changed?: boolean
           notify_card_moved?: boolean
           notify_comments?: boolean
+          notify_diagram_commented?: boolean
+          notify_diagram_shared?: boolean
           notify_due_soon?: boolean
           notify_member_added?: boolean
           onboarding_done?: boolean | null
@@ -865,8 +879,15 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          notify_agenda_event_updated?: boolean
+          notify_agenda_reminders?: boolean
+          notify_board_card_assigned?: boolean
+          notify_board_checklist_done?: boolean
+          notify_board_label_changed?: boolean
           notify_card_moved?: boolean
           notify_comments?: boolean
+          notify_diagram_commented?: boolean
+          notify_diagram_shared?: boolean
           notify_due_soon?: boolean
           notify_member_added?: boolean
           onboarding_done?: boolean | null
