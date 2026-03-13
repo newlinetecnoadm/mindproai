@@ -14,6 +14,8 @@ interface CalendarEvent {
   end_at: string;
   color: string | null;
   all_day: boolean | null;
+  card_id?: string | null;
+  board_name?: string | null;
 }
 
 interface CalendarGridProps {
