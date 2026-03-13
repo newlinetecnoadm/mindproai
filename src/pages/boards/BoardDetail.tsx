@@ -265,7 +265,8 @@ const BoardDetail = () => {
           onBlur={() => { if (boardTitle.trim() && boardTitle !== board.title) updateTitleMut.mutate(boardTitle); }}
           className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ShareBoardDialog boardId={id!} boardTitle={board.title} />
           <BoardFilters
             filters={filters}
             onChange={setFilters}
