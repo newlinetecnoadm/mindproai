@@ -229,6 +229,18 @@ const BoardDetail = () => {
       }
       if (oldCol && newCol && oldCol.id !== newCol.id) {
         await logActivity(cardId, "moved", { from: oldCol.title, to: newCol.title });
+        // Notify board members about card move
+        const boardUrl = `${window.location.origin}/boards/${id}`;
+        const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", id!);
+        const { data: boardData } = await supabase.from("boards").select("user_id").eq("id", id!).single();
+        const allUserIds = [...new Set([boardData?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+        supabase.functions.invoke("notify-board-event", {
+          body: {
+            type: "card_moved",
+            user_ids: allUserIds,
+            data: { card_title: oldCard?.title || "", from_column: oldCol.title, to_column: newCol.title, board_url: boardUrl },
+          },
+        }).catch(() => {});
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
