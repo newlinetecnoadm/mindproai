@@ -55,9 +55,12 @@ interface DiagramEditorCoreProps {
   initialThemeId?: string;
   onSave: (nodes: Node[], edges: Edge[], themeId: string) => Promise<void>;
   saving: boolean;
+  remoteNodes?: Node[];
+  remoteEdges?: Edge[];
+  remoteThemeId?: string;
 }
 
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
   const defaultNodes = initialNodes || [];
   const defaultEdges = initialEdges || [];
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
@@ -90,6 +93,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }, 2000);
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [nodes, edges, theme, onSave]);
+
+  // Apply remote updates from other users
+  const remoteUpdateRef = useRef(false);
+  useEffect(() => {
+    if (remoteNodes && remoteNodes.length > 0) {
+      remoteUpdateRef.current = true;
+      setNodes(remoteNodes);
+      setEdges(remoteEdges || []);
+      if (remoteThemeId) {
+        const newTheme = editorThemes.find((t) => t.id === remoteThemeId);
+        if (newTheme) setTheme(newTheme);
+      }
+      // Reset flag after React processes the state update
+      requestAnimationFrame(() => { remoteUpdateRef.current = false; });
+    }
+  }, [remoteNodes, remoteEdges, remoteThemeId, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
