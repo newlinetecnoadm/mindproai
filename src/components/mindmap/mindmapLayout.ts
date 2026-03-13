@@ -98,13 +98,41 @@ function layoutMindmapBranch(
   }
 }
 
+function countDescendants(tree: TreeNode): number {
+  let count = 1;
+  for (const child of tree.children) {
+    count += countDescendants(child);
+  }
+  return count;
+}
+
 function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
   positions.set(tree.id, { x: -ROOT_WIDTH / 2, y: -ROOT_HEIGHT / 2 });
 
   if (tree.children.length === 0) return;
 
-  const rightChildren = tree.children.filter((_, index) => index % 2 === 0);
-  const leftChildren = tree.children.filter((_, index) => index % 2 === 1);
+  // Balance by subtree weight: sort children by descendant count descending,
+  // then greedily assign to the lighter side
+  const childrenWithWeight = tree.children.map((child) => ({
+    child,
+    weight: child.subtreeHeight,
+  }));
+  childrenWithWeight.sort((a, b) => b.weight - a.weight);
+
+  const rightChildren: TreeNode[] = [];
+  const leftChildren: TreeNode[] = [];
+  let rightWeight = 0;
+  let leftWeight = 0;
+
+  for (const { child, weight } of childrenWithWeight) {
+    if (rightWeight <= leftWeight) {
+      rightChildren.push(child);
+      rightWeight += weight;
+    } else {
+      leftChildren.push(child);
+      leftWeight += weight;
+    }
+  }
 
   let rightY = -getGroupHeight(rightChildren) / 2;
   for (const child of rightChildren) {
