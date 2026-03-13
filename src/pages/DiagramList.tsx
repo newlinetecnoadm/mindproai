@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
