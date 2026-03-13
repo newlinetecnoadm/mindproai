@@ -1,17 +1,18 @@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, CreditCard, Brain, TrendingUp } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { useMemo } from "react";
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import KpiCards from "@/components/admin/KpiCards";
+import RevenueByPlanChart from "@/components/admin/RevenueByPlanChart";
+import RetentionChart from "@/components/admin/RetentionChart";
 
 const AdminDashboard = () => {
-  // Fetch raw data for stats + charts
   const { data: profiles } = useQuery({
     queryKey: ["admin-profiles-all"],
     queryFn: async () => {
@@ -26,7 +27,7 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscriptions")
-        .select("id, status, plan_id, created_at, canceled_at, subscription_plans(name, price_brl)");
+        .select("id, status, plan_id, created_at, canceled_at, subscription_plans(name, display_name, price_brl)");
       if (error) throw error;
       return data;
     },
@@ -50,9 +51,54 @@ const AdminDashboard = () => {
     },
   });
 
-  const activeSubs = subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0;
+  // Estimate DAU: profiles updated in last 7 days (proxy for activity)
+  const { data: dauCount } = useQuery({
+    queryKey: ["admin-dau-estimate"],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const { count, error } = await supabase
+        .from("user_profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("updated_at", sevenDaysAgo);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
-  // Build chart data for last 6 months
+  const activeSubs = subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0;
+  const totalUsers = profiles?.length ?? 0;
+
+  // Retention rate: active subs / total subs that ever existed
+  const retentionRate = useMemo(() => {
+    if (!subs || subs.length === 0) return 0;
+    return (activeSubs / subs.length) * 100;
+  }, [subs, activeSubs]);
+
+  // Revenue by plan
+  const revenueByPlan = useMemo(() => {
+    if (!subs) return [];
+    const planMap = new Map<string, { name: string; displayName: string; revenue: number; activeSubs: number }>();
+
+    subs.forEach((s: any) => {
+      const planName = (s as any).subscription_plans?.name ?? "unknown";
+      const displayName = (s as any).subscription_plans?.display_name ?? planName;
+      const price = Number((s as any).subscription_plans?.price_brl ?? 0);
+      const isActive = s.status === "active" || s.status === "trialing";
+
+      if (!planMap.has(planName)) {
+        planMap.set(planName, { name: planName, displayName, revenue: 0, activeSubs: 0 });
+      }
+      const entry = planMap.get(planName)!;
+      if (isActive) {
+        entry.revenue += price;
+        entry.activeSubs += 1;
+      }
+    });
+
+    return Array.from(planMap.values()).sort((a, b) => a.revenue - b.revenue);
+  }, [subs]);
+
+  // Chart data for last 6 months
   const chartData = useMemo(() => {
     const now = new Date();
     const months = eachMonthOfInterval({ start: subMonths(startOfMonth(now), 5), end: startOfMonth(now) });
@@ -61,17 +107,14 @@ const AdminDashboard = () => {
       const monthEnd = endOfMonth(month);
       const label = format(month, "MMM", { locale: ptBR });
 
-      // Users growth: users created up to this month
       const usersUpTo = profiles?.filter((p: any) => p.created_at && parseISO(p.created_at) <= monthEnd).length ?? 0;
 
-      // New users this month
       const newUsers = profiles?.filter((p: any) => {
         if (!p.created_at) return false;
         const d = parseISO(p.created_at);
         return d >= month && d <= monthEnd;
       }).length ?? 0;
 
-      // MRR: sum of active sub prices at end of month
       const mrr = subs?.reduce((acc: number, s: any) => {
         if (!s.created_at) return acc;
         const created = parseISO(s.created_at);
@@ -81,47 +124,47 @@ const AdminDashboard = () => {
         return acc + Number(price);
       }, 0) ?? 0;
 
-      // Churn: canceled this month
       const churned = subs?.filter((s: any) => {
         if (!s.canceled_at) return false;
         const d = parseISO(s.canceled_at);
         return d >= month && d <= monthEnd;
       }).length ?? 0;
 
-      return { month: label, users: usersUpTo, newUsers, mrr, churned };
+      // Retention: active at end of month / total created up to month
+      const totalSubsUpTo = subs?.filter((s: any) => s.created_at && parseISO(s.created_at) <= monthEnd).length ?? 0;
+      const activeAtMonth = subs?.filter((s: any) => {
+        if (!s.created_at) return false;
+        const created = parseISO(s.created_at);
+        if (created > monthEnd) return false;
+        if (s.canceled_at && parseISO(s.canceled_at) < month) return false;
+        return true;
+      }).length ?? 0;
+      const retention = totalSubsUpTo > 0 ? (activeAtMonth / totalSubsUpTo) * 100 : 100;
+
+      return { month: label, users: usersUpTo, newUsers, mrr, churned, retention };
     });
   }, [profiles, subs]);
-
-  const cards = [
-    { label: "Total de Usuários", value: profiles?.length ?? "—", icon: Users, color: "bg-primary/10 text-primary" },
-    { label: "Assinaturas Ativas", value: activeSubs, icon: CreditCard, color: "bg-success/10 text-success" },
-    { label: "Diagramas Criados", value: diagramCount ?? "—", icon: Brain, color: "bg-blue-500/10 text-blue-500" },
-    { label: "Boards Criados", value: boardCount ?? "—", icon: TrendingUp, color: "bg-purple-500/10 text-purple-500" },
-  ];
 
   const currentMRR = chartData[chartData.length - 1]?.mrr ?? 0;
 
   return (
     <AdminLayout>
-      <div className="p-6 lg:p-8 max-w-6xl">
+      <div className="p-6 lg:p-8 max-w-7xl">
         <h1 className="text-2xl font-display font-bold mb-1">Painel Administrativo</h1>
         <p className="text-muted-foreground mb-8">Visão geral do sistema Mind Pro AI</p>
 
         {/* KPI Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {cards.map((card) => (
-            <div key={card.label} className="p-5 rounded-xl border border-border bg-card">
-              <div className={`w-10 h-10 rounded-lg ${card.color} flex items-center justify-center mb-3`}>
-                <card.icon className="w-5 h-5" />
-              </div>
-              <p className="text-2xl font-bold">{card.value}</p>
-              <p className="text-sm text-muted-foreground">{card.label}</p>
-            </div>
-          ))}
-        </div>
+        <KpiCards
+          totalUsers={totalUsers}
+          activeSubs={activeSubs}
+          diagramCount={diagramCount ?? 0}
+          boardCount={boardCount ?? 0}
+          retentionRate={retentionRate}
+          dauEstimate={dauCount ?? 0}
+        />
 
-        {/* Charts */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* Charts - Row 1 */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-6">
           {/* MRR Chart */}
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="mb-4">
@@ -154,22 +197,23 @@ const AdminDashboard = () => {
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="mb-4">
               <h3 className="font-semibold text-sm">Crescimento de Usuários</h3>
-              <p className="text-2xl font-bold mt-1">{profiles?.length ?? 0} total</p>
+              <p className="text-2xl font-bold mt-1">{totalUsers} total</p>
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 90%)" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(0, 0%, 40%)" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(0, 0%, 40%)" />
-                <Tooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid hsl(30,10%,90%)", fontSize: 13 }}
-                />
+                <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid hsl(30,10%,90%)", fontSize: 13 }} />
                 <Line type="monotone" dataKey="users" name="Total" stroke="hsl(27, 100%, 48%)" strokeWidth={2} dot={{ r: 4 }} />
                 <Line type="monotone" dataKey="newUsers" name="Novos" stroke="hsl(221, 83%, 53%)" strokeWidth={2} dot={{ r: 4 }} strokeDasharray="5 5" />
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
 
+        {/* Charts - Row 2 */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
           {/* Churn Chart */}
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="mb-4">
@@ -209,6 +253,14 @@ const AdminDashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Revenue by Plan */}
+          <RevenueByPlanChart data={revenueByPlan} />
+        </div>
+
+        {/* Charts - Row 3: Retention */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <RetentionChart data={chartData.map((d) => ({ month: d.month, retention: d.retention }))} />
         </div>
       </div>
     </AdminLayout>
