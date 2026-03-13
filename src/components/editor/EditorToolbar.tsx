@@ -138,6 +138,9 @@ const EditorToolbar = ({
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView} title="Ajustar visão">
         <Maximize className="w-4 h-4" />
       </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReLayout} title="Reorganizar layout automático">
+        <LayoutGrid className="w-4 h-4" />
+      </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
 
