@@ -183,6 +183,9 @@ const EditorToolbar = ({
           <DropdownMenuItem onClick={onExportPdf}>
             <FileText className="w-3.5 h-3.5 mr-2" />
             Exportar PDF
+            {!canExportPdf && (
+              <span className="ml-auto text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRO</span>
+            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
