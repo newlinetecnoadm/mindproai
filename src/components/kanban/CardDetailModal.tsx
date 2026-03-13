@@ -413,6 +413,16 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             data: { card_title: cardTitle, board_url: boardUrl },
           },
         }).catch(() => {});
+        // In-app notification
+        if (userId !== user!.id) {
+          supabase.from("notifications").insert({
+            user_id: userId,
+            type: "member_added",
+            title: `Você foi adicionado ao card "${cardTitle}"`,
+            board_id: boardId,
+            card_id: cardId,
+          }).then(() => {});
+        }
       }
     },
     onSuccess: invalidateAll,
