@@ -330,6 +330,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
     applyAutoLayout(nextNodes, nextEdges);
+
+    // Auto-enter edit mode on the new node
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
   }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout]);
 
   const handleDelete = useCallback(() => {
