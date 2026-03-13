@@ -19,14 +19,14 @@ const configs = [
   },
   {
     title: "Google OAuth",
-    description: "Login social com Google (gerenciado pelo Lovable Cloud)",
+    description: "Login social com Google",
     icon: Globe,
     status: "ativo",
     fields: [],
   },
   {
     title: "API de IA",
-    description: "Modelos de IA para sugestões de diagramas (gerenciado pelo Lovable Cloud)",
+    description: "Modelos de IA para sugestões de diagramas",
     icon: Key,
     status: "ativo",
     fields: [],
