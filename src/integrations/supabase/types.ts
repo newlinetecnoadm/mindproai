@@ -746,6 +746,26 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_board_member: {
+        Args: { _board_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_board_owner: {
+        Args: { _board_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_diagram_collaborator: {
+        Args: { _diagram_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_diagram_editor: {
+        Args: { _diagram_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_diagram_owner: {
+        Args: { _diagram_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
