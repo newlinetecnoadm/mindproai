@@ -357,30 +357,58 @@ function getNodeDimensions(node: Node): { w: number; h: number } {
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
 }
 
+function getMindmapHandles(
+  sourcePos: { x: number; y: number },
+  targetPos: { x: number; y: number }
+): { sourceHandle: string; targetHandle: string } {
+  return targetPos.x >= sourcePos.x
+    ? { sourceHandle: "right", targetHandle: "left" }
+    : { sourceHandle: "left", targetHandle: "right" };
+}
+
+export function rerouteDiagramEdges(
+  nodes: Node[],
+  edges: Edge[],
+  diagramType: string
+): Edge[] {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+  return edges.map((edge) => {
+    const srcNode = nodeMap.get(edge.source);
+    const tgtNode = nodeMap.get(edge.target);
+    if (!srcNode || !tgtNode) return edge;
+
+    const srcPos = srcNode.position;
+    const tgtPos = tgtNode.position;
+    const { w: srcW, h: srcH } = getNodeDimensions(srcNode);
+    const { w: tgtW, h: tgtH } = getNodeDimensions(tgtNode);
+
+    const { sourceHandle, targetHandle } =
+      diagramType === "mindmap"
+        ? getMindmapHandles(srcPos, tgtPos)
+        : getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
+
+    return {
+      ...edge,
+      sourceHandle,
+      targetHandle,
+      type: edge.type || "smoothstep",
+    };
+  });
+}
+
 function applyPositions(
   nodes: Node[],
   edges: Edge[],
-  positions: Map<string, { x: number; y: number }>
+  positions: Map<string, { x: number; y: number }>,
+  diagramType: string
 ): { nodes: Node[]; edges: Edge[] } {
-  const newNodes = nodes.map((n) => {
-    const pos = positions.get(n.id);
-    return pos ? { ...n, position: pos } : n;
+  const newNodes = nodes.map((node) => {
+    const pos = positions.get(node.id);
+    return pos ? { ...node, position: pos } : node;
   });
 
-  const newEdges = edges.map((e) => {
-    const srcPos = positions.get(e.source);
-    const tgtPos = positions.get(e.target);
-    if (srcPos && tgtPos) {
-      const srcNode = nodes.find((n) => n.id === e.source);
-      const tgtNode = nodes.find((n) => n.id === e.target);
-      const { w: srcW, h: srcH } = srcNode ? getNodeDimensions(srcNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
-      const { w: tgtW, h: tgtH } = tgtNode ? getNodeDimensions(tgtNode) : { w: NODE_WIDTH, h: NODE_HEIGHT };
-
-      const { sourceHandle, targetHandle } = getBestHandles(srcPos, tgtPos, srcW, srcH, tgtW, tgtH);
-      return { ...e, sourceHandle, targetHandle, type: "smoothstep" };
-    }
-    return e;
-  });
+  const newEdges = rerouteDiagramEdges(newNodes, edges, diagramType);
 
   return { nodes: newNodes, edges: newEdges };
 }
