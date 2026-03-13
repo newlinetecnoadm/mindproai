@@ -26,7 +26,7 @@ const configs = [
   },
   {
     title: "API de IA",
-    description: "Modelos de IA para sugestões de diagramas (gerenciado pelo Lovable Cloud)",
+    description: "Modelos de IA para sugestões de diagramas",
     icon: Key,
     status: "ativo",
     fields: [],
