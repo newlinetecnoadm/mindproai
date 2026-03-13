@@ -393,7 +393,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onShapeChange={handleShapeChange}
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
-        onAddChild={handleAddNode}
+        onAddChild={handleAddChild}
       />
       <ReactFlow
         nodes={nodes}
