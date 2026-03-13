@@ -227,9 +227,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const onConnect = useCallback(
     (params: Connection) => {
       takeSnapshot();
-      setEdges((eds) => addEdge({ ...params, type: "smoothstep" }, eds));
+      setEdges((eds) => addEdge({ ...params, type: currentEdgeType }, eds));
     },
-    [setEdges, takeSnapshot]
+    [setEdges, takeSnapshot, currentEdgeType]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
