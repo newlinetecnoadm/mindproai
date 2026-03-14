@@ -195,15 +195,15 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
-  // Linked diagram details
+  const cardDiagramId = (card as any)?.diagram_id as string | null | undefined;
   const { data: linkedDiagram } = useQuery({
-    queryKey: ["linked-diagram", card?.diagram_id],
-    enabled: !!card?.diagram_id,
+    queryKey: ["linked-diagram", cardDiagramId],
+    enabled: !!cardDiagramId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("diagrams")
         .select("id, title, type, thumbnail")
-        .eq("id", card!.diagram_id!)
+        .eq("id", cardDiagramId!)
         .single();
       if (error) throw error;
       return data;
