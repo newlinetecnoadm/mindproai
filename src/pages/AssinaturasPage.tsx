@@ -1,13 +1,16 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, Loader2 } from "lucide-react";
+import { Check, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 const PLAN_PRICE_MAP: Record<string, string> = {
   pro: "price_1TAXMiEXDv2crum3SeNjqH89",
@@ -16,8 +19,11 @@ const PLAN_PRICE_MAP: Record<string, string> = {
 
 const AssinaturasPage = () => {
   const { data: currentPlan, isLoading: planLoading } = usePlan();
+  const queryClient = useQueryClient();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -77,6 +83,23 @@ const AssinaturasPage = () => {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setCancelLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+        toast.info("Use o portal para cancelar sua assinatura e retornar ao plano gratuito.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao abrir portal de cancelamento");
+    } finally {
+      setCancelLoading(false);
+      setCancelDialogOpen(false);
+    }
+  };
+
   const currentPlanName = currentPlan?.planName ?? "free";
   const trialDays = currentPlan?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(currentPlan.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -104,10 +127,15 @@ const AssinaturasPage = () => {
           </div>
           <div className="flex gap-2">
             {currentPlanName !== "free" && currentPlan?.status === "active" && (
-              <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
-                {portalLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                Gerenciar Assinatura
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
+                  {portalLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                  Gerenciar
+                </Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setCancelDialogOpen(true)}>
+                  Cancelar Plano
+                </Button>
+              </>
             )}
             {currentPlanName === "free" && <Button variant="hero">Fazer Upgrade</Button>}
           </div>
@@ -119,6 +147,7 @@ const AssinaturasPage = () => {
             const isCurrent = currentPlanName === plan.name;
             const isHighlighted = plan.name === "pro";
             const features = (plan.features as any)?.list ?? [];
+            const isDowngrade = currentPlanName !== "free" && plan.name === "free";
 
             return (
               <div
@@ -153,17 +182,45 @@ const AssinaturasPage = () => {
                 <Button
                   variant={isCurrent ? "secondary" : isHighlighted ? "hero" : "outline"}
                   className="w-full"
-                  disabled={isCurrent || plan.name === "free" || !!loadingPlan}
-                  onClick={() => handleCheckout(plan.name)}
+                  disabled={isCurrent || !!loadingPlan}
+                  onClick={() => {
+                    if (isDowngrade) {
+                      setCancelDialogOpen(true);
+                    } else if (plan.name !== "free") {
+                      handleCheckout(plan.name);
+                    }
+                  }}
                 >
                   {loadingPlan === plan.name && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                  {isCurrent ? "Plano Atual" : plan.name === "free" ? "Gratuito" : "Selecionar"}
+                  {isCurrent ? "Plano Atual" : isDowngrade ? "Voltar ao Gratuito" : plan.name === "free" ? "Gratuito" : "Selecionar"}
                 </Button>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Cancel/downgrade confirmation dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-warning" /> Cancelar Assinatura
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Ao cancelar, você retornará ao plano gratuito e perderá acesso aos recursos premium ao final do período atual.
+            Você será redirecionado ao portal de gestão para confirmar o cancelamento.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Manter Plano</Button>
+            <Button variant="destructive" onClick={handleCancelSubscription} disabled={cancelLoading}>
+              {cancelLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              Cancelar Assinatura
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
