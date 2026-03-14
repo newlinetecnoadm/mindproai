@@ -49,6 +49,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
+  smoothstep: AnimatedSmoothStepEdge as any,
   curved: CurvedEdge as any,
   orthogonal: OrthogonalEdge as any,
   straight: StraightEdge as any,
