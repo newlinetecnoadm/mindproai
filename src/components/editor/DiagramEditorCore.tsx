@@ -404,14 +404,17 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     takeSnapshot();
     const parentId = parentEdge.source;
     const parentDepth = getNodeDepth(parentId, edges);
-    const siblingColor = getColorForDepth(parentDepth + 1);
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: siblingColor };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: siblingColor };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: siblingColor };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: siblingColor };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: siblingColor };
+    // Sibling gets same color & variant as selected node
+    const siblingColor = (selected.data as any)?.color || getBranchColor(selected.id);
+    const variant = parentDepth >= 1 ? "branch" : undefined;
+
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: siblingColor, ...(variant ? { variant } : {}) };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: siblingColor, ...(variant ? { variant } : {}) };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: siblingColor, ...(variant ? { variant } : {}) };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: siblingColor, ...(variant ? { variant } : {}) };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: siblingColor, ...(variant ? { variant } : {}) };
 
     const pos = { x: selected.position.x, y: selected.position.y + 80 };
 
@@ -421,11 +424,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     applyAutoLayout(nextNodes, nextEdges);
 
-    // Auto-enter edit mode on the new node
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
     }, 150);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout]);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout, getBranchColor]);
 
   const handleDelete = useCallback(() => {
     const toDelete = new Set(selectedNodes.map((n) => n.id));
