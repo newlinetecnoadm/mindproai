@@ -525,9 +525,8 @@ const WorkspaceList = () => {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           onClick={() => {
-                            if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
-                              deleteWsMut.mutate(ws.id);
-                            }
+                            const wsBoards2 = boardsByWs.map.get(ws.id) || [];
+                            setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
                           }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
