@@ -166,6 +166,49 @@ const DiagramEditor = () => {
     );
   }
 
+  if (accessDenied) {
+    const handleRequestAccess = async () => {
+      if (!user || !id) return;
+      // Try to find the owner via a public query won't work due to RLS.
+      // We insert a request with owner_id as a placeholder - the edge function will resolve it.
+      const { error } = await supabase.from("access_requests" as any).insert({
+        resource_type: "diagram",
+        resource_id: id,
+        requester_id: user.id,
+        owner_id: user.id, // placeholder, will be resolved server-side
+        requested_role: "viewer",
+      } as any);
+      if (error) {
+        toast.error("Erro ao solicitar acesso");
+        return;
+      }
+      setRequestSent(true);
+      toast.success("Solicitação de acesso enviada ao proprietário");
+    };
+
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+            <ArrowLeft className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Acesso restrito</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            Você não tem permissão para acessar este diagrama. Solicite acesso ao proprietário.
+          </p>
+          {requestSent ? (
+            <p className="text-sm text-success font-medium">✓ Solicitação enviada</p>
+          ) : (
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate("/diagramas")}>Voltar</Button>
+              <Button variant="hero" onClick={handleRequestAccess}>Solicitar acesso</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
