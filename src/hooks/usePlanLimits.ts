@@ -85,7 +85,7 @@ export function usePlanLimits() {
     maxDiagrams,
     maxBoards,
     maxEvents,
-    maxCollaborators,
+    maxGuestsPerProject,
     exportPdf,
     aiSuggestions,
     currentDiagrams: diagramCount,
