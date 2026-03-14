@@ -46,14 +46,12 @@ const AdminPlans = () => {
 
   const updatePlanMut = useMutation({
     mutationFn: async (plan: any) => {
+      const { display_name, price_brl, is_active, max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list, id } = plan;
+      const features = { max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list };
       const { error } = await supabase
         .from("subscription_plans")
-        .update({
-          display_name: plan.display_name,
-          price_brl: plan.price_brl,
-          is_active: plan.is_active,
-        })
-        .eq("id", plan.id);
+        .update({ display_name, price_brl, is_active, features })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -65,8 +63,20 @@ const AdminPlans = () => {
   });
 
   const startEdit = (plan: any) => {
+    const f = plan.features ?? {};
     setEditingId(plan.id);
-    setEditValues({ display_name: plan.display_name, price_brl: plan.price_brl, is_active: plan.is_active });
+    setEditValues({
+      display_name: plan.display_name,
+      price_brl: plan.price_brl,
+      is_active: plan.is_active,
+      max_diagrams: f.max_diagrams ?? 3,
+      max_boards: f.max_boards ?? 2,
+      max_events: f.max_events ?? 10,
+      max_collaborators: f.max_collaborators ?? 0,
+      export_pdf: f.export_pdf ?? false,
+      ai_suggestions: f.ai_suggestions ?? false,
+      list: f.list ?? [],
+    });
   };
 
   return (
@@ -90,24 +100,92 @@ const AdminPlans = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       {isEditing ? (
-                        <div className="space-y-3 max-w-sm">
-                          <div>
-                            <Label className="text-xs">Nome exibido</Label>
-                            <Input
-                              value={editValues.display_name}
-                              onChange={(e) => setEditValues({ ...editValues, display_name: e.target.value })}
-                              className="h-9"
-                            />
+                        <div className="space-y-3 max-w-lg">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Nome exibido</Label>
+                              <Input
+                                value={editValues.display_name}
+                                onChange={(e) => setEditValues({ ...editValues, display_name: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Preço (BRL)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editValues.price_brl}
+                                onChange={(e) => setEditValues({ ...editValues, price_brl: parseFloat(e.target.value) })}
+                                className="h-9"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <Label className="text-xs">Preço (BRL)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={editValues.price_brl}
-                              onChange={(e) => setEditValues({ ...editValues, price_brl: parseFloat(e.target.value) })}
-                              className="h-9"
-                            />
+
+                          <div className="border-t border-border pt-3">
+                            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Limites (-1 = ilimitado)</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <div>
+                                <Label className="text-xs">Mapas mentais</Label>
+                                <Input
+                                  type="number"
+                                  value={editValues.max_diagrams}
+                                  onChange={(e) => setEditValues({ ...editValues, max_diagrams: parseInt(e.target.value) })}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Boards</Label>
+                                <Input
+                                  type="number"
+                                  value={editValues.max_boards}
+                                  onChange={(e) => setEditValues({ ...editValues, max_boards: parseInt(e.target.value) })}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Eventos/mês</Label>
+                                <Input
+                                  type="number"
+                                  value={editValues.max_events}
+                                  onChange={(e) => setEditValues({ ...editValues, max_events: parseInt(e.target.value) })}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Colaboradores</Label>
+                                <Input
+                                  type="number"
+                                  value={editValues.max_collaborators}
+                                  onChange={(e) => setEditValues({ ...editValues, max_collaborators: parseInt(e.target.value) })}
+                                  className="h-9"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-border pt-3">
+                            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Recursos</p>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editValues.export_pdf}
+                                  onChange={(e) => setEditValues({ ...editValues, export_pdf: e.target.checked })}
+                                  className="rounded border-border"
+                                />
+                                Exportar PDF
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editValues.ai_suggestions}
+                                  onChange={(e) => setEditValues({ ...editValues, ai_suggestions: e.target.checked })}
+                                  className="rounded border-border"
+                                />
+                                Sugestões IA
+                              </label>
+                            </div>
                           </div>
                           <div className="flex gap-2">
                             <Button
@@ -138,11 +216,27 @@ const AdminPlans = () => {
                             R$ {Number(plan.price_brl).toFixed(2).replace(".", ",")}
                             <span className="text-sm font-normal text-muted-foreground">/mês</span>
                           </p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Users className="w-4 h-4" />
                               {counts?.active ?? 0} ativos / {counts?.total ?? 0} total
                             </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {(() => {
+                              const f = plan.features ?? {};
+                              const fmt = (v: number) => v === -1 ? "∞" : v;
+                              return (
+                                <>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_diagrams ?? 3)} mapas</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_boards ?? 2)} boards</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_events ?? 10)} eventos/mês</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_collaborators ?? 0)} colaboradores</Badge>
+                                  {f.export_pdf && <Badge variant="secondary" className="text-xs">PDF</Badge>}
+                                  {f.ai_suggestions && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                                </>
+                              );
+                            })()}
                           </div>
                         </>
                       )}
