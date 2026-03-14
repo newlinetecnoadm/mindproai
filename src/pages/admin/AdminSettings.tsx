@@ -198,7 +198,7 @@ const AdminSettings = () => {
               {provider === "lovable" && (
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
                   <p className="text-xs text-muted-foreground">
-                    <strong>Lovable AI</strong> está integrado automaticamente. Nenhuma chave é necessária.
+                    <strong>Mind Pro AI</strong> está integrado automaticamente. Nenhuma chave é necessária.
                     O sistema usa créditos inclusos no plano.
                   </p>
                 </div>
