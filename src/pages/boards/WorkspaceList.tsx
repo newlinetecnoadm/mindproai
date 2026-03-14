@@ -282,8 +282,19 @@ const WorkspaceList = () => {
       toast.success("Workspace removido");
     },
   });
+  const renameWsMut = useMutation({
+    mutationFn: async ({ wsId, title }: { wsId: string; title: string }) => {
+      const { error } = await supabase.from("workspaces" as any).update({ title } as any).eq("id", wsId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchWs();
+      setRenamingWs(null);
+      toast.success("Workspace renomeado");
+    },
+  });
 
-  const moveBoardMut = useMutation({
+
     mutationFn: async ({ boardId, wsId }: { boardId: string; wsId: string | null }) => {
       const { error } = await supabase.from("boards").update({ workspace_id: wsId } as any).eq("id", boardId);
       if (error) throw error;
