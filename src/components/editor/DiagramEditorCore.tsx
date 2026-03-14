@@ -36,7 +36,19 @@ import NodeSearchBar from "./NodeSearchBar";
 import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
-import { editorThemes, type EditorTheme } from "./editorThemes";
+import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
+
+/** Derive UI chrome colors from a theme (bg + edge only) */
+function themeUI(t: EditorTheme) {
+  const dark = isColorDark(t.bg);
+  return {
+    cardBg: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.92)",
+    cardBorder: dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)",
+    cardText: dark ? "#e2e8f0" : "#1f1f1f",
+    minimapNode: t.edgeColor,
+    accentColor: t.edgeColor,
+  };
+}
 
 const nodeTypes = {
   mindmap: MindMapNode as any,
