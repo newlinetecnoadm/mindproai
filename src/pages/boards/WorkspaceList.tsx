@@ -565,6 +565,45 @@ const WorkspaceList = () => {
           maxCount={limits.maxBoards}
           planName={limits.displayName}
         />
+
+        {/* Rename workspace dialog */}
+        <Dialog open={!!renamingWs} onOpenChange={(v) => { if (!v) setRenamingWs(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Renomear Workspace</DialogTitle>
+            </DialogHeader>
+            <Input
+              value={renamingWs?.title || ""}
+              onChange={(e) => setRenamingWs((prev) => prev ? { ...prev, title: e.target.value } : null)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renamingWs?.title.trim()) {
+                  renameWsMut.mutate({ wsId: renamingWs.id, title: renamingWs.title.trim() });
+                }
+              }}
+              autoFocus
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRenamingWs(null)}>Cancelar</Button>
+              <Button
+                variant="hero"
+                disabled={!renamingWs?.title.trim() || renameWsMut.isPending}
+                onClick={() => renamingWs && renameWsMut.mutate({ wsId: renamingWs.id, title: renamingWs.title.trim() })}
+              >
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share workspace dialog */}
+        {shareWs && (
+          <ShareWorkspaceDialog
+            workspaceId={shareWs.id}
+            workspaceTitle={shareWs.title}
+            open={!!shareWs}
+            onOpenChange={(v) => { if (!v) setShareWs(null); }}
+          />
+        )}
       </PageTransition>
     </DashboardLayout>
   );
