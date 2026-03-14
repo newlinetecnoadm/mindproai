@@ -67,7 +67,7 @@ const FloatingNavBar = ({ activePanel, onTogglePanel }: FloatingNavBarProps) => 
       animate={{ y: 0, opacity: 1 }}
       className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none"
     >
-      <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-lg">
+      <div className="pointer-events-auto flex items-center gap-1 px-2 py-1.5 rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-lg">
         {navItems.map((item) => {
           const isActive = item.panel
             ? activePanel === item.panel
