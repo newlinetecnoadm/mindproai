@@ -33,7 +33,7 @@ interface KanbanColumnProps {
   labelsMap?: Map<string, CardLabel[]>;
 }
 
-const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds }: KanbanColumnProps) => {
+const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds, labelsMap }: KanbanColumnProps) => {
   const [addingCard, setAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
