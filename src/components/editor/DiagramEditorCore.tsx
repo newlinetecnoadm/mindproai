@@ -888,7 +888,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
-        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: 2 } }}
+        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
         proOptions={{ hideAttribution: true }}
         style={{ backgroundColor: theme.bg }}
       >
