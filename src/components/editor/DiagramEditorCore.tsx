@@ -857,6 +857,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
+        onNodeContextMenu={handleNodeContextMenu}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
