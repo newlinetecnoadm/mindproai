@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import KanbanColumn, { type ColumnData } from "./KanbanColumn";
 import KanbanCard, { type CardData } from "./KanbanCard";
 import { Plus } from "lucide-react";
@@ -27,6 +27,7 @@ interface KanbanBoardProps {
   onAddColumn: (title: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
+  onReorderColumns?: (columnIds: string[]) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
 }
 
@@ -40,9 +41,11 @@ const KanbanBoard = ({
   onAddColumn,
   onDeleteColumn,
   onRenameColumn,
+  onReorderColumns,
   onDropInboxItem,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
+  const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
 
@@ -55,41 +58,66 @@ const KanbanBoard = ({
     [cards]
   );
 
+  const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const card = cards.find((c) => c.id === active.id);
-    if (card) setActiveCard(card);
+    const type = active.data.current?.type;
+
+    if (type === "column-sortable") {
+      const col = sortedColumns.find((c) => c.id === active.data.current?.columnId);
+      if (col) setActiveColumn(col);
+    } else {
+      const card = cards.find((c) => c.id === active.id);
+      if (card) setActiveCard(card);
+    }
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = (_event: DragOverEvent) => {
     // handled in dragEnd
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+
+    // Reset overlays
     setActiveCard(null);
+    setActiveColumn(null);
 
     if (!over) return;
 
-    const activeCard = cards.find((c) => c.id === active.id);
-    if (!activeCard) return;
+    // Column reorder
+    if (active.data.current?.type === "column-sortable") {
+      if (over.data.current?.type === "column-sortable") {
+        const oldIndex = sortedColumns.findIndex((c) => c.id === active.data.current?.columnId);
+        const newIndex = sortedColumns.findIndex((c) => c.id === over.data.current?.columnId);
+        if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
+          const reordered = arrayMove(sortedColumns, oldIndex, newIndex);
+          onReorderColumns?.(reordered.map((c) => c.id));
+        }
+      }
+      return;
+    }
 
-    // Determine target column
+    // Card drag logic
+    const activeCardData = cards.find((c) => c.id === active.id);
+    if (!activeCardData) return;
+
     let targetColumnId: string;
     let targetCardId: string | null = null;
 
     if (over.data.current?.type === "column") {
       targetColumnId = over.data.current.columnId;
+    } else if (over.data.current?.type === "column-sortable") {
+      targetColumnId = over.data.current.columnId;
     } else {
-      // Dropped on a card
       const overCard = cards.find((c) => c.id === over.id);
       if (!overCard) return;
       targetColumnId = overCard.column_id;
       targetCardId = overCard.id;
     }
 
-    if (activeCard.column_id === targetColumnId) {
-      // Reorder within same column
+    if (activeCardData.column_id === targetColumnId) {
       const columnCards = getColumnCards(targetColumnId);
       const oldIndex = columnCards.findIndex((c) => c.id === active.id);
       const newIndex = targetCardId
@@ -101,12 +129,11 @@ const KanbanBoard = ({
         onReorderCards(targetColumnId, reordered.map((c) => c.id));
       }
     } else {
-      // Move to different column
       const targetCards = getColumnCards(targetColumnId);
       const newPosition = targetCardId
         ? targetCards.findIndex((c) => c.id === targetCardId)
         : targetCards.length;
-      onMoveCard(activeCard.id, targetColumnId, newPosition);
+      onMoveCard(activeCardData.id, targetColumnId, newPosition);
     }
   };
 
@@ -118,8 +145,6 @@ const KanbanBoard = ({
     }
   };
 
-  const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
-
   return (
     <DndContext
       sensors={sensors}
@@ -129,22 +154,24 @@ const KanbanBoard = ({
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 p-6 overflow-x-auto h-full items-start">
-        {sortedColumns.map((col) => (
-          <KanbanColumn
-            key={col.id}
-            column={col}
-            cards={getColumnCards(col.id)}
-            onAddCard={onAddCard}
-            onCardClick={onCardClick}
-            onDeleteColumn={onDeleteColumn}
-            onRenameColumn={onRenameColumn}
-            onDropInboxItem={onDropInboxItem}
-          />
-        ))}
+        <SortableContext items={sortedColumns.map((c) => `col-${c.id}`)} strategy={horizontalListSortingStrategy}>
+          {sortedColumns.map((col) => (
+            <KanbanColumn
+              key={col.id}
+              column={col}
+              cards={getColumnCards(col.id)}
+              onAddCard={onAddCard}
+              onCardClick={onCardClick}
+              onDeleteColumn={onDeleteColumn}
+              onRenameColumn={onRenameColumn}
+              onDropInboxItem={onDropInboxItem}
+            />
+          ))}
+        </SortableContext>
 
         {/* Add column */}
         {addingColumn ? (
-          <div className="w-72 shrink-0 p-3 bg-muted/50 rounded-xl border border-border space-y-2">
+          <div className="w-72 shrink-0 p-3 bg-secondary/80 rounded-xl border border-border space-y-2">
             <Input
               placeholder="Nome da coluna..."
               value={newColumnTitle}
@@ -179,6 +206,14 @@ const KanbanBoard = ({
         {activeCard && (
           <div className="rotate-3 opacity-90">
             <KanbanCard card={activeCard} />
+          </div>
+        )}
+        {activeColumn && (
+          <div className="rotate-2 opacity-80 w-72">
+            <div className="bg-secondary/90 rounded-xl border border-border p-3">
+              <h3 className="text-sm font-semibold text-foreground">{activeColumn.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1">{getColumnCards(activeColumn.id).length} cards</p>
+            </div>
           </div>
         )}
       </DragOverlay>

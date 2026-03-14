@@ -1,7 +1,9 @@
 import { useDroppable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
-import { Plus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2, Pencil, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,7 +39,26 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
 
   const [nativeDragOver, setNativeDragOver] = useState(false);
 
-  const { setNodeRef, isOver } = useDroppable({
+  // Sortable for column reordering
+  const {
+    attributes: sortableAttributes,
+    listeners: sortableListeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition: sortableTransition,
+    isDragging: isColumnDragging,
+  } = useSortable({
+    id: `col-${column.id}`,
+    data: { type: "column-sortable", columnId: column.id },
+  });
+
+  const sortableStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition: sortableTransition,
+  };
+
+  // Droppable for cards
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `column-${column.id}`,
     data: { type: "column", columnId: column.id },
   });
@@ -82,28 +103,41 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
 
   return (
     <div
+      ref={setSortableRef}
+      style={sortableStyle}
       className={cn(
-        "flex flex-col w-72 shrink-0 bg-muted/50 rounded-xl border border-border transition-all",
-        (isOver || nativeDragOver) && "ring-2 ring-primary/30"
+        "flex flex-col w-72 shrink-0 rounded-xl border transition-all",
+        "bg-secondary/70 border-border/60",
+        (isOver || nativeDragOver) && "ring-2 ring-primary/30",
+        isColumnDragging && "opacity-40"
       )}
       onDragOver={handleNativeDragOver}
       onDragLeave={handleNativeDragLeave}
       onDrop={handleNativeDrop}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
+        {/* Drag handle for column */}
+        <button
+          {...sortableAttributes}
+          {...sortableListeners}
+          className="opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0 mr-1.5"
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </button>
+
         {editingTitle ? (
           <Input
             value={columnTitle}
             onChange={(e) => setColumnTitle(e.target.value)}
             onBlur={handleRename}
             onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            className="h-7 text-sm font-semibold"
+            className="h-7 text-sm font-semibold flex-1"
             autoFocus
           />
         ) : (
           <h3
-            className="text-sm font-semibold truncate cursor-pointer hover:text-primary transition-colors"
+            className="text-sm font-semibold truncate cursor-pointer hover:text-primary transition-colors flex-1"
             onDoubleClick={() => setEditingTitle(true)}
           >
             {column.title}
@@ -133,7 +167,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       </div>
 
       {/* Cards */}
-      <div ref={setNodeRef} className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
+      <div ref={setDropRef} className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
         <SortableContext items={sortedCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {sortedCards.map((card) => (
             <KanbanCard key={card.id} card={card} onClick={() => onCardClick?.(card)} />
