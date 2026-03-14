@@ -645,9 +645,12 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               <Badge
                 variant="outline"
                 className="text-xs gap-1 cursor-pointer hover:bg-primary/10 border-primary/30 text-primary"
-                onClick={() => setDiagramPreviewId(linkedDiagram.id)}
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate(`/diagramas/${linkedDiagram.id}`);
+                }}
               >
-                <GitBranch className="w-3 h-3" />
+                <ExternalLink className="w-3 h-3" />
                 {linkedDiagram.title}
               </Badge>
             ) : (
