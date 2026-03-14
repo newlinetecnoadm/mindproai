@@ -29,6 +29,7 @@ interface KanbanBoardProps {
   onRenameColumn: (columnId: string, title: string) => void;
   onReorderColumns?: (columnIds: string[]) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
+  highlightedCardIds?: Set<string>;
 }
 
 const KanbanBoard = ({
