@@ -72,7 +72,7 @@ const AdminPlans = () => {
       max_diagrams: f.max_diagrams ?? 3,
       max_boards: f.max_boards ?? 2,
       max_events: f.max_events ?? 10,
-      max_collaborators: f.max_collaborators ?? 0,
+      max_guests_per_project: f.max_guests_per_project ?? f.max_collaborators ?? 0,
       export_pdf: f.export_pdf ?? false,
       ai_suggestions: f.ai_suggestions ?? false,
       list: f.list ?? [],
