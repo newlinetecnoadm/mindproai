@@ -67,6 +67,7 @@ export type Database = {
           cover_image: string | null
           created_at: string | null
           description: string | null
+          diagram_id: string | null
           due_date: string | null
           id: string
           is_complete: boolean | null
@@ -81,6 +82,7 @@ export type Database = {
           cover_image?: string | null
           created_at?: string | null
           description?: string | null
+          diagram_id?: string | null
           due_date?: string | null
           id?: string
           is_complete?: boolean | null
@@ -95,6 +97,7 @@ export type Database = {
           cover_image?: string | null
           created_at?: string | null
           description?: string | null
+          diagram_id?: string | null
           due_date?: string | null
           id?: string
           is_complete?: boolean | null
@@ -115,6 +118,13 @@ export type Database = {
             columns: ["column_id"]
             isOneToOne: false
             referencedRelation: "board_columns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_cards_diagram_id_fkey"
+            columns: ["diagram_id"]
+            isOneToOne: false
+            referencedRelation: "diagrams"
             referencedColumns: ["id"]
           },
         ]
