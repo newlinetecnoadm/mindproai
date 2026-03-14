@@ -16,6 +16,7 @@ export interface EditorTheme {
   edgeAnimation: "none" | "dash" | "flow" | "pulse" | "glow" | "neon";
   edgeDashArray?: string;
   edgeOpacity?: number;
+  isCustom?: boolean;
 }
 
 export const editorThemes: EditorTheme[] = [
@@ -23,54 +24,35 @@ export const editorThemes: EditorTheme[] = [
     id: "default",
     name: "Padrão",
     emoji: "⚡",
-    bg: "hsl(var(--background))",
-    dotColor: "hsl(var(--border))",
-    edgeColor: "hsl(var(--border))",
-    nodeColor: "hsl(var(--primary))",
-    cardBg: "hsl(var(--card))",
-    cardBorder: "hsl(var(--border))",
-    cardText: "hsl(var(--foreground))",
-    minimapBg: "hsl(var(--card))",
-    minimapNode: "hsl(var(--primary))",
-    minimapMask: "hsl(var(--muted) / 0.7)",
+    bg: "#fcfcfc",
+    dotColor: "#e5e5e5",
+    edgeColor: "#a3a3a3",
+    nodeColor: "#f97316",
+    cardBg: "#ffffff",
+    cardBorder: "#e5e5e5",
+    cardText: "#1f1f1f",
+    minimapBg: "#ffffff",
+    minimapNode: "#f97316",
+    minimapMask: "rgba(250, 250, 250, 0.7)",
     edgeStrokeWidth: 2,
     edgeAnimation: "none",
   },
   {
-    id: "workflow",
-    name: "Workflow",
-    emoji: "⚙️",
-    bg: "#1a1a2e",
-    dotColor: "#16213e",
-    edgeColor: "#00b4d8",
-    nodeColor: "#00b4d8",
-    cardBg: "#16213e",
-    cardBorder: "#0f3460",
-    cardText: "#caf0f8",
-    minimapBg: "#16213e",
-    minimapNode: "#00b4d8",
-    minimapMask: "rgba(26, 26, 46, 0.7)",
-    edgeStrokeWidth: 2,
-    edgeAnimation: "flow",
-    edgeDashArray: "10 5",
-  },
-  {
-    id: "neon",
-    name: "Neon",
-    emoji: "💜",
-    bg: "#0a0a0a",
-    dotColor: "#1a1a1a",
-    edgeColor: "#e040fb",
-    nodeColor: "#e040fb",
-    cardBg: "#141414",
-    cardBorder: "#2a2a2a",
-    cardText: "#f3e5f5",
-    minimapBg: "#141414",
-    minimapNode: "#e040fb",
-    minimapMask: "rgba(10, 10, 10, 0.7)",
-    edgeStrokeWidth: 2.5,
-    edgeAnimation: "neon",
-    edgeOpacity: 0.95,
+    id: "minimal",
+    name: "Minimalista",
+    emoji: "✨",
+    bg: "#fafafa",
+    dotColor: "#e5e5e5",
+    edgeColor: "#a3a3a3",
+    nodeColor: "#171717",
+    cardBg: "#ffffff",
+    cardBorder: "#e5e5e5",
+    cardText: "#171717",
+    minimapBg: "#ffffff",
+    minimapNode: "#171717",
+    minimapMask: "rgba(250, 250, 250, 0.7)",
+    edgeStrokeWidth: 1.5,
+    edgeAnimation: "none",
   },
   {
     id: "pastel",
@@ -88,6 +70,24 @@ export const editorThemes: EditorTheme[] = [
     minimapMask: "rgba(254, 247, 240, 0.7)",
     edgeStrokeWidth: 2,
     edgeAnimation: "none",
+  },
+  {
+    id: "ocean",
+    name: "Oceano",
+    emoji: "🌊",
+    bg: "#0c1929",
+    dotColor: "#1a3050",
+    edgeColor: "#38bdf8",
+    nodeColor: "#38bdf8",
+    cardBg: "#132640",
+    cardBorder: "#1e4080",
+    cardText: "#bae6fd",
+    minimapBg: "#132640",
+    minimapNode: "#38bdf8",
+    minimapMask: "rgba(12, 25, 41, 0.7)",
+    edgeStrokeWidth: 2,
+    edgeAnimation: "dash",
+    edgeDashArray: "6 3",
   },
   {
     id: "night",
@@ -126,24 +126,6 @@ export const editorThemes: EditorTheme[] = [
     edgeDashArray: "8 4",
   },
   {
-    id: "ocean",
-    name: "Oceano",
-    emoji: "🌊",
-    bg: "#0c1929",
-    dotColor: "#1a3050",
-    edgeColor: "#38bdf8",
-    nodeColor: "#38bdf8",
-    cardBg: "#132640",
-    cardBorder: "#1e4080",
-    cardText: "#bae6fd",
-    minimapBg: "#132640",
-    minimapNode: "#38bdf8",
-    minimapMask: "rgba(12, 25, 41, 0.7)",
-    edgeStrokeWidth: 2,
-    edgeAnimation: "dash",
-    edgeDashArray: "6 3",
-  },
-  {
     id: "sunset",
     name: "Pôr do Sol",
     emoji: "🌅",
@@ -160,6 +142,42 @@ export const editorThemes: EditorTheme[] = [
     edgeStrokeWidth: 2.5,
     edgeAnimation: "pulse",
     edgeOpacity: 0.85,
+  },
+  {
+    id: "workflow",
+    name: "Workflow",
+    emoji: "⚙️",
+    bg: "#1a1a2e",
+    dotColor: "#16213e",
+    edgeColor: "#00b4d8",
+    nodeColor: "#00b4d8",
+    cardBg: "#16213e",
+    cardBorder: "#0f3460",
+    cardText: "#caf0f8",
+    minimapBg: "#16213e",
+    minimapNode: "#00b4d8",
+    minimapMask: "rgba(26, 26, 46, 0.7)",
+    edgeStrokeWidth: 2,
+    edgeAnimation: "flow",
+    edgeDashArray: "10 5",
+  },
+  {
+    id: "neon",
+    name: "Neon",
+    emoji: "💜",
+    bg: "#0a0a0a",
+    dotColor: "#1a1a1a",
+    edgeColor: "#e040fb",
+    nodeColor: "#e040fb",
+    cardBg: "#141414",
+    cardBorder: "#2a2a2a",
+    cardText: "#f3e5f5",
+    minimapBg: "#141414",
+    minimapNode: "#e040fb",
+    minimapMask: "rgba(10, 10, 10, 0.7)",
+    edgeStrokeWidth: 2.5,
+    edgeAnimation: "neon",
+    edgeOpacity: 0.95,
   },
   {
     id: "cyberpunk",
@@ -197,21 +215,65 @@ export const editorThemes: EditorTheme[] = [
     edgeAnimation: "dash",
     edgeDashArray: "4 4",
   },
-  {
-    id: "minimal",
-    name: "Minimalista",
-    emoji: "✨",
-    bg: "#fafafa",
-    dotColor: "#e5e5e5",
-    edgeColor: "#a3a3a3",
-    nodeColor: "#171717",
-    cardBg: "#ffffff",
-    cardBorder: "#e5e5e5",
-    cardText: "#171717",
-    minimapBg: "#ffffff",
-    minimapNode: "#171717",
-    minimapMask: "rgba(250, 250, 250, 0.7)",
-    edgeStrokeWidth: 1.5,
-    edgeAnimation: "none",
-  },
 ];
+
+export function createCustomTheme(bg: string, edgeColor: string): EditorTheme {
+  // Determine if the background is dark
+  const isDark = isColorDark(bg);
+  return {
+    id: "custom",
+    name: "Personalizado",
+    emoji: "🎯",
+    bg,
+    dotColor: isDark ? lighten(bg, 15) : darken(bg, 8),
+    edgeColor,
+    nodeColor: edgeColor,
+    cardBg: isDark ? lighten(bg, 8) : "#ffffff",
+    cardBorder: isDark ? lighten(bg, 20) : darken(bg, 12),
+    cardText: isDark ? "#e2e8f0" : "#1f1f1f",
+    minimapBg: isDark ? lighten(bg, 8) : "#ffffff",
+    minimapNode: edgeColor,
+    minimapMask: isDark ? `${bg}b3` : `${bg}b3`,
+    edgeStrokeWidth: 2,
+    edgeAnimation: "none",
+    isCustom: true,
+  };
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return "#" + [r, g, b].map(c => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
+}
+
+function isColorDark(hex: string): boolean {
+  try {
+    const [r, g, b] = hexToRgb(hex);
+    return (r * 299 + g * 587 + b * 114) / 1000 < 128;
+  } catch {
+    return false;
+  }
+}
+
+function lighten(hex: string, percent: number): string {
+  try {
+    const [r, g, b] = hexToRgb(hex);
+    const amt = (255 * percent) / 100;
+    return rgbToHex(r + amt, g + amt, b + amt);
+  } catch {
+    return hex;
+  }
+}
+
+function darken(hex: string, percent: number): string {
+  try {
+    const [r, g, b] = hexToRgb(hex);
+    const amt = (255 * percent) / 100;
+    return rgbToHex(r - amt, g - amt, b - amt);
+  } catch {
+    return hex;
+  }
+}
