@@ -478,27 +478,33 @@ const WorkspaceList = () => {
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
                         <Plus className="w-3 h-3 mr-1" /> Board
                       </Button>
-                      {!ws.is_default && (
-                        <DropdownMenu>
+                      <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7">
                               <MoreHorizontal className="w-3.5 h-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
-                                  deleteWsMut.mutate(ws.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover workspace
+                            <DropdownMenuItem onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
+                              <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
+                              <Share2 className="w-3.5 h-3.5 mr-2" /> Compartilhar
+                            </DropdownMenuItem>
+                            {!ws.is_default && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
+                                    deleteWsMut.mutate(ws.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
                     </div>
                   </div>
                   {!isCollapsed && (
