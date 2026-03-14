@@ -841,13 +841,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             />
           </div>
 
-          {/* Linked Diagram - inline next to labels */}
-
-          <DiagramPreviewDialog
-            diagramId={diagramPreviewId}
-            open={!!diagramPreviewId}
-            onOpenChange={(o) => { if (!o) setDiagramPreviewId(null); }}
-          />
+          {/* Diagram link is now a direct redirect - no preview dialog */}
 
           {/* Checklists */}
           {checklists.map((cl: any) => {
