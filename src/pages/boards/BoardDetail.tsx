@@ -31,6 +31,7 @@ const BoardDetail = () => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
   const [activePanel, setActivePanel] = useState<"inbox" | "planner" | null>(null);
+  const [realtimeHighlightedCards, setRealtimeHighlightedCards] = useState<Set<string>>(new Set());
   const { logActivity } = useCardActivity();
   const { createNotification } = useNotifications();
 
