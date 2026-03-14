@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ai-map-assist]
 verify_jwt = false
+
+[functions.ai-board-assist]
+verify_jwt = false
