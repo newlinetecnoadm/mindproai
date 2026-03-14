@@ -225,13 +225,10 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       if ("due_date" in updates) {
         await syncCardEvent(updates.due_date);
       }
-      // Log activities
+      // Log activities (skip due_date — it's just an editable field)
       if (cardId) {
         if ("is_complete" in updates) {
           await logActivity(cardId, updates.is_complete ? "completed" : "uncompleted");
-        }
-        if ("due_date" in updates) {
-          await logActivity(cardId, updates.due_date ? "due_date_set" : "due_date_removed", updates.due_date ? { date: new Date(updates.due_date).toLocaleDateString("pt-BR") } : {});
         }
         if ("description" in updates) {
           await logActivity(cardId, "description_updated");

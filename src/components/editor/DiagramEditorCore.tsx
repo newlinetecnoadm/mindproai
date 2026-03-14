@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
 import { autoLayoutDiagram, rerouteDiagramEdges } from "@/components/mindmap/mindmapLayout";
+import { getNodeDepth, getColorForDepth, assignDepthColors } from "@/components/mindmap/depthColors";
 import {
   ReactFlow,
   addEdge,
@@ -298,14 +299,16 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
 
     takeSnapshot();
-    const colorIdx = nodes.length % childColors.length;
+    const parentDepth = getNodeDepth(parent.id, edges);
+    const childDepth = parentDepth + 1;
+    const childColor = getColorForDepth(childDepth);
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColor };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColor };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColor };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColor };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColor };
 
     // Temporary position — layout will fix it
     const pos = { x: parent.position.x + 250, y: parent.position.y };
@@ -367,14 +370,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     takeSnapshot();
     const parentId = parentEdge.source;
-    const colorIdx = nodes.length % childColors.length;
+    const parentDepth = getNodeDepth(parentId, edges);
+    const siblingColor = getColorForDepth(parentDepth + 1);
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: siblingColor };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: siblingColor };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: siblingColor };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: siblingColor };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: siblingColor };
 
     const pos = { x: selected.position.x, y: selected.position.y + 80 };
 
@@ -428,6 +432,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       takeSnapshot();
       const ids = new Set(selectedNodes.map((n) => n.id));
       setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, shape } } : n));
+    },
+    [selectedNodes, setNodes, takeSnapshot]
+  );
+
+  const handleVariantChange = useCallback(
+    (variant: string) => {
+      takeSnapshot();
+      const ids = new Set(selectedNodes.map((n) => n.id));
+      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, variant } } : n));
     },
     [selectedNodes, setNodes, takeSnapshot]
   );
@@ -713,27 +726,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // AI: apply generated map
   const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
     takeSnapshot();
-    const colorIdx = (i: number) => childColors[i % childColors.length];
 
-    const newNodes: Node[] = genNodes.map((n, i) => ({
-      id: n.id,
-      type: nodeType,
-      position: { x: 0, y: 0 },
-      data: {
-        label: n.label,
-        color: n.isRoot ? "default" : colorIdx(i),
-        ...(n.isRoot ? { isRoot: true } : {}),
-      },
-    }));
-
-    const newEdges: Edge[] = genEdges.map((e) => ({
+    // Build temp edges to compute depth
+    const tempEdges: Edge[] = genEdges.map((e) => ({
       id: `e-${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
       type: "smoothstep",
     }));
 
-    applyAutoLayout(newNodes, newEdges);
+    const newNodes: Node[] = genNodes.map((n) => {
+      const depth = getNodeDepth(n.id, tempEdges);
+      return {
+        id: n.id,
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: {
+          label: n.label,
+          color: n.isRoot ? "orange" : getColorForDepth(depth),
+          ...(n.isRoot ? { isRoot: true } : {}),
+        },
+      };
+    });
+
+    applyAutoLayout(newNodes, tempEdges);
   }, [nodeType, takeSnapshot, applyAutoLayout]);
 
   // AI: apply suggestion
@@ -765,14 +781,23 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // AI expand: add generated children to existing node
   const handleExpandComplete = useCallback((parentId: string, newNodes: { id: string; label: string }[], newEdges: { source: string; target: string }[]) => {
     takeSnapshot();
-    const colorIdx = (i: number) => childColors[(nodes.length + i) % childColors.length];
 
-    const addedNodes: Node[] = newNodes.map((n, i) => ({
-      id: n.id,
-      type: nodeType,
-      position: { x: 0, y: 0 },
-      data: { label: n.label, color: colorIdx(i) },
-    }));
+    const allEdges = [...edges, ...newEdges.map((e) => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: "smoothstep" as const,
+    }))];
+
+    const addedNodes: Node[] = newNodes.map((n) => {
+      const depth = getNodeDepth(n.id, allEdges);
+      return {
+        id: n.id,
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: { label: n.label, color: getColorForDepth(depth) },
+      };
+    });
 
     const addedEdges: Edge[] = newEdges.map((e) => ({
       id: `e-${e.source}-${e.target}`,
@@ -849,6 +874,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
         onAddChild={handleAddChild}
+        onVariantChange={handleVariantChange}
       />
       <ReactFlow
         nodes={nodes}

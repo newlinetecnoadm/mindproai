@@ -17,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import MindMapNode from "./MindMapNode";
 import MindMapToolbar from "./MindMapToolbar";
 import { autoLayout, generateNodeId, createInitialNodes } from "./mindmapUtils";
+import { getNodeDepth, getColorForDepth } from "./depthColors";
 import type { MindMapNodeData } from "./MindMapNode";
 
 const nodeTypes = { mindmap: MindMapNode as any };
@@ -47,13 +48,14 @@ function MindMapEditorInner({ initialNodes, initialEdges, onSave, saving }: Mind
     const parent = selectedNodes[0] || nodes.find((n) => (n.data as MindMapNodeData).isRoot);
     if (!parent) return;
 
-    const colorIdx = nodes.length % childColors.length;
+    const colorIdx = getNodeDepth(parent.id, edges) + 1;
+    const childColor = getColorForDepth(colorIdx);
     const newId = generateNodeId();
     const newNode: Node = {
       id: newId,
       type: "mindmap",
       position: { x: parent.position.x + 250, y: parent.position.y },
-      data: { label: "Novo tópico", color: childColors[colorIdx] } as MindMapNodeData,
+      data: { label: "Novo tópico", color: childColor } as MindMapNodeData,
     };
     const newEdge: Edge = {
       id: `e-${parent.id}-${newId}`,
