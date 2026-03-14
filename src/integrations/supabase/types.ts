@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          owner_id: string
+          requested_role: string
+          requester_id: string
+          resolved_at: string | null
+          resource_id: string
+          resource_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          owner_id: string
+          requested_role?: string
+          requester_id: string
+          resolved_at?: string | null
+          resource_id: string
+          resource_type?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          owner_id?: string
+          requested_role?: string
+          requester_id?: string
+          resolved_at?: string | null
+          resource_id?: string
+          resource_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
       admin_whitelist: {
         Row: {
           created_at: string | null
@@ -203,6 +239,7 @@ export type Database = {
           title: string
           updated_at: string | null
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           cover_color?: string | null
@@ -216,6 +253,7 @@ export type Database = {
           title?: string
           updated_at?: string | null
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           cover_color?: string | null
@@ -229,8 +267,17 @@ export type Database = {
           title?: string
           updated_at?: string | null
           user_id?: string
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "boards_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       card_activities: {
         Row: {
@@ -957,6 +1004,65 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_members: {
+        Row: {
+          joined_at: string | null
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          joined_at?: string | null
+          role?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          joined_at?: string | null
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_default: boolean
+          position: number
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          position?: number
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          position?: number
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -972,6 +1078,10 @@ export type Database = {
       }
       can_access_checklist: {
         Args: { _checklist_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_access_workspace: {
+        Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
       has_role: {
@@ -1000,6 +1110,10 @@ export type Database = {
       }
       is_diagram_owner: {
         Args: { _diagram_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_workspace_owner: {
+        Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
     }
