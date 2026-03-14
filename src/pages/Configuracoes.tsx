@@ -124,9 +124,12 @@ const Configuracoes = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    const updates: any = { full_name: name.trim() };
+    if (birthDate) updates.birth_date = birthDate;
+    else updates.birth_date = null;
     const { error } = await supabase
       .from("user_profiles")
-      .update({ full_name: name.trim() })
+      .update(updates)
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
