@@ -1,16 +1,13 @@
 import { useMemo } from "react";
 import type { Node } from "@xyflow/react";
 import { useReactFlow } from "@xyflow/react";
-import { Trash2, Palette, Copy, Plus, Square, Diamond, Circle, Hexagon } from "lucide-react";
+import { Trash2, Palette, Copy, Plus, Square, Diamond, Circle, Hexagon, LayoutGrid, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 
 const nodeColors = [
@@ -38,6 +35,7 @@ interface NodeFloatingToolbarProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onAddChild: () => void;
+  onVariantChange?: (variant: string) => void;
 }
 
 const NodeFloatingToolbar = ({
@@ -48,6 +46,7 @@ const NodeFloatingToolbar = ({
   onDuplicate,
   onDelete,
   onAddChild,
+  onVariantChange,
 }: NodeFloatingToolbarProps) => {
   const { getNodesBounds, flowToScreenPosition } = useReactFlow();
 
@@ -68,29 +67,18 @@ const NodeFloatingToolbar = ({
   if (selectedNodes.length === 0 || !position) return null;
 
   const showShapes = diagramType === "flowchart";
+  const showVariant = diagramType === "orgchart";
 
   return (
     <div
       className="absolute z-20 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-1 shadow-lg -translate-x-1/2 pointer-events-auto"
       style={{ left: position.x, top: position.y }}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={onAddChild}
-        title="Adicionar filho (Tab)"
-      >
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddChild} title="Adicionar filho (Tab)">
         <Plus className="w-3.5 h-3.5" />
       </Button>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={onDuplicate}
-        title="Duplicar"
-      >
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDuplicate} title="Duplicar">
         <Copy className="w-3.5 h-3.5" />
       </Button>
 
@@ -126,6 +114,27 @@ const NodeFloatingToolbar = ({
                 {s.name}
               </DropdownMenuItem>
             ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* Variant picker (orgchart only) */}
+      {showVariant && onVariantChange && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Estilo do nó">
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" side="top" className="min-w-[140px]">
+            <DropdownMenuItem onClick={() => onVariantChange("full")}>
+              <User className="w-3.5 h-3.5 mr-2" />
+              Completo (avatar + cargo)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onVariantChange("simple")}>
+              <Square className="w-3.5 h-3.5 mr-2" />
+              Simples (cor + título)
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
