@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 
 const PROVIDERS = [
-  { value: "lovable", label: "Lovable AI (padrão)", description: "Integrado, sem chave necessária" },
+  { value: "lovable", label: "Mind Pro AI (padrão)", description: "Integrado, sem chave necessária" },
   { value: "openai", label: "OpenAI", description: "GPT-4o, GPT-4o-mini, etc." },
   { value: "gemini", label: "Google Gemini", description: "Gemini Pro, Flash, etc." },
 ];
