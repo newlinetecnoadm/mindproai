@@ -70,6 +70,7 @@ const Configuracoes = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const allPrefKeys = NOTIFICATION_MODULES.flatMap((m) => m.prefs.map((p) => p.key));
@@ -94,6 +95,7 @@ const Configuracoes = () => {
   useEffect(() => {
     if (profile) {
       setName(profile.full_name || "");
+      setBirthDate((profile as any).birth_date || "");
       const p = profile as any;
       const newPrefs: Record<string, boolean> = {};
       for (const key of allPrefKeys) {
@@ -122,9 +124,12 @@ const Configuracoes = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    const updates: any = { full_name: name.trim() };
+    if (birthDate) updates.birth_date = birthDate;
+    else updates.birth_date = null;
     const { error } = await supabase
       .from("user_profiles")
-      .update({ full_name: name.trim() })
+      .update(updates)
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
@@ -220,8 +225,18 @@ const Configuracoes = () => {
                     <Label htmlFor="settings-email">E-mail</Label>
                     <Input id="settings-email" value={displayEmail} disabled className="bg-muted" />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="birth-date">Data de nascimento</Label>
+                    <Input
+                      id="birth-date"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Usada para enviar mensagens de feliz aniversário.</p>
+                  </div>
                 </div>
-                <Button variant="hero" onClick={handleSave} disabled={saving || name.trim() === (profile?.full_name || "")}>
+                <Button variant="hero" onClick={handleSave} disabled={saving || (name.trim() === (profile?.full_name || "") && birthDate === ((profile as any)?.birth_date || ""))}>
                   {saving ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Salvando...</>) : "Salvar Alterações"}
                 </Button>
               </div>
