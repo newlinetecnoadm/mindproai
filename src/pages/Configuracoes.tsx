@@ -95,6 +95,7 @@ const Configuracoes = () => {
   useEffect(() => {
     if (profile) {
       setName(profile.full_name || "");
+      setBirthDate((profile as any).birth_date || "");
       const p = profile as any;
       const newPrefs: Record<string, boolean> = {};
       for (const key of allPrefKeys) {
