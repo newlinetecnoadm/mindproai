@@ -379,7 +379,7 @@ const WorkspaceList = () => {
   );
 
   const handleWsDragOver = (e: React.DragEvent, wsId: string) => {
-    if (e.dataTransfer.types.includes("application/board-id")) {
+    if (e.dataTransfer.types.includes("application/board-id") || e.dataTransfer.types.includes("application/workspace-id")) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       setDragOverWsId(wsId);
@@ -387,13 +387,38 @@ const WorkspaceList = () => {
   };
 
   const handleWsDrop = (e: React.DragEvent, wsId: string) => {
-    const boardId = e.dataTransfer.getData("application/board-id");
     setDragOverWsId(null);
     setDragBoardId(null);
+
+    const boardId = e.dataTransfer.getData("application/board-id");
     if (boardId) {
       moveBoardMut.mutate({ boardId, wsId });
+      return;
+    }
+
+    const sourceWsId = e.dataTransfer.getData("application/workspace-id");
+    if (sourceWsId && sourceWsId !== wsId) {
+      // Reorder: move source before target
+      const sortedIds = workspaces.map((w: any) => w.id);
+      const fromIdx = sortedIds.indexOf(sourceWsId);
+      const toIdx = sortedIds.indexOf(wsId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const reordered = [...sortedIds];
+        reordered.splice(fromIdx, 1);
+        reordered.splice(toIdx, 0, sourceWsId);
+        reorderWsMut.mutate(reordered);
+      }
     }
   };
+
+  const reorderWsMut = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      for (let i = 0; i < orderedIds.length; i++) {
+        await supabase.from("workspaces" as any).update({ position: i } as any).eq("id", orderedIds[i]);
+      }
+    },
+    onSuccess: () => refetchWs(),
+  });
 
   return (
     <DashboardLayout>
