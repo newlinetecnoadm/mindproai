@@ -12,6 +12,11 @@ export interface EditorTheme {
   minimapBg: string;
   minimapNode: string;
   minimapMask: string;
+  // Edge animation properties
+  edgeStrokeWidth: number;
+  edgeAnimation: "none" | "dash" | "flow" | "pulse" | "glow";
+  edgeDashArray?: string;
+  edgeOpacity?: number;
 }
 
 export const editorThemes: EditorTheme[] = [
@@ -29,6 +34,8 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "hsl(var(--card))",
     minimapNode: "hsl(var(--primary))",
     minimapMask: "hsl(var(--muted) / 0.7)",
+    edgeStrokeWidth: 2,
+    edgeAnimation: "none",
   },
   {
     id: "night",
@@ -36,7 +43,7 @@ export const editorThemes: EditorTheme[] = [
     emoji: "🌙",
     bg: "#0f172a",
     dotColor: "#1e293b",
-    edgeColor: "#334155",
+    edgeColor: "#6366f1",
     nodeColor: "#6366f1",
     cardBg: "#1e293b",
     cardBorder: "#334155",
@@ -44,6 +51,9 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "#1e293b",
     minimapNode: "#6366f1",
     minimapMask: "rgba(15, 23, 42, 0.7)",
+    edgeStrokeWidth: 2.5,
+    edgeAnimation: "glow",
+    edgeOpacity: 0.9,
   },
   {
     id: "forest",
@@ -51,7 +61,7 @@ export const editorThemes: EditorTheme[] = [
     emoji: "🌲",
     bg: "#0c1a0e",
     dotColor: "#1a3a1e",
-    edgeColor: "#2d5a32",
+    edgeColor: "#22c55e",
     nodeColor: "#22c55e",
     cardBg: "#14291a",
     cardBorder: "#2d5a32",
@@ -59,6 +69,9 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "#14291a",
     minimapNode: "#22c55e",
     minimapMask: "rgba(12, 26, 14, 0.7)",
+    edgeStrokeWidth: 2,
+    edgeAnimation: "flow",
+    edgeDashArray: "8 4",
   },
   {
     id: "ocean",
@@ -66,7 +79,7 @@ export const editorThemes: EditorTheme[] = [
     emoji: "🌊",
     bg: "#0c1929",
     dotColor: "#1a3050",
-    edgeColor: "#2563eb",
+    edgeColor: "#38bdf8",
     nodeColor: "#38bdf8",
     cardBg: "#132640",
     cardBorder: "#1e4080",
@@ -74,6 +87,9 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "#132640",
     minimapNode: "#38bdf8",
     minimapMask: "rgba(12, 25, 41, 0.7)",
+    edgeStrokeWidth: 2,
+    edgeAnimation: "dash",
+    edgeDashArray: "6 3",
   },
   {
     id: "sunset",
@@ -81,7 +97,7 @@ export const editorThemes: EditorTheme[] = [
     emoji: "🌅",
     bg: "#1c1017",
     dotColor: "#3d1f2a",
-    edgeColor: "#9f1239",
+    edgeColor: "#fb923c",
     nodeColor: "#fb923c",
     cardBg: "#2a1520",
     cardBorder: "#5c1a30",
@@ -89,6 +105,9 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "#2a1520",
     minimapNode: "#fb923c",
     minimapMask: "rgba(28, 16, 23, 0.7)",
+    edgeStrokeWidth: 2.5,
+    edgeAnimation: "pulse",
+    edgeOpacity: 0.85,
   },
   {
     id: "minimal",
@@ -104,5 +123,7 @@ export const editorThemes: EditorTheme[] = [
     minimapBg: "#ffffff",
     minimapNode: "#171717",
     minimapMask: "rgba(250, 250, 250, 0.7)",
+    edgeStrokeWidth: 1.5,
+    edgeAnimation: "none",
   },
 ];

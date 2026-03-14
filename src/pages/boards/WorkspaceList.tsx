@@ -17,7 +17,7 @@ import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import ShareWorkspaceDialog from "@/components/boards/ShareWorkspaceDialog";
@@ -89,6 +89,7 @@ const WorkspaceList = () => {
   const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
   const [shareWs, setShareWs] = useState<{ id: string; title: string } | null>(null);
   const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
+  const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; boardCount: number } | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
@@ -270,13 +271,19 @@ const WorkspaceList = () => {
 
   const deleteWsMut = useMutation({
     mutationFn: async (wsId: string) => {
+      // First delete all boards in this workspace
+      const { error: boardsError } = await supabase.from("boards").delete().eq("workspace_id", wsId);
+      if (boardsError) throw boardsError;
+      // Then delete the workspace
       const { error } = await supabase.from("workspaces" as any).delete().eq("id", wsId);
       if (error) throw error;
     },
     onSuccess: () => {
       refetchWs();
       queryClient.invalidateQueries({ queryKey: ["boards"] });
-      toast.success("Workspace removido");
+      queryClient.invalidateQueries({ queryKey: ["board-count"] });
+      setDeletingWs(null);
+      toast.success("Workspace e boards excluídos");
     },
   });
   const renameWsMut = useMutation({
@@ -518,9 +525,8 @@ const WorkspaceList = () => {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           onClick={() => {
-                            if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
-                              deleteWsMut.mutate(ws.id);
-                            }
+                            const wsBoards2 = boardsByWs.map.get(ws.id) || [];
+                            setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
                           }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -625,6 +631,35 @@ const WorkspaceList = () => {
             onOpenChange={(v) => { if (!v) setShareWs(null); }}
           />
         )}
+
+        {/* Delete workspace confirmation */}
+        <Dialog open={!!deletingWs} onOpenChange={(v) => { if (!v) setDeletingWs(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Excluir Workspace
+              </DialogTitle>
+              <DialogDescription className="text-sm pt-2">
+                Esta ação é <strong>irreversível</strong>. Ao excluir o workspace <strong>"{deletingWs?.title}"</strong>,
+                {deletingWs?.boardCount
+                  ? <> todos os <strong>{deletingWs.boardCount} board{deletingWs.boardCount > 1 ? "s" : ""}</strong> dentro dele também serão excluídos permanentemente.</>
+                  : " o workspace será removido permanentemente."
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeletingWs(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={deleteWsMut.isPending}
+                onClick={() => deletingWs && deleteWsMut.mutate(deletingWs.id)}
+              >
+                {deleteWsMut.isPending ? "Excluindo..." : "Excluir permanentemente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageTransition>
     </DashboardLayout>
   );
