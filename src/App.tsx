@@ -61,7 +61,7 @@ const App = () => (
           <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        
+        <AIChatWidget />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
