@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import logoHorizontalWhite from "@/assets/logo-horizontal-white.png";
-import logoIconSimple from "@/assets/logo-icon-simple.png";
+import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
+import logoIcon from "@/assets/logo-icon-color-2.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -53,9 +53,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           collapsed ? "justify-center px-2" : "px-5"
         )}>
           {collapsed ? (
-            <img src={logoIconSimple} alt="Mind Pro AI" className="h-8 w-8 object-contain" />
+            <img src={logoIcon} alt="MindPro" className="h-8 w-8 object-contain" />
           ) : (
-            <img src={logoHorizontalWhite} alt="Mind Pro AI" className="h-7" />
+            <img src={logoHorizontal} alt="MindPro" className="h-7" />
           )}
         </div>
 
