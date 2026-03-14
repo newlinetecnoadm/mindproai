@@ -87,6 +87,8 @@ const WorkspaceList = () => {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(null);
   const [collapsedWs, setCollapsedWs] = useState<Set<string>>(new Set());
+  const [dragBoardId, setDragBoardId] = useState<string | null>(null);
+  const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
