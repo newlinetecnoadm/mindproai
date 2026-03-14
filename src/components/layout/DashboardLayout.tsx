@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
+import logoHorizontalWhite from "@/assets/logo-horizontal-white.png";
 import logoIconSimple from "@/assets/logo-icon-simple.png";
 
 interface DashboardLayoutProps {
