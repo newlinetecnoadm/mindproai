@@ -280,6 +280,17 @@ const WorkspaceList = () => {
     },
   });
 
+  const moveBoardMut = useMutation({
+    mutationFn: async ({ boardId, wsId }: { boardId: string; wsId: string | null }) => {
+      const { error } = await supabase.from("boards").update({ workspace_id: wsId } as any).eq("id", boardId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      toast.success("Board movido");
+    },
+  });
+
   const toggleCollapse = (wsId: string) => {
     setCollapsedWs((prev) => {
       const next = new Set(prev);
