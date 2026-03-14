@@ -436,7 +436,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     [selectedNodes, setNodes, takeSnapshot]
   );
 
-  const handleDuplicate = useCallback(() => {
+  const handleVariantChange = useCallback(
+    (variant: string) => {
+      takeSnapshot();
+      const ids = new Set(selectedNodes.map((n) => n.id));
+      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, variant } } : n));
+    },
+    [selectedNodes, setNodes, takeSnapshot]
+  );
+
     if (selectedNodes.length === 0) return;
     takeSnapshot();
     const newNodes: Node[] = [];
