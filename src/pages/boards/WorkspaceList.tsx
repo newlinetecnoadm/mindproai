@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
-import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, MoreHorizontal, Share2, GripVertical } from "lucide-react";
+import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, MoreHorizontal, Share2, GripVertical, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
+import ShareWorkspaceDialog from "@/components/boards/ShareWorkspaceDialog";
 
 const defaultColors = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#eab308"];
 
@@ -89,6 +90,8 @@ const WorkspaceList = () => {
   const [collapsedWs, setCollapsedWs] = useState<Set<string>>(new Set());
   const [dragBoardId, setDragBoardId] = useState<string | null>(null);
   const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
+  const [shareWs, setShareWs] = useState<{ id: string; title: string } | null>(null);
+  const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
@@ -279,6 +282,17 @@ const WorkspaceList = () => {
       toast.success("Workspace removido");
     },
   });
+  const renameWsMut = useMutation({
+    mutationFn: async ({ wsId, title }: { wsId: string; title: string }) => {
+      const { error } = await supabase.from("workspaces" as any).update({ title } as any).eq("id", wsId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchWs();
+      setRenamingWs(null);
+      toast.success("Workspace renomeado");
+    },
+  });
 
   const moveBoardMut = useMutation({
     mutationFn: async ({ boardId, wsId }: { boardId: string; wsId: string | null }) => {
@@ -464,27 +478,33 @@ const WorkspaceList = () => {
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
                         <Plus className="w-3 h-3 mr-1" /> Board
                       </Button>
-                      {!ws.is_default && (
-                        <DropdownMenu>
+                      <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7">
                               <MoreHorizontal className="w-3.5 h-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
-                                  deleteWsMut.mutate(ws.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover workspace
+                            <DropdownMenuItem onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
+                              <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
+                              <Share2 className="w-3.5 h-3.5 mr-2" /> Compartilhar
+                            </DropdownMenuItem>
+                            {!ws.is_default && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
+                                    deleteWsMut.mutate(ws.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
                     </div>
                   </div>
                   {!isCollapsed && (
@@ -545,6 +565,45 @@ const WorkspaceList = () => {
           maxCount={limits.maxBoards}
           planName={limits.displayName}
         />
+
+        {/* Rename workspace dialog */}
+        <Dialog open={!!renamingWs} onOpenChange={(v) => { if (!v) setRenamingWs(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Renomear Workspace</DialogTitle>
+            </DialogHeader>
+            <Input
+              value={renamingWs?.title || ""}
+              onChange={(e) => setRenamingWs((prev) => prev ? { ...prev, title: e.target.value } : null)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renamingWs?.title.trim()) {
+                  renameWsMut.mutate({ wsId: renamingWs.id, title: renamingWs.title.trim() });
+                }
+              }}
+              autoFocus
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRenamingWs(null)}>Cancelar</Button>
+              <Button
+                variant="hero"
+                disabled={!renamingWs?.title.trim() || renameWsMut.isPending}
+                onClick={() => renamingWs && renameWsMut.mutate({ wsId: renamingWs.id, title: renamingWs.title.trim() })}
+              >
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share workspace dialog */}
+        {shareWs && (
+          <ShareWorkspaceDialog
+            workspaceId={shareWs.id}
+            workspaceTitle={shareWs.title}
+            open={!!shareWs}
+            onOpenChange={(v) => { if (!v) setShareWs(null); }}
+          />
+        )}
       </PageTransition>
     </DashboardLayout>
   );
