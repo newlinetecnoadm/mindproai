@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
@@ -9,7 +10,6 @@ import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
   Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink,
 } from "lucide-react";
-import DiagramPreviewDialog from "./DiagramPreviewDialog";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
 import MentionInput, { extractMentionedUserIds, type MentionUser } from "./MentionInput";
@@ -47,6 +47,7 @@ const LABEL_COLORS = [
 
 const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }: CardDetailModalProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { logActivity } = useCardActivity();
 
@@ -176,7 +177,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0].color);
-  const [diagramPreviewId, setDiagramPreviewId] = useState<string | null>(null);
+  // diagramPreviewId removed - now redirects directly
   const [showDiagramPicker, setShowDiagramPicker] = useState(false);
 
   // User's diagrams for linking
@@ -644,9 +645,12 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               <Badge
                 variant="outline"
                 className="text-xs gap-1 cursor-pointer hover:bg-primary/10 border-primary/30 text-primary"
-                onClick={() => setDiagramPreviewId(linkedDiagram.id)}
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate(`/diagramas/${linkedDiagram.id}`);
+                }}
               >
-                <GitBranch className="w-3 h-3" />
+                <ExternalLink className="w-3 h-3" />
                 {linkedDiagram.title}
               </Badge>
             ) : (
@@ -837,13 +841,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             />
           </div>
 
-          {/* Linked Diagram - inline next to labels */}
-
-          <DiagramPreviewDialog
-            diagramId={diagramPreviewId}
-            open={!!diagramPreviewId}
-            onOpenChange={(o) => { if (!o) setDiagramPreviewId(null); }}
-          />
+          {/* Diagram link is now a direct redirect - no preview dialog */}
 
           {/* Checklists */}
           {checklists.map((cl: any) => {
