@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import KanbanColumn, { type ColumnData } from "./KanbanColumn";
-import KanbanCard, { type CardData } from "./KanbanCard";
+import KanbanCard, { type CardData, type CardLabel } from "./KanbanCard";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
