@@ -445,6 +445,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     [selectedNodes, setNodes, takeSnapshot]
   );
 
+  const handleDuplicate = useCallback(() => {
     if (selectedNodes.length === 0) return;
     takeSnapshot();
     const newNodes: Node[] = [];
