@@ -29,6 +29,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_settings: {
+        Row: {
+          api_key_encrypted: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean
+          model: string | null
+          provider: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          provider?: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          provider?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       board_cards: {
         Row: {
           board_id: string
