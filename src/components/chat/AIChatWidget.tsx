@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -71,9 +70,11 @@ const AIChatWidget = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // Scroll to bottom on new messages
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
   }, [messages]);
 
   const send = async () => {
@@ -145,7 +146,11 @@ const AIChatWidget = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0 max-h-[360px]" ref={scrollRef as any}>
+          <div
+            ref={scrollRef}
+            className="flex-1 min-h-0 overflow-y-auto"
+            style={{ maxHeight: 360 }}
+          >
             <div className="p-4 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-8">
@@ -197,7 +202,7 @@ const AIChatWidget = () => {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Input */}
           <div className="border-t border-border p-3 flex gap-2">
