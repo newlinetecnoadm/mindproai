@@ -85,6 +85,7 @@ const AgendaPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-count-month"] });
       setDialogOpen(false);
       toast.success(editingEvent?.id ? "Evento atualizado" : "Evento criado");
     },
