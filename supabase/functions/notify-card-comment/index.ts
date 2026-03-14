@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
       if (!profile.email) continue;
       try {
         await client.send({
-          from: smtpUser,
+          from: "agente@mindproai.com.br",
           to: profile.email,
           subject: `💬 Novo comentário em "${card.title}" — MindPro AI`,
           html,

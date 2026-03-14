@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     let sent = 0;
     for (const profile of notifiable) {
       try {
-        await client.send({ from: smtpUser, to: profile.email!, subject, html });
+        await client.send({ from: "agente@mindproai.com.br", to: profile.email!, subject, html });
         sent++;
       } catch (e) {
         console.error(`Failed to send to ${profile.email}:`, e);
