@@ -855,6 +855,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         featureLabel="Exportação para PDF"
         planName={limits.displayName}
       />
+      <AIMapAssistDialog
+        open={aiDialogOpen}
+        onOpenChange={setAiDialogOpen}
+        diagramType={diagramType}
+        nodes={nodes}
+        edges={edges}
+        onApplyGenerated={handleApplyGenerated}
+        onApplySuggestion={handleApplySuggestion}
+      />
     </div>
   );
 }
