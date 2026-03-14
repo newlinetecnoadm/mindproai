@@ -303,11 +303,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const childColor = getColorForDepth(childDepth);
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColor };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColor };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColor };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColor };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColor };
 
     // Temporary position — layout will fix it
     const pos = { x: parent.position.x + 250, y: parent.position.y };
