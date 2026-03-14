@@ -895,6 +895,16 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onApplyGenerated={handleApplyGenerated}
         onApplySuggestion={handleApplySuggestion}
       />
+      {contextMenu && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          node={contextMenu.node}
+          diagramType={diagramType}
+          onClose={() => setContextMenu(null)}
+          onExpandComplete={handleExpandComplete}
+        />
+      )}
     </div>
   );
 }
