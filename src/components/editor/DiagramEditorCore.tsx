@@ -29,7 +29,7 @@ import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import DiamondNode from "./nodes/DiamondNode";
 import StickyNoteNode from "./nodes/StickyNoteNode";
-import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge } from "./edges/CustomEdges";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
@@ -49,6 +49,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
+  smoothstep: AnimatedSmoothStepEdge as any,
   curved: CurvedEdge as any,
   orthogonal: OrthogonalEdge as any,
   straight: StraightEdge as any,
