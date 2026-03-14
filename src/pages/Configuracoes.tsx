@@ -70,6 +70,7 @@ const Configuracoes = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const allPrefKeys = NOTIFICATION_MODULES.flatMap((m) => m.prefs.map((p) => p.key));
