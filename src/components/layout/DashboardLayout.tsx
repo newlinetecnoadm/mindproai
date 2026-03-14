@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileDrawer from "./MobileDrawer";
 import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
 import logoIcon from "@/assets/logo-icon-color-2.png";
 
@@ -30,6 +32,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, signOut } = useAuth();
   const { data: plan } = usePlan();
   const { data: isAdmin } = useIsAdmin();
+  const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
     await signOut();
@@ -40,6 +43,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     ? Math.max(0, Math.ceil((new Date(plan.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
   const showTrial = plan?.status === "trialing" && trialDays > 0;
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <MobileDrawer />
+        <main className="pt-14 pb-24 overflow-auto">
+          <div className="animate-fade-in">
+            {children}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -89,7 +105,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon className={cn("flex-shrink-0", isActive ? "w-[18px] h-[18px]" : "w-[18px] h-[18px]")} />
+                <item.icon className="flex-shrink-0 w-[18px] h-[18px]" />
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             );
@@ -128,9 +144,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </button>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className={cn(
-              "flex items-center justify-center w-full py-2 rounded-lg text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200",
-            )}
+            className="flex items-center justify-center w-full py-2 rounded-lg text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
