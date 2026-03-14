@@ -592,6 +592,7 @@ const BoardDetail = () => {
             onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
             onDropInboxItem={handleDropInboxItem}
             highlightedCardIds={realtimeHighlightedCards}
+            labelsMap={labelsMap}
           />
         </div>
       </div>
