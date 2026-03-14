@@ -46,8 +46,8 @@ const AdminPlans = () => {
 
   const updatePlanMut = useMutation({
     mutationFn: async (plan: any) => {
-      const { display_name, price_brl, is_active, max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list, id } = plan;
-      const features = { max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list };
+      const { display_name, price_brl, is_active, max_diagrams, max_boards, max_events, max_guests_per_project, export_pdf, ai_suggestions, list, id } = plan;
+      const features = { max_diagrams, max_boards, max_events, max_guests_per_project, export_pdf, ai_suggestions, list };
       const { error } = await supabase
         .from("subscription_plans")
         .update({ display_name, price_brl, is_active, features })
