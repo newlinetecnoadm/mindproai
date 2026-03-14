@@ -34,6 +34,29 @@ Regras:
 - Crie uma hierarquia lógica com 2-3 níveis de profundidade.
 - NÃO inclua markdown, explicações ou texto fora do JSON.`;
 
+const EXPAND_SYSTEM = `Você é um assistente especializado em mapas mentais do Mind Pro AI.
+
+O usuário enviará o LABEL de um nó existente. Gere sub-nós filhos para expandir esse conceito.
+
+Responda SOMENTE com JSON válido no formato:
+{
+  "nodes": [
+    { "id": "child_1", "label": "Subtópico 1" },
+    { "id": "child_2", "label": "Subtópico 2" }
+  ],
+  "edges": [
+    { "source": "PARENT_ID", "target": "child_1" },
+    { "source": "PARENT_ID", "target": "child_2" }
+  ]
+}
+
+Regras:
+- Gere entre 3 e 6 sub-nós relevantes ao conceito.
+- Use IDs únicos com prefixo "child_".
+- No campo "source" das edges, use exatamente o PARENT_ID fornecido.
+- Labels descritivos, concisos e em português.
+- NÃO inclua markdown, explicações ou texto fora do JSON.`;
+
 const ANALYZE_SYSTEM = `Você é um analista especializado em mapas mentais e diagramas do Mind Pro AI.
 
 O usuário enviará a estrutura atual de um mapa (nós e arestas).
@@ -75,9 +98,9 @@ serve(async (req) => {
   }
 
   try {
-    const { mode, topic, diagramType, nodes, edges } = await req.json();
+    const { mode, topic, diagramType, nodes, edges, parentId } = await req.json();
 
-    if (!mode || !["generate", "analyze"].includes(mode)) {
+    if (!mode || !["generate", "analyze", "expand"].includes(mode)) {
       return new Response(
         JSON.stringify({ error: "Mode must be 'generate' or 'analyze'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -132,6 +155,9 @@ serve(async (req) => {
     if (mode === "generate") {
       systemPrompt = GENERATE_SYSTEM;
       userMessage = `Crie um mapa do tipo "${diagramType || "mindmap"}" sobre o tema: "${topic}"`;
+    } else if (mode === "expand") {
+      systemPrompt = EXPAND_SYSTEM.replace(/PARENT_ID/g, parentId || "parent");
+      userMessage = `Gere sub-nós para expandir o conceito: "${topic}"`;
     } else {
       systemPrompt = ANALYZE_SYSTEM;
       const nodesSummary = (nodes || []).map((n: any) => `- [${n.id}] ${n.label || n.data?.label || "sem label"}`).join("\n");

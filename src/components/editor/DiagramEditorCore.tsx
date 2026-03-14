@@ -33,6 +33,7 @@ import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
 import AIMapAssistDialog from "./AIMapAssistDialog";
+import NodeContextMenu from "./NodeContextMenu";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
@@ -99,6 +100,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentEdgeType, setCurrentEdgeType] = useState("smoothstep");
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
   const pinnedPositions = useRef<Set<string>>(new Set());
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChanges = useRef(false);
@@ -754,6 +756,34 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout, setNodes]);
 
+  // Right-click on node
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, node });
+  }, []);
+
+  // AI expand: add generated children to existing node
+  const handleExpandComplete = useCallback((parentId: string, newNodes: { id: string; label: string }[], newEdges: { source: string; target: string }[]) => {
+    takeSnapshot();
+    const colorIdx = (i: number) => childColors[(nodes.length + i) % childColors.length];
+
+    const addedNodes: Node[] = newNodes.map((n, i) => ({
+      id: n.id,
+      type: nodeType,
+      position: { x: 0, y: 0 },
+      data: { label: n.label, color: colorIdx(i) },
+    }));
+
+    const addedEdges: Edge[] = newEdges.map((e) => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: "smoothstep",
+    }));
+
+    applyAutoLayout([...nodes, ...addedNodes], [...edges, ...addedEdges]);
+  }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
+
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
@@ -827,6 +857,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
+        onNodeContextMenu={handleNodeContextMenu}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -864,6 +895,16 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onApplyGenerated={handleApplyGenerated}
         onApplySuggestion={handleApplySuggestion}
       />
+      {contextMenu && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          node={contextMenu.node}
+          diagramType={diagramType}
+          onClose={() => setContextMenu(null)}
+          onExpandComplete={handleExpandComplete}
+        />
+      )}
     </div>
   );
 }
