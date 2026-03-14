@@ -225,8 +225,18 @@ const Configuracoes = () => {
                     <Label htmlFor="settings-email">E-mail</Label>
                     <Input id="settings-email" value={displayEmail} disabled className="bg-muted" />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="birth-date">Data de nascimento</Label>
+                    <Input
+                      id="birth-date"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Usada para enviar mensagens de feliz aniversário.</p>
+                  </div>
                 </div>
-                <Button variant="hero" onClick={handleSave} disabled={saving || name.trim() === (profile?.full_name || "")}>
+                <Button variant="hero" onClick={handleSave} disabled={saving || (name.trim() === (profile?.full_name || "") && birthDate === ((profile as any)?.birth_date || ""))}>
                   {saving ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Salvando...</>) : "Salvar Alterações"}
                 </Button>
               </div>
