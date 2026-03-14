@@ -42,7 +42,7 @@ function mmTemplate(
           id: gcid,
           type: "mindmap",
           position: { x: 500, y: -60 * (children.length / 2 - i) + j * 50 },
-          data: { label: gc, color: colors[(i + j + 1) % colors.length] },
+          data: { label: gc, color: colors[i % colors.length], variant: "branch" },
         });
         edges.push({ id: `e-${cid}-${gcid}`, source: cid, target: gcid, type: "smoothstep" });
       });
