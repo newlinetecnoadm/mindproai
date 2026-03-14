@@ -7,6 +7,70 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 
+// ── Animated edge wrapper with CSS keyframes ──────────────
+
+const animationDefs = `
+  @keyframes edgeDashFlow {
+    to { stroke-dashoffset: -24; }
+  }
+  @keyframes edgePulse {
+    0%, 100% { opacity: 0.5; stroke-width: 1.5; }
+    50% { opacity: 1; stroke-width: 3; }
+  }
+  @keyframes edgeGlow {
+    0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
+    50% { filter: drop-shadow(0 0 8px currentColor); }
+  }
+`;
+
+let defsInjected = false;
+function ensureDefs() {
+  if (defsInjected) return;
+  defsInjected = true;
+  const style = document.createElement("style");
+  style.textContent = animationDefs;
+  document.head.appendChild(style);
+}
+
+function getAnimationStyle(style: React.CSSProperties | undefined): React.CSSProperties {
+  ensureDefs();
+  const anim = (style as any)?._animation as string | undefined;
+  const dashArray = (style as any)?._dashArray as string | undefined;
+
+  const base: React.CSSProperties = { ...style };
+  // Clean custom props
+  delete (base as any)._animation;
+  delete (base as any)._dashArray;
+
+  if (anim === "dash" && dashArray) {
+    return {
+      ...base,
+      strokeDasharray: dashArray,
+      animation: "edgeDashFlow 0.8s linear infinite",
+    };
+  }
+  if (anim === "flow" && dashArray) {
+    return {
+      ...base,
+      strokeDasharray: dashArray,
+      animation: "edgeDashFlow 1.5s linear infinite",
+    };
+  }
+  if (anim === "pulse") {
+    return {
+      ...base,
+      animation: "edgePulse 2s ease-in-out infinite",
+    };
+  }
+  if (anim === "glow") {
+    return {
+      ...base,
+      animation: "edgeGlow 2.5s ease-in-out infinite",
+    };
+  }
+  return base;
+}
+
 // ── Curved (Bezier) Edge ──────────────────────────────────
 
 function CurvedEdgeComponent(props: EdgeProps) {
@@ -23,7 +87,7 @@ function CurvedEdgeComponent(props: EdgeProps) {
     <BaseEdge
       id={props.id}
       path={edgePath}
-      style={props.style}
+      style={getAnimationStyle(props.style)}
       markerEnd={props.markerEnd}
     />
   );
@@ -48,7 +112,7 @@ function OrthogonalEdgeComponent(props: EdgeProps) {
     <BaseEdge
       id={props.id}
       path={edgePath}
-      style={props.style}
+      style={getAnimationStyle(props.style)}
       markerEnd={props.markerEnd}
     />
   );
@@ -70,7 +134,7 @@ function StraightEdgeComponent(props: EdgeProps) {
     <BaseEdge
       id={props.id}
       path={edgePath}
-      style={props.style}
+      style={getAnimationStyle(props.style)}
       markerEnd={props.markerEnd}
     />
   );
@@ -90,7 +154,7 @@ function HierarchyEdgeComponent(props: EdgeProps) {
     <BaseEdge
       id={props.id}
       path={edgePath}
-      style={props.style}
+      style={getAnimationStyle(props.style)}
       markerEnd={props.markerEnd}
     />
   );
