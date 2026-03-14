@@ -29,9 +29,10 @@ interface KanbanColumnProps {
   onDeleteColumn: (columnId: string) => void;
   onRenameColumn: (columnId: string, title: string) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
+  highlightedCardIds?: Set<string>;
 }
 
-const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem }: KanbanColumnProps) => {
+const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds }: KanbanColumnProps) => {
   const [addingCard, setAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
