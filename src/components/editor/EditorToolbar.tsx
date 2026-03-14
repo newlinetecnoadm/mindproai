@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid, Diamond, StickyNote, Spline, ArrowRight as ArrowIcon, MoveRight, GitBranch } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid, Diamond, StickyNote, Spline, ArrowRight as ArrowIcon, MoveRight, GitBranch, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -79,6 +79,7 @@ interface EditorToolbarProps {
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
   onEdgeTypeChange?: (type: string) => void;
+  onAIAssist?: () => void;
   currentThemeId: string;
   currentEdgeType?: string;
   canUndo: boolean;
@@ -101,7 +102,7 @@ const edgeTypeOptions = [
 const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, onReLayout, onEdgeTypeChange, currentThemeId, currentEdgeType = "smoothstep",
+  onThemeChange, onReLayout, onEdgeTypeChange, onAIAssist, currentThemeId, currentEdgeType = "smoothstep",
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
   return (
@@ -247,6 +248,13 @@ const EditorToolbar = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {onAIAssist && (
+        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onAIAssist} title="Assistente IA">
+          <Bot className="w-4 h-4" />
+          IA
+        </Button>
+      )}
 
       <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onSave} disabled={saving}>
         <Save className="w-4 h-4" />
