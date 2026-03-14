@@ -772,14 +772,23 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // AI expand: add generated children to existing node
   const handleExpandComplete = useCallback((parentId: string, newNodes: { id: string; label: string }[], newEdges: { source: string; target: string }[]) => {
     takeSnapshot();
-    const colorIdx = (i: number) => childColors[(nodes.length + i) % childColors.length];
 
-    const addedNodes: Node[] = newNodes.map((n, i) => ({
-      id: n.id,
-      type: nodeType,
-      position: { x: 0, y: 0 },
-      data: { label: n.label, color: colorIdx(i) },
-    }));
+    const allEdges = [...edges, ...newEdges.map((e) => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: "smoothstep" as const,
+    }))];
+
+    const addedNodes: Node[] = newNodes.map((n) => {
+      const depth = getNodeDepth(n.id, allEdges);
+      return {
+        id: n.id,
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: { label: n.label, color: getColorForDepth(depth) },
+      };
+    });
 
     const addedEdges: Edge[] = newEdges.map((e) => ({
       id: `e-${e.source}-${e.target}`,
