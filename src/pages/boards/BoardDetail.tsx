@@ -185,8 +185,26 @@ const BoardDetail = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "board_cards", filter: `board_id=eq.${id}` },
         (payload) => {
+          const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
+          if (!rowId) return;
+
+          // Highlight remotely updated cards
+          if (payload.eventType !== "DELETE") {
+            setRealtimeHighlightedCards((prev) => {
+              const next = new Set(prev);
+              next.add(rowId);
+              return next;
+            });
+            setTimeout(() => {
+              setRealtimeHighlightedCards((prev) => {
+                const next = new Set(prev);
+                next.delete(rowId);
+                return next;
+              });
+            }, 1500);
+          }
+
           queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) => {
-            const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
             if (!rowId) return old;
 
             if (payload.eventType === "DELETE") {
