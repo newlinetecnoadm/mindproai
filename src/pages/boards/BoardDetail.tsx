@@ -380,6 +380,7 @@ const BoardDetail = () => {
             onAddCard={(columnId, title) => addCardMut.mutate({ columnId, title })}
             onMoveCard={(cardId, newColumnId, newPosition) => moveCardMut.mutate({ cardId, newColumnId, newPosition })}
             onReorderCards={(columnId, cardIds) => reorderCardsMut.mutate({ columnId, cardIds })}
+            onReorderColumns={(columnIds) => reorderColumnsMut.mutate(columnIds)}
             onCardClick={(card) => setSelectedCardId(card.id)}
             onAddColumn={(title) => addColumnMut.mutate(title)}
             onDeleteColumn={(columnId) => deleteColumnMut.mutate(columnId)}
