@@ -34,6 +34,29 @@ Regras:
 - Crie uma hierarquia lógica com 2-3 níveis de profundidade.
 - NÃO inclua markdown, explicações ou texto fora do JSON.`;
 
+const EXPAND_SYSTEM = `Você é um assistente especializado em mapas mentais do Mind Pro AI.
+
+O usuário enviará o LABEL de um nó existente. Gere sub-nós filhos para expandir esse conceito.
+
+Responda SOMENTE com JSON válido no formato:
+{
+  "nodes": [
+    { "id": "child_1", "label": "Subtópico 1" },
+    { "id": "child_2", "label": "Subtópico 2" }
+  ],
+  "edges": [
+    { "source": "PARENT_ID", "target": "child_1" },
+    { "source": "PARENT_ID", "target": "child_2" }
+  ]
+}
+
+Regras:
+- Gere entre 3 e 6 sub-nós relevantes ao conceito.
+- Use IDs únicos com prefixo "child_".
+- No campo "source" das edges, use exatamente o PARENT_ID fornecido.
+- Labels descritivos, concisos e em português.
+- NÃO inclua markdown, explicações ou texto fora do JSON.`;
+
 const ANALYZE_SYSTEM = `Você é um analista especializado em mapas mentais e diagramas do Mind Pro AI.
 
 O usuário enviará a estrutura atual de um mapa (nós e arestas).
