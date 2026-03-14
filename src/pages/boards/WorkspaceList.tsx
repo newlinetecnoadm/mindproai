@@ -90,6 +90,8 @@ const WorkspaceList = () => {
   const [collapsedWs, setCollapsedWs] = useState<Set<string>>(new Set());
   const [dragBoardId, setDragBoardId] = useState<string | null>(null);
   const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
+  const [shareWs, setShareWs] = useState<{ id: string; title: string } | null>(null);
+  const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
