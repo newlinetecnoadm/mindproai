@@ -107,12 +107,12 @@
     --shadow-lg: 0 10px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.4);
     --shadow-glow: 0 0 30px -5px hsl(27 100% 50% / 0.3);
 
-    --sidebar-background: 0 0% 7%;
+    --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 70%;
     --sidebar-primary: 27 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 27 100% 70%;
+    --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 27 100% 50%;
   }

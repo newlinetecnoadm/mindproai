@@ -61,7 +61,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         {/* Trial banner */}
         {!collapsed && showTrial && (
-          <div className="mx-3 mt-3 p-3 rounded-lg bg-accent text-accent-foreground text-xs">
+          <div className="mx-3 mt-3 p-3 rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs">
             <p className="font-semibold">Trial Ativo</p>
             <p className="text-accent-foreground/70 mt-0.5">{trialDays} dias restantes</p>
             <Link to="/assinaturas">
