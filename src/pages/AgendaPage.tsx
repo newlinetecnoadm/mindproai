@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { addMonths, subMonths, addWeeks, subWeeks, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalendarGrid from "@/components/agenda/CalendarGrid";
 import EventDialog, { type EventFormData } from "@/components/agenda/EventDialog";
+import UpgradeModal from "@/components/UpgradeModal";
 
 const AgendaPage = () => {
   const { user } = useAuth();
@@ -21,6 +23,8 @@ const AgendaPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventFormData | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date>(new Date());
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
 
   const { data: events = [] } = useQuery({
     queryKey: ["events", user?.id],
@@ -81,6 +85,7 @@ const AgendaPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-count-month"] });
       setDialogOpen(false);
       toast.success(editingEvent?.id ? "Evento atualizado" : "Evento criado");
     },
@@ -94,6 +99,7 @@ const AgendaPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-count-month"] });
       setDialogOpen(false);
       toast.success("Evento excluído");
     },
@@ -105,6 +111,10 @@ const AgendaPage = () => {
   };
 
   const openNew = (date?: Date) => {
+    if (!limits.canCreateEvent) {
+      setUpgradeOpen(true);
+      return;
+    }
     setEditingEvent(null);
     setDefaultDate(date || new Date());
     setDialogOpen(true);
@@ -181,6 +191,14 @@ const AgendaPage = () => {
           onSave={(data) => saveMutation.mutate(data)}
           onDelete={(id) => deleteMutation.mutate(id)}
           defaultDate={defaultDate}
+        />
+
+        <UpgradeModal
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          resource="feature"
+          featureLabel={`Limite de ${limits.maxEvents} eventos/mês`}
+          planName={limits.displayName}
         />
       </PageTransition>
     </DashboardLayout>
