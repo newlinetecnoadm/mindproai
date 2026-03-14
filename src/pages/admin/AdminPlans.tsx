@@ -216,11 +216,27 @@ const AdminPlans = () => {
                             R$ {Number(plan.price_brl).toFixed(2).replace(".", ",")}
                             <span className="text-sm font-normal text-muted-foreground">/mês</span>
                           </p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Users className="w-4 h-4" />
                               {counts?.active ?? 0} ativos / {counts?.total ?? 0} total
                             </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {(() => {
+                              const f = plan.features ?? {};
+                              const fmt = (v: number) => v === -1 ? "∞" : v;
+                              return (
+                                <>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_diagrams ?? 3)} mapas</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_boards ?? 2)} boards</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_events ?? 10)} eventos/mês</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_collaborators ?? 0)} colaboradores</Badge>
+                                  {f.export_pdf && <Badge variant="secondary" className="text-xs">PDF</Badge>}
+                                  {f.ai_suggestions && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                                </>
+                              );
+                            })()}
                           </div>
                         </>
                       )}
