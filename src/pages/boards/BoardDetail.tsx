@@ -174,6 +174,63 @@ const BoardDetail = () => {
     return result;
   }, [cards, filters, labelAssignments, cardMembers]);
 
+  // Realtime sync for board columns/cards
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`board-realtime-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_cards", filter: `board_id=eq.${id}` },
+        (payload) => {
+          queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) => {
+            const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
+            if (!rowId) return old;
+
+            if (payload.eventType === "DELETE") {
+              return old.filter((c) => c.id !== rowId);
+            }
+
+            const nextRow = payload.new as CardData;
+            const existingIndex = old.findIndex((c) => c.id === rowId);
+            if (existingIndex === -1) return [...old, nextRow];
+
+            const next = [...old];
+            next[existingIndex] = nextRow;
+            return next;
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_columns", filter: `board_id=eq.${id}` },
+        (payload) => {
+          queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) => {
+            const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
+            if (!rowId) return old;
+
+            if (payload.eventType === "DELETE") {
+              return old.filter((c) => c.id !== rowId);
+            }
+
+            const nextRow = payload.new as ColumnData;
+            const existingIndex = old.findIndex((c) => c.id === rowId);
+            if (existingIndex === -1) return [...old, nextRow];
+
+            const next = [...old];
+            next[existingIndex] = nextRow;
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
+
   // Mutations
   const addColumnMut = useMutation({
     mutationFn: async (title: string) => {
@@ -221,21 +278,28 @@ const BoardDetail = () => {
       const oldCard = cards.find((c) => c.id === cardId);
       const oldCol = columns.find((c) => c.id === oldCard?.column_id);
       const newCol = columns.find((c) => c.id === newColumnId);
+
       const { error } = await supabase.from("board_cards").update({ column_id: newColumnId, position: newPosition }).eq("id", cardId);
       if (error) throw error;
-      const targetCards = cards.filter((c) => c.column_id === newColumnId && c.id !== cardId).sort((a, b) => a.position - b.position);
+
+      const targetCards = cards
+        .filter((c) => c.column_id === newColumnId && c.id !== cardId)
+        .sort((a, b) => a.position - b.position);
+
       for (let i = 0; i < targetCards.length; i++) {
         const pos = i >= newPosition ? i + 1 : i;
         if (targetCards[i].position !== pos) {
           await supabase.from("board_cards").update({ position: pos }).eq("id", targetCards[i].id);
         }
       }
+
       if (oldCol && newCol && oldCol.id !== newCol.id) {
         await logActivity(cardId, "moved", { from: oldCol.title, to: newCol.title });
         const boardUrl = `${window.location.origin}/boards/${id}`;
         const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", id!);
         const { data: boardData } = await supabase.from("boards").select("user_id").eq("id", id!).single();
         const allUserIds = [...new Set([boardData?.user_id, ...(members || []).map((m: any) => m.user_id)].filter(Boolean))] as string[];
+
         supabase.functions.invoke("notify-board-event", {
           body: {
             type: "card_moved",
@@ -243,6 +307,7 @@ const BoardDetail = () => {
             data: { card_title: oldCard?.title || "", from_column: oldCol.title, to_column: newCol.title, board_url: boardUrl },
           },
         }).catch(() => {});
+
         const cardTitle = oldCard?.title || "Card";
         for (const uid of allUserIds) {
           if (uid === user?.id) continue;
@@ -259,45 +324,76 @@ const BoardDetail = () => {
     onMutate: async ({ cardId, newColumnId, newPosition }) => {
       await queryClient.cancelQueries({ queryKey: ["board-cards", id] });
       const previous = queryClient.getQueryData<CardData[]>(["board-cards", id]);
+
       queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) => {
-        const updated = old.map((c) => {
-          if (c.id === cardId) return { ...c, column_id: newColumnId, position: newPosition };
-          return c;
-        });
-        // Re-index target column
-        const targetCards = updated.filter((c) => c.column_id === newColumnId).sort((a, b) => a.position - b.position);
-        targetCards.forEach((c, i) => { c.position = i; });
-        return updated;
+        const movingCard = old.find((c) => c.id === cardId);
+        if (!movingCard) return old;
+
+        const sourceColumnId = movingCard.column_id;
+        const withoutMoving = old.filter((c) => c.id !== cardId).map((c) => ({ ...c }));
+
+        const targetCards = withoutMoving
+          .filter((c) => c.column_id === newColumnId)
+          .sort((a, b) => a.position - b.position);
+
+        const insertAt = Math.max(0, Math.min(newPosition, targetCards.length));
+        const movedCard: CardData = { ...movingCard, column_id: newColumnId, position: insertAt };
+
+        targetCards.splice(insertAt, 0, movedCard);
+
+        const targetIds = new Set(targetCards.map((c) => c.id));
+        let next = [
+          ...withoutMoving.filter((c) => !targetIds.has(c.id)),
+          ...targetCards.map((c, index) => ({ ...c, position: index })),
+        ];
+
+        if (sourceColumnId !== newColumnId) {
+          const sourceCards = next
+            .filter((c) => c.column_id === sourceColumnId)
+            .sort((a, b) => a.position - b.position)
+            .map((c, index) => ({ ...c, position: index }));
+
+          const sourceIds = new Set(sourceCards.map((c) => c.id));
+          next = [
+            ...next.filter((c) => !sourceIds.has(c.id)),
+            ...sourceCards,
+          ];
+        }
+
+        return next;
       });
+
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["board-cards", id], context.previous);
       toast.error("Erro ao mover card");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
   const reorderCardsMut = useMutation({
-    mutationFn: async ({ columnId, cardIds }: { columnId: string; cardIds: string[] }) => {
+    mutationFn: async ({ cardIds }: { columnId: string; cardIds: string[] }) => {
       await Promise.all(cardIds.map((cid, i) => supabase.from("board_cards").update({ position: i }).eq("id", cid)));
     },
     onMutate: async ({ columnId, cardIds }) => {
       await queryClient.cancelQueries({ queryKey: ["board-cards", id] });
       const previous = queryClient.getQueryData<CardData[]>(["board-cards", id]);
+      const orderMap = new Map(cardIds.map((cardId, index) => [cardId, index]));
+
       queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) =>
         old.map((c) => {
-          const idx = cardIds.indexOf(c.id);
-          if (idx !== -1) return { ...c, position: idx };
-          return c;
+          if (c.column_id !== columnId) return c;
+          const index = orderMap.get(c.id);
+          return index === undefined ? c : { ...c, position: index };
         })
       );
+
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["board-cards", id], context.previous);
+      toast.error("Erro ao reordenar cards");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
   const reorderColumnsMut = useMutation({
@@ -307,19 +403,21 @@ const BoardDetail = () => {
     onMutate: async (columnIds) => {
       await queryClient.cancelQueries({ queryKey: ["board-columns", id] });
       const previous = queryClient.getQueryData<ColumnData[]>(["board-columns", id]);
+      const orderMap = new Map(columnIds.map((columnId, index) => [columnId, index]));
+
       queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) =>
-        old.map((c) => {
-          const idx = columnIds.indexOf(c.id);
-          if (idx !== -1) return { ...c, position: idx };
-          return c;
+        old.map((column) => {
+          const index = orderMap.get(column.id);
+          return index === undefined ? column : { ...column, position: index };
         })
       );
+
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["board-columns", id], context.previous);
+      toast.error("Erro ao reordenar colunas");
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-columns", id] }),
   });
 
   const updateTitleMut = useMutation({
