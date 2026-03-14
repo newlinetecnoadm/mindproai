@@ -170,6 +170,7 @@ const KanbanBoard = ({
               onRenameColumn={onRenameColumn}
               onDropInboxItem={onDropInboxItem}
               highlightedCardIds={highlightedCardIds}
+              labelsMap={labelsMap}
             />
           ))}
         </SortableContext>
