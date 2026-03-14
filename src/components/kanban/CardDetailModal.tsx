@@ -1016,14 +1016,17 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
+          {/* Activity Feed - collapsible */}
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
               <Activity className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Atividade</span>
+              <span className="text-[10px] text-muted-foreground ml-auto group-open:rotate-90 transition-transform">▶</span>
+            </summary>
+            <div className="mt-2">
+              <CardActivityFeed cardId={cardId!} />
             </div>
-            <CardActivityFeed cardId={cardId!} />
-          </div>
+          </details>
 
           {/* Card actions */}
           <div className="border-t border-border pt-4 space-y-3">

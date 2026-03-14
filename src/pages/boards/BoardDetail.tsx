@@ -564,7 +564,7 @@ const BoardDetail = () => {
         </AnimatePresence>
 
         {/* Board */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden" style={{ background: "var(--board-bg, transparent)" }}>
           <KanbanBoard
             columns={columns}
             cards={filteredCards}
