@@ -78,6 +78,18 @@ function CurvedEdgeComponent(props: EdgeProps) {
 }
 export const CurvedEdge = memo(CurvedEdgeComponent);
 
+// ── Animated SmoothStep Edge (default with animations) ────
+
+function AnimatedSmoothStepEdgeComponent(props: EdgeProps) {
+  const [edgePath] = getSmoothStepPath({
+    sourceX: props.sourceX, sourceY: props.sourceY, sourcePosition: props.sourcePosition,
+    targetX: props.targetX, targetY: props.targetY, targetPosition: props.targetPosition,
+    borderRadius: 6,
+  });
+  return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
+}
+export const AnimatedSmoothStepEdge = memo(AnimatedSmoothStepEdgeComponent);
+
 // ── Orthogonal (SmoothStep) Edge ──────────────────────────
 
 function OrthogonalEdgeComponent(props: EdgeProps) {
