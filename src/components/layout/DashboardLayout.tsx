@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import logoHorizontalWhite from "@/assets/logo-horizontal-white.png";
-import logoIconSimple from "@/assets/logo-icon-simple.png";
+import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
+import logoIcon from "@/assets/logo-icon-color-2.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
