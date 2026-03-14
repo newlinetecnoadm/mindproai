@@ -167,6 +167,7 @@ const KanbanBoard = ({
               onDeleteColumn={onDeleteColumn}
               onRenameColumn={onRenameColumn}
               onDropInboxItem={onDropInboxItem}
+              highlightedCardIds={highlightedCardIds}
             />
           ))}
         </SortableContext>

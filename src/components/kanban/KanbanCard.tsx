@@ -43,9 +43,10 @@ const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer group",
+        "rounded-lg shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group",
         "bg-muted/80 border border-border/50 hover:border-border",
-        isDragging && "opacity-50 shadow-lg ring-2 ring-primary/30"
+        isDragging && "opacity-50 shadow-lg ring-2 ring-primary/30",
+        isHighlighted && "ring-2 ring-primary/40 shadow-md animate-[pulse_1s_ease-in-out_1]"
       )}
       onClick={onClick}
     >
