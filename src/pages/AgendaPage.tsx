@@ -190,6 +190,14 @@ const AgendaPage = () => {
           onDelete={(id) => deleteMutation.mutate(id)}
           defaultDate={defaultDate}
         />
+
+        <UpgradeModal
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          resource="feature"
+          featureLabel={`Limite de ${limits.maxEvents} eventos/mês`}
+          planName={limits.displayName}
+        />
       </PageTransition>
     </DashboardLayout>
   );
