@@ -13,7 +13,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
@@ -26,7 +25,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify the user's token
     const token = authHeader.replace("Bearer ", "");
     const {
       data: { user },
@@ -70,8 +68,8 @@ Deno.serve(async (req) => {
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Arial,sans-serif;">
   <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;">
-      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">MindPro AI</h1>
+    <div style="background:linear-gradient(135deg,#F97316,#EA580C);padding:32px 24px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Mind Pro AI</h1>
       <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">Convite para colaboração</p>
     </div>
     
@@ -88,7 +86,7 @@ Deno.serve(async (req) => {
       <!-- CTA Button -->
       <div style="text-align:center;margin:28px 0;">
         <a href="${inviteLink}" 
-           style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
+           style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EA580C);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
           Aceitar convite
         </a>
       </div>
@@ -96,15 +94,18 @@ Deno.serve(async (req) => {
       <p style="margin:0 0 8px;color:#71717a;font-size:12px;line-height:1.5;">
         Ou copie e cole este link no seu navegador:
       </p>
-      <p style="margin:0 0 16px;color:#6366f1;font-size:12px;word-break:break-all;">
+      <p style="margin:0 0 16px;color:#F97316;font-size:12px;word-break:break-all;">
         ${inviteLink}
       </p>
     </div>
     
     <!-- Footer -->
     <div style="padding:16px 24px;background:#fafafa;border-top:1px solid #f0f0f0;text-align:center;">
-      <p style="margin:0;color:#a1a1aa;font-size:11px;">
+      <p style="margin:0 0 4px;color:#a1a1aa;font-size:11px;">
         Este convite expira em 7 dias. Se você não esperava este email, ignore-o.
+      </p>
+      <p style="margin:0;color:#a1a1aa;font-size:10px;">
+        Mind Pro AI — mindproai.com.br | Desenvolvido por <a href="https://newlinetec.com.br" style="color:#a1a1aa;">Newline Tecnologia</a>
       </p>
     </div>
   </div>
@@ -124,9 +125,9 @@ Deno.serve(async (req) => {
     });
 
     await client.send({
-      from: smtpUser,
+      from: "agente@mindproai.com.br",
       to,
-      subject: subject || `Convite para colaborar — ${resourceTitle || "MindPro AI"}`,
+      subject: subject || `Convite para colaborar — ${resourceTitle || "Mind Pro AI"}`,
       html: htmlBody,
     });
 

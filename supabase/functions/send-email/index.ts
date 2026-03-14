@@ -15,14 +15,15 @@ function wrapLayout(content: string): string {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Arial,sans-serif;">
   <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;">
-      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">MindPro AI</h1>
+    <div style="background:linear-gradient(135deg,#F97316,#EA580C);padding:32px 24px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Mind Pro AI</h1>
     </div>
     <div style="padding:32px 24px;">
       ${content}
     </div>
     <div style="padding:16px 24px;background:#fafafa;border-top:1px solid #f0f0f0;text-align:center;">
-      <p style="margin:0;color:#a1a1aa;font-size:11px;">MindPro AI — mindproai.com.br</p>
+      <p style="margin:0 0 4px;color:#a1a1aa;font-size:11px;">Mind Pro AI — mindproai.com.br</p>
+      <p style="margin:0;color:#a1a1aa;font-size:10px;">Desenvolvido por <a href="https://newlinetec.com.br" style="color:#a1a1aa;">Newline Tecnologia</a></p>
     </div>
   </div>
 </body>
@@ -31,23 +32,20 @@ function wrapLayout(content: string): string {
 
 function ctaButton(href: string, label: string): string {
   return `<div style="text-align:center;margin:28px 0;">
-  <a href="${href}" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">${label}</a>
+  <a href="${href}" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EA580C);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">${label}</a>
 </div>`;
 }
 
 interface TemplateData {
-  // invite
   inviterName?: string;
   resourceTitle?: string;
   resourceType?: string;
   role?: string;
   inviteLink?: string;
-  // notification
   title?: string;
   message?: string;
   actionUrl?: string;
   actionLabel?: string;
-  // generic
   html?: string;
 }
 
@@ -63,11 +61,11 @@ function renderInvite(d: TemplateData): { subject: string; html: string } {
       <strong>"${d.resourceTitle || "Sem título"}"</strong> com permissão de <strong>${roleLabel}</strong>.
     </p>
     ${ctaButton(link, "Aceitar convite")}
-    <p style="margin:0;color:#71717a;font-size:12px;">Ou copie e cole: <span style="color:#6366f1;word-break:break-all;">${link}</span></p>
+    <p style="margin:0;color:#71717a;font-size:12px;">Ou copie e cole: <span style="color:#F97316;word-break:break-all;">${link}</span></p>
     <p style="margin:12px 0 0;color:#a1a1aa;font-size:11px;">Este convite expira em 7 dias.</p>`;
 
   return {
-    subject: `Convite para colaborar — ${d.resourceTitle || "MindPro AI"}`,
+    subject: `Convite para colaborar — ${d.resourceTitle || "Mind Pro AI"}`,
     html: wrapLayout(body),
   };
 }
@@ -81,14 +79,14 @@ function renderNotification(d: TemplateData): { subject: string; html: string } 
   }
 
   return {
-    subject: d.title || "Notificação — MindPro AI",
+    subject: d.title || "Notificação — Mind Pro AI",
     html: wrapLayout(body),
   };
 }
 
 function renderCustom(d: TemplateData): { subject: string; html: string } {
   return {
-    subject: d.title || "MindPro AI",
+    subject: d.title || "Mind Pro AI",
     html: d.html || wrapLayout(`<p>${d.message || ""}</p>`),
   };
 }
@@ -157,7 +155,7 @@ Deno.serve(async (req) => {
     });
 
     await client.send({
-      from: Deno.env.get("SMTP_USER")!,
+      from: "agente@mindproai.com.br",
       to,
       subject: finalSubject,
       html: rendered.html,
