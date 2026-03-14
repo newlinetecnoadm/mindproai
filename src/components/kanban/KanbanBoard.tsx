@@ -29,6 +29,7 @@ interface KanbanBoardProps {
   onRenameColumn: (columnId: string, title: string) => void;
   onReorderColumns?: (columnIds: string[]) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
+  highlightedCardIds?: Set<string>;
 }
 
 const KanbanBoard = ({
@@ -43,6 +44,7 @@ const KanbanBoard = ({
   onRenameColumn,
   onReorderColumns,
   onDropInboxItem,
+  highlightedCardIds,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
@@ -165,6 +167,7 @@ const KanbanBoard = ({
               onDeleteColumn={onDeleteColumn}
               onRenameColumn={onRenameColumn}
               onDropInboxItem={onDropInboxItem}
+              highlightedCardIds={highlightedCardIds}
             />
           ))}
         </SortableContext>
