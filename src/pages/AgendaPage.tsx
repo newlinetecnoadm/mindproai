@@ -99,6 +99,7 @@ const AgendaPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-count-month"] });
       setDialogOpen(false);
       toast.success("Evento excluído");
     },
