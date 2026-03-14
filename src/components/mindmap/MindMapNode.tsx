@@ -5,9 +5,11 @@ import { cn } from "@/lib/utils";
 export type MindMapNodeData = {
   label: string;
   color?: string;
+  variant?: string; // "branch" = white bg, colored text/border
   isRoot?: boolean;
 };
 
+// Full color style (depth 1 nodes)
 const colorMap: Record<string, string> = {
   orange: "border-primary bg-primary/10 text-primary",
   blue: "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
@@ -15,6 +17,17 @@ const colorMap: Record<string, string> = {
   purple: "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
   red: "border-red-500 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
   yellow: "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  default: "border-border bg-card text-foreground",
+};
+
+// Branch variant: white/default bg, colored text & border only
+const branchColorMap: Record<string, string> = {
+  orange: "border-primary bg-card text-primary",
+  blue: "border-blue-500 bg-card text-blue-600 dark:text-blue-400",
+  green: "border-emerald-500 bg-card text-emerald-600 dark:text-emerald-400",
+  purple: "border-purple-500 bg-card text-purple-600 dark:text-purple-400",
+  red: "border-red-500 bg-card text-red-600 dark:text-red-400",
+  yellow: "border-amber-500 bg-card text-amber-600 dark:text-amber-400",
   default: "border-border bg-card text-foreground",
 };
 
@@ -30,7 +43,6 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     }
   }, [editing]);
 
-  // Listen for F2 edit event from editor
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -63,7 +75,10 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     }
   };
 
-  const colorClass = colorMap[data.color || "default"] || colorMap.default;
+  const isBranch = data.variant === "branch";
+  const colorClass = isBranch
+    ? (branchColorMap[data.color || "default"] || branchColorMap.default)
+    : (colorMap[data.color || "default"] || colorMap.default);
   const isRoot = data.isRoot;
 
   const handleStyle = "!w-2 !h-2 !bg-muted-foreground/40 !border-none";
@@ -78,7 +93,6 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
       )}
       onDoubleClick={handleDoubleClick}
     >
-      {/* 4 handles — each acts as both source and target */}
       <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
       <Handle type="source" position={Position.Left} id="left" className={handleStyle} />
