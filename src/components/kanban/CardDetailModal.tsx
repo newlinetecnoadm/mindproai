@@ -177,7 +177,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0].color);
-  const [diagramPreviewId, setDiagramPreviewId] = useState<string | null>(null);
+  // diagramPreviewId removed - now redirects directly
   const [showDiagramPicker, setShowDiagramPicker] = useState(false);
 
   // User's diagrams for linking
