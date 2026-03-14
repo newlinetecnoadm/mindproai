@@ -17,9 +17,10 @@ export interface CardData {
 interface KanbanCardProps {
   card: CardData;
   onClick?: () => void;
+  isHighlighted?: boolean;
 }
 
-const KanbanCard = ({ card, onClick }: KanbanCardProps) => {
+const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
   const {
     attributes,
     listeners,
