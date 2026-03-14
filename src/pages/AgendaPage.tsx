@@ -109,6 +109,10 @@ const AgendaPage = () => {
   };
 
   const openNew = (date?: Date) => {
+    if (!limits.canCreateEvent) {
+      setUpgradeOpen(true);
+      return;
+    }
     setEditingEvent(null);
     setDefaultDate(date || new Date());
     setDialogOpen(true);
