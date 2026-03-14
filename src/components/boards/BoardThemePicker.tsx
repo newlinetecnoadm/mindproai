@@ -11,52 +11,52 @@ import { cn } from "@/lib/utils";
 export interface BoardTheme {
   id: string;
   name: string;
-  preview: string; // gradient/color for preview swatch
-  bg: string; // CSS value applied ONLY to the board background
+  preview: string;
+  bg: string;
 }
 
 export const BOARD_THEMES: BoardTheme[] = [
   {
     id: "default",
     name: "Padrão",
-    preview: "linear-gradient(135deg, hsl(215, 28%, 10%), hsl(215, 25%, 13%))",
+    preview: "linear-gradient(135deg, hsl(0, 0%, 9%), hsl(0, 0%, 12%))",
     bg: "",
   },
   {
     id: "ocean",
     name: "Ocean",
-    preview: "linear-gradient(135deg, hsl(210, 50%, 12%), hsl(200, 60%, 18%))",
-    bg: "linear-gradient(135deg, hsl(210, 50%, 10%), hsl(200, 60%, 16%))",
+    preview: "linear-gradient(135deg, hsl(200, 30%, 10%), hsl(195, 35%, 15%))",
+    bg: "linear-gradient(135deg, hsl(200, 30%, 9%), hsl(195, 35%, 14%))",
   },
   {
     id: "forest",
     name: "Forest",
-    preview: "linear-gradient(135deg, hsl(150, 30%, 8%), hsl(140, 35%, 14%))",
-    bg: "linear-gradient(135deg, hsl(150, 30%, 8%), hsl(140, 35%, 14%))",
+    preview: "linear-gradient(135deg, hsl(150, 20%, 8%), hsl(140, 25%, 13%))",
+    bg: "linear-gradient(135deg, hsl(150, 20%, 8%), hsl(140, 25%, 13%))",
   },
   {
     id: "sunset",
     name: "Sunset",
-    preview: "linear-gradient(135deg, hsl(15, 40%, 10%), hsl(25, 50%, 15%))",
-    bg: "linear-gradient(135deg, hsl(15, 40%, 9%), hsl(25, 50%, 14%))",
+    preview: "linear-gradient(135deg, hsl(15, 25%, 10%), hsl(25, 35%, 14%))",
+    bg: "linear-gradient(135deg, hsl(15, 25%, 9%), hsl(25, 35%, 13%))",
   },
   {
     id: "purple",
     name: "Nebula",
-    preview: "linear-gradient(135deg, hsl(270, 35%, 10%), hsl(280, 40%, 16%))",
-    bg: "linear-gradient(135deg, hsl(270, 35%, 9%), hsl(280, 40%, 15%))",
+    preview: "linear-gradient(135deg, hsl(270, 20%, 10%), hsl(280, 25%, 15%))",
+    bg: "linear-gradient(135deg, hsl(270, 20%, 9%), hsl(280, 25%, 14%))",
   },
   {
     id: "midnight",
     name: "Midnight",
-    preview: "linear-gradient(135deg, hsl(230, 30%, 8%), hsl(225, 35%, 14%))",
-    bg: "linear-gradient(135deg, hsl(230, 30%, 7%), hsl(225, 35%, 13%))",
+    preview: "linear-gradient(135deg, hsl(230, 15%, 8%), hsl(225, 20%, 13%))",
+    bg: "linear-gradient(135deg, hsl(230, 15%, 7%), hsl(225, 20%, 12%))",
   },
   {
     id: "rose",
     name: "Rosé",
-    preview: "linear-gradient(135deg, hsl(345, 30%, 10%), hsl(340, 35%, 16%))",
-    bg: "linear-gradient(135deg, hsl(345, 30%, 9%), hsl(340, 35%, 15%))",
+    preview: "linear-gradient(135deg, hsl(345, 18%, 10%), hsl(340, 22%, 15%))",
+    bg: "linear-gradient(135deg, hsl(345, 18%, 9%), hsl(340, 22%, 14%))",
   },
 ];
 
