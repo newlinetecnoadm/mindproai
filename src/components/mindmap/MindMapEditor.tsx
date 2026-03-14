@@ -17,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import MindMapNode from "./MindMapNode";
 import MindMapToolbar from "./MindMapToolbar";
 import { autoLayout, generateNodeId, createInitialNodes } from "./mindmapUtils";
+import { getNodeDepth, getColorForDepth } from "./depthColors";
 import type { MindMapNodeData } from "./MindMapNode";
 
 const nodeTypes = { mindmap: MindMapNode as any };
