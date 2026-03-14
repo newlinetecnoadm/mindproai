@@ -226,6 +226,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
     queryClient.invalidateQueries({ queryKey: ["card-activities", cardId] });
+    queryClient.invalidateQueries({ queryKey: ["linked-diagram"] });
     onCardUpdated();
   };
 
