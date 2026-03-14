@@ -756,6 +756,34 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout, setNodes]);
 
+  // Right-click on node
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, node });
+  }, []);
+
+  // AI expand: add generated children to existing node
+  const handleExpandComplete = useCallback((parentId: string, newNodes: { id: string; label: string }[], newEdges: { source: string; target: string }[]) => {
+    takeSnapshot();
+    const colorIdx = (i: number) => childColors[(nodes.length + i) % childColors.length];
+
+    const addedNodes: Node[] = newNodes.map((n, i) => ({
+      id: n.id,
+      type: nodeType,
+      position: { x: 0, y: 0 },
+      data: { label: n.label, color: colorIdx(i) },
+    }));
+
+    const addedEdges: Edge[] = newEdges.map((e) => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: "smoothstep",
+    }));
+
+    applyAutoLayout([...nodes, ...addedNodes], [...edges, ...addedEdges]);
+  }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
+
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
