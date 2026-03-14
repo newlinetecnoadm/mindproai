@@ -298,6 +298,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
+    takeSnapshot();
     const parentDepth = getNodeDepth(parent.id, edges);
     const childDepth = parentDepth + 1;
     const childColor = getColorForDepth(childDepth);
