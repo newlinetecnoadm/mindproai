@@ -44,15 +44,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className={cn(
-        "flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 sticky top-0 h-screen",
-        collapsed ? "w-16" : "w-60"
+        "flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 sticky top-0 h-screen",
+        collapsed ? "w-[68px]" : "w-[260px]"
       )}>
-        {/* Logo */}
-        <div className="flex items-center justify-center p-4 h-16 border-b border-sidebar-border">
+        {/* Logo area */}
+        <div className={cn(
+          "flex items-center h-16 border-b border-sidebar-border shrink-0",
+          collapsed ? "justify-center px-2" : "px-5"
+        )}>
           {collapsed ? (
             <img src={logoIconSimple} alt="Mind Pro AI" className="h-8 w-8 object-contain" />
           ) : (
-            <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-8" />
+            <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-7" />
           )}
         </div>
 
@@ -70,38 +73,44 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 p-2 space-y-1 mt-2">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
             return (
               <Link
                 key={item.path}
                 to={item.path}
+                title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-200",
+                  collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <item.icon className={cn("flex-shrink-0", isActive ? "w-[18px] h-[18px]" : "w-[18px] h-[18px]")} />
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* User + Logout */}
-        <div className="p-2 border-t border-sidebar-border space-y-1">
+        {/* Footer */}
+        <div className="px-3 pb-3 pt-2 border-t border-sidebar-border space-y-0.5">
           {!collapsed && user && (
-            <div className="px-3 py-2 text-xs text-sidebar-foreground/60 truncate">
+            <div className="px-3 py-2 text-[11px] text-sidebar-foreground/50 truncate font-medium">
               {user.email}
             </div>
           )}
           {isAdmin && (
             <Link
               to="/admin"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-primary transition-colors"
+              title={collapsed ? "Admin" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-lg text-[13px] text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-primary transition-all duration-200",
+                collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+              )}
             >
               <Shield className="w-4 h-4 flex-shrink-0" />
               {!collapsed && <span>Admin</span>}
@@ -109,14 +118,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           )}
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-destructive transition-colors"
+            className={cn(
+              "flex items-center gap-3 w-full rounded-lg text-[13px] text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-destructive transition-all duration-200",
+              collapsed ? "justify-center px-2 py-2" : "px-3 py-2"
+            )}
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {!collapsed && <span>Sair</span>}
           </button>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center w-full py-2 rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent/50 transition-colors"
+            className={cn(
+              "flex items-center justify-center w-full py-2 rounded-lg text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200",
+            )}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
