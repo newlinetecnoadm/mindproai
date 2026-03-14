@@ -30,6 +30,7 @@ interface KanbanColumnProps {
   onRenameColumn: (columnId: string, title: string) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
   highlightedCardIds?: Set<string>;
+  labelsMap?: Map<string, CardLabel[]>;
 }
 
 const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds }: KanbanColumnProps) => {
