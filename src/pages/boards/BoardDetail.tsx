@@ -18,6 +18,7 @@ import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import BoardThemePicker, { applyBoardTheme, removeBoardTheme } from "@/components/boards/BoardThemePicker";
+import AIBoardAssistDialog from "@/components/boards/AIBoardAssistDialog";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
