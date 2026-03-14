@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
