@@ -708,6 +708,52 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     return () => window.removeEventListener("keydown", handler);
   }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, searchOpen]);
 
+  // AI: apply generated map
+  const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
+    takeSnapshot();
+    const colorIdx = (i: number) => childColors[i % childColors.length];
+
+    const newNodes: Node[] = genNodes.map((n, i) => ({
+      id: n.id,
+      type: nodeType,
+      position: { x: 0, y: 0 },
+      data: {
+        label: n.label,
+        color: n.isRoot ? "default" : colorIdx(i),
+        ...(n.isRoot ? { isRoot: true } : {}),
+      },
+    }));
+
+    const newEdges: Edge[] = genEdges.map((e) => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: "smoothstep",
+    }));
+
+    applyAutoLayout(newNodes, newEdges);
+  }, [nodeType, takeSnapshot, applyAutoLayout]);
+
+  // AI: apply suggestion
+  const handleApplySuggestion = useCallback((suggestion: { type: string; parentId?: string; nodeId?: string; label?: string; newLabel?: string }) => {
+    takeSnapshot();
+    if (suggestion.type === "add" && suggestion.parentId && suggestion.label) {
+      const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const colorIdx = nodes.length % childColors.length;
+      const newNode: Node = {
+        id: newId,
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: { label: suggestion.label, color: childColors[colorIdx] },
+      };
+      const nextNodes = [...nodes, newNode];
+      const nextEdges = [...edges, { id: `e-${suggestion.parentId}-${newId}`, source: suggestion.parentId, target: newId, type: "smoothstep" }];
+      applyAutoLayout(nextNodes, nextEdges);
+    } else if (suggestion.type === "rename" && suggestion.nodeId && suggestion.newLabel) {
+      setNodes((nds) => nds.map((n) => n.id === suggestion.nodeId ? { ...n, data: { ...n.data, label: suggestion.newLabel } } : n));
+    }
+  }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout, setNodes]);
+
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
@@ -727,6 +773,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
         onEdgeTypeChange={handleEdgeTypeChange}
+        onAIAssist={() => setAiDialogOpen(true)}
         currentThemeId={theme.id}
         currentEdgeType={currentEdgeType}
         canUndo={canUndo}
