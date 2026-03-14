@@ -7,7 +7,7 @@ export interface PlanLimits {
   maxDiagrams: number;
   maxBoards: number;
   maxEvents: number;
-  maxCollaborators: number;
+  maxGuestsPerProject: number;
   exportPdf: boolean;
   aiSuggestions: boolean;
   currentDiagrams: number;
@@ -73,7 +73,7 @@ export function usePlanLimits() {
   const maxDiagrams = (features.max_diagrams as number) ?? 3;
   const maxBoards = (features.max_boards as number) ?? 2;
   const maxEvents = (features.max_events as number) ?? 10;
-  const maxCollaborators = (features.max_collaborators as number) ?? 0;
+  const maxGuestsPerProject = (features.max_guests_per_project as number) ?? (features.max_collaborators as number) ?? 0;
   const exportPdf = (features.export_pdf as boolean) ?? false;
   const aiSuggestions = (features.ai_suggestions as boolean) ?? false;
 
@@ -85,7 +85,7 @@ export function usePlanLimits() {
     maxDiagrams,
     maxBoards,
     maxEvents,
-    maxCollaborators,
+    maxGuestsPerProject,
     exportPdf,
     aiSuggestions,
     currentDiagrams: diagramCount,

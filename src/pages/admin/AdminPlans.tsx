@@ -46,8 +46,8 @@ const AdminPlans = () => {
 
   const updatePlanMut = useMutation({
     mutationFn: async (plan: any) => {
-      const { display_name, price_brl, is_active, max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list, id } = plan;
-      const features = { max_diagrams, max_boards, max_events, max_collaborators, export_pdf, ai_suggestions, list };
+      const { display_name, price_brl, is_active, max_diagrams, max_boards, max_events, max_guests_per_project, export_pdf, ai_suggestions, list, id } = plan;
+      const features = { max_diagrams, max_boards, max_events, max_guests_per_project, export_pdf, ai_suggestions, list };
       const { error } = await supabase
         .from("subscription_plans")
         .update({ display_name, price_brl, is_active, features })
@@ -72,7 +72,7 @@ const AdminPlans = () => {
       max_diagrams: f.max_diagrams ?? 3,
       max_boards: f.max_boards ?? 2,
       max_events: f.max_events ?? 10,
-      max_collaborators: f.max_collaborators ?? 0,
+      max_guests_per_project: f.max_guests_per_project ?? f.max_collaborators ?? 0,
       export_pdf: f.export_pdf ?? false,
       ai_suggestions: f.ai_suggestions ?? false,
       list: f.list ?? [],
@@ -153,11 +153,11 @@ const AdminPlans = () => {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Colaboradores</Label>
+                                <Label className="text-xs">Convidados/projeto</Label>
                                 <Input
                                   type="number"
-                                  value={editValues.max_collaborators}
-                                  onChange={(e) => setEditValues({ ...editValues, max_collaborators: parseInt(e.target.value) })}
+                                  value={editValues.max_guests_per_project}
+                                  onChange={(e) => setEditValues({ ...editValues, max_guests_per_project: parseInt(e.target.value) })}
                                   className="h-9"
                                 />
                               </div>
@@ -231,7 +231,7 @@ const AdminPlans = () => {
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_diagrams ?? 3)} mapas</Badge>
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_boards ?? 2)} boards</Badge>
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_events ?? 10)} eventos/mês</Badge>
-                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_collaborators ?? 0)} colaboradores</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_guests_per_project ?? f.max_collaborators ?? 0)} convidados/projeto</Badge>
                                   {f.export_pdf && <Badge variant="secondary" className="text-xs">PDF</Badge>}
                                   {f.ai_suggestions && <Badge variant="secondary" className="text-xs">IA</Badge>}
                                 </>
