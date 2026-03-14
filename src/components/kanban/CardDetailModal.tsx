@@ -176,6 +176,39 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0].color);
+  const [diagramPreviewId, setDiagramPreviewId] = useState<string | null>(null);
+  const [showDiagramPicker, setShowDiagramPicker] = useState(false);
+
+  // User's diagrams for linking
+  const { data: userDiagrams = [] } = useQuery({
+    queryKey: ["user-diagrams-for-link"],
+    enabled: open && showDiagramPicker,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("diagrams")
+        .select("id, title, type, thumbnail")
+        .eq("user_id", user!.id)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Linked diagram details
+  const { data: linkedDiagram } = useQuery({
+    queryKey: ["linked-diagram", card?.diagram_id],
+    enabled: !!card?.diagram_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("diagrams")
+        .select("id, title, type, thumbnail")
+        .eq("id", card!.diagram_id!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   useEffect(() => {
     if (card) {
