@@ -47,8 +47,9 @@ const DiagramEditor = () => {
         .single();
 
       if (error || !data) {
-        toast.error("Diagrama não encontrado");
-        navigate("/diagramas");
+        // Could be RLS - user doesn't have access
+        setAccessDenied(true);
+        setLoading(false);
         return;
       }
 
