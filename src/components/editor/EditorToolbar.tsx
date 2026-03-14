@@ -77,9 +77,9 @@ const ThemePreview = ({ theme, isActive }: { theme: EditorTheme; isActive: boole
     style={{ backgroundColor: theme.bg }}
   >
     {/* Simulated nodes */}
-    <div className="absolute top-2 left-3 w-6 h-2 rounded-sm" style={{ backgroundColor: theme.nodeColor, opacity: 0.8 }} />
-    <div className="absolute top-2 right-3 w-5 h-2 rounded-sm" style={{ backgroundColor: theme.nodeColor, opacity: 0.5 }} />
-    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-2 rounded-sm" style={{ backgroundColor: theme.nodeColor, opacity: 0.6 }} />
+    <div className="absolute top-2 left-3 w-6 h-2 rounded-sm" style={{ backgroundColor: theme.edgeColor, opacity: 0.8 }} />
+    <div className="absolute top-2 right-3 w-5 h-2 rounded-sm" style={{ backgroundColor: theme.edgeColor, opacity: 0.5 }} />
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-2 rounded-sm" style={{ backgroundColor: theme.edgeColor, opacity: 0.6 }} />
     {/* Simulated edges */}
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 40">
       <line x1="18" y1="12" x2="72" y2="12" stroke={theme.edgeColor} strokeWidth="1" opacity="0.6"

@@ -36,7 +36,19 @@ import NodeSearchBar from "./NodeSearchBar";
 import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
-import { editorThemes, type EditorTheme } from "./editorThemes";
+import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
+
+/** Derive UI chrome colors from a theme (bg + edge only) */
+function themeUI(t: EditorTheme) {
+  const dark = isColorDark(t.bg);
+  return {
+    cardBg: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.92)",
+    cardBorder: dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)",
+    cardText: dark ? "#e2e8f0" : "#1f1f1f",
+    minimapNode: t.edgeColor,
+    accentColor: t.edgeColor,
+  };
+}
 
 const nodeTypes = {
   mindmap: MindMapNode as any,
@@ -873,34 +885,36 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         hasSelection={selectedNodes.length > 0}
         diagramType={diagramType}
       />
+      {(() => { const ui = themeUI(theme); return (<>
       <NodeSearchBar
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         nodes={nodes}
         onSelectNode={handleSearchSelect}
-        themeCardBg={theme.cardBg}
-        themeCardBorder={theme.cardBorder}
-        themeCardText={theme.cardText}
+        themeCardBg={ui.cardBg}
+        themeCardBorder={ui.cardBorder}
+        themeCardText={ui.cardText}
       />
       {/* Autosave indicator */}
       {saving && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
-          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.cardText, border: `1px solid ${theme.cardBorder}` }}
+          style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
         >
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.nodeColor }} />
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ui.accentColor }} />
           Salvando...
         </div>
       )}
       {!saving && lastSavedAt && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
-          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.cardText, border: `1px solid ${theme.cardBorder}` }}
+          style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
         >
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
           Salvo às {lastSavedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
       )}
+      </>); })()}
       <NodeFloatingToolbar
         selectedNodes={selectedNodes}
         diagramType={diagramType}
@@ -930,14 +944,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
         <Controls
           showInteractive={false}
-          style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder, borderRadius: 12 }}
+          style={{ backgroundColor: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
           className="!rounded-xl !shadow-md [&>button]:!border-0"
         />
         <MiniMap
-          style={{ backgroundColor: theme.minimapBg, borderColor: theme.cardBorder, borderRadius: 12 }}
+          style={{ backgroundColor: theme.minimapBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
           className="!rounded-xl !shadow-md"
           maskColor={theme.minimapMask}
-          nodeColor={theme.minimapNode}
+          nodeColor={themeUI(theme).minimapNode}
         />
       </ReactFlow>
       <UpgradeModal
