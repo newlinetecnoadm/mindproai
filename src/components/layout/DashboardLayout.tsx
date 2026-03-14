@@ -55,7 +55,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {collapsed ? (
             <img src={logoIconSimple} alt="Mind Pro AI" className="h-8 w-8 object-contain" />
           ) : (
-            <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-7" />
+            <img src={logoHorizontalWhite} alt="Mind Pro AI" className="h-7" />
           )}
         </div>
 
