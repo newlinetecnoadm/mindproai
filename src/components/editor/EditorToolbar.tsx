@@ -249,6 +249,13 @@ const EditorToolbar = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {onAIAssist && (
+        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onAIAssist} title="Assistente IA">
+          <Bot className="w-4 h-4" />
+          IA
+        </Button>
+      )}
+
       <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onSave} disabled={saving}>
         <Save className="w-4 h-4" />
         {saving ? "Salvando..." : "Salvar"}
