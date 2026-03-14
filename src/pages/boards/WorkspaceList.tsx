@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
-import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, MoreHorizontal, Share2, GripVertical, Pencil } from "lucide-react";
+import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, GripVertical, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
