@@ -18,6 +18,7 @@ import PlannerPanel from "@/components/boards/PlannerPanel";
 import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import BoardThemePicker, { applyBoardTheme, removeBoardTheme } from "@/components/boards/BoardThemePicker";
+import AIBoardAssistDialog from "@/components/boards/AIBoardAssistDialog";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
@@ -469,13 +470,38 @@ const BoardDetail = () => {
       toast.error("Erro ao criar card");
       return;
     }
-    // Delete inbox item
     await supabase.from("inbox_items").delete().eq("id", item.id);
     if (newCard) await logActivity(newCard.id, "created");
     queryClient.invalidateQueries({ queryKey: ["board-cards", id] });
     queryClient.invalidateQueries({ queryKey: ["inbox-items"] });
     toast.success("Item movido para o board");
   }, [cards, id, logActivity, queryClient]);
+
+  // AI: apply generated board structure
+  const handleAIApply = useCallback(async (generatedColumns: { title: string; cards: { title: string; description?: string }[] }[]) => {
+    for (let i = 0; i < generatedColumns.length; i++) {
+      const col = generatedColumns[i];
+      const { data: newCol, error: colErr } = await supabase
+        .from("board_columns")
+        .insert({ board_id: id!, title: col.title, position: columns.length + i })
+        .select("id")
+        .single();
+      if (colErr || !newCol) continue;
+
+      for (let j = 0; j < col.cards.length; j++) {
+        const card = col.cards[j];
+        await supabase.from("board_cards").insert({
+          board_id: id!,
+          column_id: newCol.id,
+          title: card.title,
+          description: card.description || null,
+          position: j,
+        });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["board-columns", id] });
+    queryClient.invalidateQueries({ queryKey: ["board-cards", id] });
+  }, [id, columns.length, queryClient]);
 
   if (boardLoading) {
     return (
@@ -508,6 +534,7 @@ const BoardDetail = () => {
         />
         <div className="ml-auto flex items-center gap-2">
           <NotificationBell />
+          <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />
           <BoardThemePicker
             currentTheme={(board as any).theme || "default"}
             onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
