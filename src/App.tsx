@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { AuthProvider } from "@/hooks/useAuth";
+import AIChatWidget from "@/components/chat/AIChatWidget";
 
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -60,7 +61,7 @@ const App = () => (
           <Route path="/convite" element={<AcceptInvite />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        
+        <AIChatWidget />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
