@@ -174,6 +174,63 @@ const BoardDetail = () => {
     return result;
   }, [cards, filters, labelAssignments, cardMembers]);
 
+  // Realtime sync for board columns/cards
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`board-realtime-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_cards", filter: `board_id=eq.${id}` },
+        (payload) => {
+          queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) => {
+            const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
+            if (!rowId) return old;
+
+            if (payload.eventType === "DELETE") {
+              return old.filter((c) => c.id !== rowId);
+            }
+
+            const nextRow = payload.new as CardData;
+            const existingIndex = old.findIndex((c) => c.id === rowId);
+            if (existingIndex === -1) return [...old, nextRow];
+
+            const next = [...old];
+            next[existingIndex] = nextRow;
+            return next;
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_columns", filter: `board_id=eq.${id}` },
+        (payload) => {
+          queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) => {
+            const rowId = (payload.new as { id?: string } | null)?.id ?? (payload.old as { id?: string } | null)?.id;
+            if (!rowId) return old;
+
+            if (payload.eventType === "DELETE") {
+              return old.filter((c) => c.id !== rowId);
+            }
+
+            const nextRow = payload.new as ColumnData;
+            const existingIndex = old.findIndex((c) => c.id === rowId);
+            if (existingIndex === -1) return [...old, nextRow];
+
+            const next = [...old];
+            next[existingIndex] = nextRow;
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
+
   // Mutations
   const addColumnMut = useMutation({
     mutationFn: async (title: string) => {
