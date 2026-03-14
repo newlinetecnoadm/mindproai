@@ -83,7 +83,7 @@ const UpgradeModal = ({
             </li>
             <li className="flex items-center gap-2">
               <ArrowRight className="w-3 h-3 text-primary shrink-0" />
-              Até 5 colaboradores por recurso
+              Até 10 convidados por projeto
             </li>
           </ul>
         </div>
