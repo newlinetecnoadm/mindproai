@@ -79,6 +79,7 @@ interface EditorToolbarProps {
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
   onEdgeTypeChange?: (type: string) => void;
+  onAIAssist?: () => void;
   currentThemeId: string;
   currentEdgeType?: string;
   canUndo: boolean;
