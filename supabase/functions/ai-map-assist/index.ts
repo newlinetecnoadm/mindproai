@@ -100,7 +100,7 @@ serve(async (req) => {
   try {
     const { mode, topic, diagramType, nodes, edges } = await req.json();
 
-    if (!mode || !["generate", "analyze"].includes(mode)) {
+    if (!mode || !["generate", "analyze", "expand"].includes(mode)) {
       return new Response(
         JSON.stringify({ error: "Mode must be 'generate' or 'analyze'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
