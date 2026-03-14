@@ -232,7 +232,6 @@ const BoardDetail = () => {
       }
       if (oldCol && newCol && oldCol.id !== newCol.id) {
         await logActivity(cardId, "moved", { from: oldCol.title, to: newCol.title });
-        // Notify board members about card move
         const boardUrl = `${window.location.origin}/boards/${id}`;
         const { data: members } = await supabase.from("board_members").select("user_id").eq("board_id", id!);
         const { data: boardData } = await supabase.from("boards").select("user_id").eq("id", id!).single();
@@ -244,7 +243,6 @@ const BoardDetail = () => {
             data: { card_title: oldCard?.title || "", from_column: oldCol.title, to_column: newCol.title, board_url: boardUrl },
           },
         }).catch(() => {});
-        // In-app notifications for card move
         const cardTitle = oldCard?.title || "Card";
         for (const uid of allUserIds) {
           if (uid === user?.id) continue;
@@ -258,21 +256,70 @@ const BoardDetail = () => {
         }
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
+    onMutate: async ({ cardId, newColumnId, newPosition }) => {
+      await queryClient.cancelQueries({ queryKey: ["board-cards", id] });
+      const previous = queryClient.getQueryData<CardData[]>(["board-cards", id]);
+      queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) => {
+        const updated = old.map((c) => {
+          if (c.id === cardId) return { ...c, column_id: newColumnId, position: newPosition };
+          return c;
+        });
+        // Re-index target column
+        const targetCards = updated.filter((c) => c.column_id === newColumnId).sort((a, b) => a.position - b.position);
+        targetCards.forEach((c, i) => { c.position = i; });
+        return updated;
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["board-cards", id], context.previous);
+      toast.error("Erro ao mover card");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
   const reorderCardsMut = useMutation({
     mutationFn: async ({ columnId, cardIds }: { columnId: string; cardIds: string[] }) => {
       await Promise.all(cardIds.map((cid, i) => supabase.from("board_cards").update({ position: i }).eq("id", cid)));
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
+    onMutate: async ({ columnId, cardIds }) => {
+      await queryClient.cancelQueries({ queryKey: ["board-cards", id] });
+      const previous = queryClient.getQueryData<CardData[]>(["board-cards", id]);
+      queryClient.setQueryData<CardData[]>(["board-cards", id], (old = []) =>
+        old.map((c) => {
+          const idx = cardIds.indexOf(c.id);
+          if (idx !== -1) return { ...c, position: idx };
+          return c;
+        })
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["board-cards", id], context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
   const reorderColumnsMut = useMutation({
     mutationFn: async (columnIds: string[]) => {
       await Promise.all(columnIds.map((cid, i) => supabase.from("board_columns").update({ position: i }).eq("id", cid)));
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-columns", id] }),
+    onMutate: async (columnIds) => {
+      await queryClient.cancelQueries({ queryKey: ["board-columns", id] });
+      const previous = queryClient.getQueryData<ColumnData[]>(["board-columns", id]);
+      queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) =>
+        old.map((c) => {
+          const idx = columnIds.indexOf(c.id);
+          if (idx !== -1) return { ...c, position: idx };
+          return c;
+        })
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["board-columns", id], context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["board-columns", id] }),
   });
 
   const updateTitleMut = useMutation({
