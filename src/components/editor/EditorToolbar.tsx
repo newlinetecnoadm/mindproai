@@ -102,7 +102,7 @@ const edgeTypeOptions = [
 const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, onReLayout, onEdgeTypeChange, currentThemeId, currentEdgeType = "smoothstep",
+  onThemeChange, onReLayout, onEdgeTypeChange, onAIAssist, currentThemeId, currentEdgeType = "smoothstep",
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
   return (
