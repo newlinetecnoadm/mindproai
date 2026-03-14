@@ -6,13 +6,16 @@ import { usePlan } from "./usePlan";
 export interface PlanLimits {
   maxDiagrams: number;
   maxBoards: number;
+  maxEvents: number;
   maxCollaborators: number;
   exportPdf: boolean;
   aiSuggestions: boolean;
   currentDiagrams: number;
   currentBoards: number;
+  currentEvents: number;
   canCreateDiagram: boolean;
   canCreateBoard: boolean;
+  canCreateEvent: boolean;
   planName: string;
   displayName: string;
 }
