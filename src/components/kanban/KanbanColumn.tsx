@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
-import { Plus, MoreHorizontal, Trash2, Pencil, GripVertical } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -117,15 +117,6 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
-        {/* Drag handle for column */}
-        <button
-          {...sortableAttributes}
-          {...sortableListeners}
-          className="opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0 mr-1.5"
-        >
-          <GripVertical className="w-4 h-4 text-muted-foreground" />
-        </button>
-
         {editingTitle ? (
           <Input
             value={columnTitle}
@@ -137,7 +128,9 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
           />
         ) : (
           <h3
-            className="text-sm font-semibold truncate cursor-pointer hover:text-primary transition-colors flex-1"
+            {...sortableAttributes}
+            {...sortableListeners}
+            className="text-sm font-semibold truncate cursor-grab active:cursor-grabbing hover:text-primary transition-colors flex-1"
             onDoubleClick={() => setEditingTitle(true)}
           >
             {column.title}

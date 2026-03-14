@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { GripVertical, Calendar, MessageSquare } from "lucide-react";
+import { Calendar, MessageSquare } from "lucide-react";
 
 export interface CardData {
   id: string;
@@ -52,15 +52,14 @@ const KanbanCard = ({ card, onClick }: KanbanCardProps) => {
         <div className="h-2 rounded-t-lg" style={{ backgroundColor: card.cover_color }} />
       )}
       <div className="p-3">
-        <div className="flex items-start gap-1">
-          <button
+        <div className="flex items-start">
+          <span
             {...attributes}
             {...listeners}
-            className="mt-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-grab active:cursor-grabbing shrink-0"
+            className="text-sm font-medium flex-1 leading-snug cursor-grab active:cursor-grabbing"
           >
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="text-sm font-medium flex-1 leading-snug">{card.title}</span>
+            {card.title}
+          </span>
         </div>
 
         {(card.due_date || card.description) && (
