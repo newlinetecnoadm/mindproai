@@ -30,6 +30,8 @@ const DiagramEditor = () => {
   const [savedRecently, setSavedRecently] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
 
   // Remote sync state
   const [remoteNodes, setRemoteNodes] = useState<Node[] | undefined>();
