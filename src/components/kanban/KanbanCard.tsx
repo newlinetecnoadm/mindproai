@@ -3,6 +3,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Calendar, MessageSquare, GitBranch } from "lucide-react";
 
+export interface CardLabel {
+  id: string;
+  name: string | null;
+  color: string;
+}
+
 export interface CardData {
   id: string;
   title: string;
@@ -19,9 +25,10 @@ interface KanbanCardProps {
   card: CardData;
   onClick?: () => void;
   isHighlighted?: boolean;
+  labels?: CardLabel[];
 }
 
-const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
+const KanbanCard = ({ card, onClick, isHighlighted, labels }: KanbanCardProps) => {
   const {
     attributes,
     listeners,
@@ -45,7 +52,7 @@ const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
       style={style}
       className={cn(
         "rounded-lg shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group",
-        "bg-muted/80 border border-border/50 hover:border-border",
+        "bg-card border border-border hover:border-primary/30",
         isDragging && "opacity-50 shadow-lg ring-2 ring-primary/30",
         isHighlighted && "ring-2 ring-primary/40 shadow-md animate-[pulse_1s_ease-in-out_1]"
       )}
@@ -55,6 +62,20 @@ const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
         <div className="h-2 rounded-t-lg" style={{ backgroundColor: card.cover_color }} />
       )}
       <div className="p-3">
+        {/* Labels above title */}
+        {labels && labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {labels.map((label) => (
+              <span
+                key={label.id}
+                className="inline-block h-2 w-8 rounded-full"
+                style={{ backgroundColor: label.color }}
+                title={label.name || undefined}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="flex items-start">
           <span
             {...attributes}

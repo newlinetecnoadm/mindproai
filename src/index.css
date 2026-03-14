@@ -52,13 +52,13 @@
     --shadow-lg: 0 10px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.05);
     --shadow-glow: 0 0 30px -5px hsl(27 100% 48% / 0.35);
 
-    --sidebar-background: 0 0% 97%;
-    --sidebar-foreground: 0 0% 30%;
+    --sidebar-background: 0 0% 14%;
+    --sidebar-foreground: 0 0% 75%;
     --sidebar-primary: 27 100% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 27 60% 95%;
-    --sidebar-accent-foreground: 27 100% 38%;
-    --sidebar-border: 25 6% 91%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 20%;
     --sidebar-ring: 27 100% 48%;
   }
 
@@ -107,12 +107,12 @@
     --shadow-lg: 0 10px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.4);
     --shadow-glow: 0 0 30px -5px hsl(27 100% 50% / 0.3);
 
-    --sidebar-background: 0 0% 7%;
+    --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 70%;
     --sidebar-primary: 27 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 27 100% 70%;
+    --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 27 100% 50%;
   }

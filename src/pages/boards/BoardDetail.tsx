@@ -145,6 +145,20 @@ const BoardDetail = () => {
     },
   });
 
+  // Build card→labels map for display on cards
+  const labelsMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string | null; color: string }[]>();
+    for (const a of labelAssignments) {
+      const label = boardLabels.find((l: any) => l.id === (a as any).label_id);
+      if (label) {
+        const cardId = (a as any).card_id;
+        if (!map.has(cardId)) map.set(cardId, []);
+        map.get(cardId)!.push({ id: label.id, name: label.name, color: label.color });
+      }
+    }
+    return map;
+  }, [labelAssignments, boardLabels]);
+
   // Filter cards
   const filteredCards = useMemo(() => {
     let result = cards;
@@ -578,6 +592,7 @@ const BoardDetail = () => {
             onRenameColumn={(columnId, title) => renameColumnMut.mutate({ columnId, title })}
             onDropInboxItem={handleDropInboxItem}
             highlightedCardIds={realtimeHighlightedCards}
+            labelsMap={labelsMap}
           />
         </div>
       </div>

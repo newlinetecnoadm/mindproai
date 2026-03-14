@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
-import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, MoreHorizontal, Share2 } from "lucide-react";
+import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, MoreHorizontal, Share2, GripVertical } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -87,6 +87,8 @@ const WorkspaceList = () => {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [targetWorkspaceId, setTargetWorkspaceId] = useState<string | null>(null);
   const [collapsedWs, setCollapsedWs] = useState<Set<string>>(new Set());
+  const [dragBoardId, setDragBoardId] = useState<string | null>(null);
+  const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
@@ -278,6 +280,17 @@ const WorkspaceList = () => {
     },
   });
 
+  const moveBoardMut = useMutation({
+    mutationFn: async ({ boardId, wsId }: { boardId: string; wsId: string | null }) => {
+      const { error } = await supabase.from("boards").update({ workspace_id: wsId } as any).eq("id", boardId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      toast.success("Board movido");
+    },
+  });
+
   const toggleCollapse = (wsId: string) => {
     setCollapsedWs((prev) => {
       const next = new Set(prev);
@@ -307,13 +320,23 @@ const WorkspaceList = () => {
   const renderBoardCard = (board: any) => (
     <div
       key={board.id}
-      className="group rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("application/board-id", board.id);
+        setDragBoardId(board.id);
+      }}
+      onDragEnd={() => { setDragBoardId(null); setDragOverWsId(null); }}
+      className={cn(
+        "group rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden",
+        dragBoardId === board.id ? "opacity-50 border-primary/40" : "border-border"
+      )}
       onClick={() => navigate(`/boards/${board.id}`)}
     >
       <div
-        className="h-24 flex items-end p-3"
+        className="h-24 flex items-end p-3 relative"
         style={{ backgroundColor: board.cover_color || "#1e293b" }}
       >
+        <GripVertical className="w-4 h-4 text-white/60 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
         <h3 className="text-sm font-bold text-white drop-shadow-sm truncate">{board.title}</h3>
       </div>
       <div className="px-3 py-2 flex items-center justify-between">
@@ -340,6 +363,23 @@ const WorkspaceList = () => {
       </div>
     </div>
   );
+
+  const handleWsDragOver = (e: React.DragEvent, wsId: string) => {
+    if (e.dataTransfer.types.includes("application/board-id")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOverWsId(wsId);
+    }
+  };
+
+  const handleWsDrop = (e: React.DragEvent, wsId: string) => {
+    const boardId = e.dataTransfer.getData("application/board-id");
+    setDragOverWsId(null);
+    setDragBoardId(null);
+    if (boardId) {
+      moveBoardMut.mutate({ boardId, wsId });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -401,7 +441,16 @@ const WorkspaceList = () => {
               const wsBoards = boardsByWs.map.get(ws.id) || [];
               const isCollapsed = collapsedWs.has(ws.id);
               return (
-                <div key={ws.id} className="space-y-3">
+                <div
+                  key={ws.id}
+                  className={cn(
+                    "space-y-3 rounded-lg p-3 -m-3 transition-colors",
+                    dragOverWsId === ws.id && "bg-primary/5 ring-2 ring-primary/20"
+                  )}
+                  onDragOver={(e) => handleWsDragOver(e, ws.id)}
+                  onDragLeave={() => setDragOverWsId(null)}
+                  onDrop={(e) => handleWsDrop(e, ws.id)}
+                >
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleCollapse(ws.id)}

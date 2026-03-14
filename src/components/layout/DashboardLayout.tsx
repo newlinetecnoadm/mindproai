@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
+import logoHorizontalWhite from "@/assets/logo-horizontal-white.png";
 import logoIconSimple from "@/assets/logo-icon-simple.png";
 
 interface DashboardLayoutProps {
@@ -55,13 +55,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {collapsed ? (
             <img src={logoIconSimple} alt="Mind Pro AI" className="h-8 w-8 object-contain" />
           ) : (
-            <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-7" />
+            <img src={logoHorizontalWhite} alt="Mind Pro AI" className="h-7" />
           )}
         </div>
 
         {/* Trial banner */}
         {!collapsed && showTrial && (
-          <div className="mx-3 mt-3 p-3 rounded-lg bg-accent text-accent-foreground text-xs">
+          <div className="mx-3 mt-3 p-3 rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs">
             <p className="font-semibold">Trial Ativo</p>
             <p className="text-accent-foreground/70 mt-0.5">{trialDays} dias restantes</p>
             <Link to="/assinaturas">

@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import KanbanCard, { type CardData } from "./KanbanCard";
+import KanbanCard, { type CardData, type CardLabel } from "./KanbanCard";
 import { useState } from "react";
 
 export interface ColumnData {
@@ -30,9 +30,10 @@ interface KanbanColumnProps {
   onRenameColumn: (columnId: string, title: string) => void;
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
   highlightedCardIds?: Set<string>;
+  labelsMap?: Map<string, CardLabel[]>;
 }
 
-const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds }: KanbanColumnProps) => {
+const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds, labelsMap }: KanbanColumnProps) => {
   const [addingCard, setAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -164,7 +165,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       <div ref={setDropRef} className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
         <SortableContext items={sortedCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {sortedCards.map((card) => (
-            <KanbanCard key={card.id} card={card} onClick={() => onCardClick?.(card)} isHighlighted={highlightedCardIds?.has(card.id)} />
+            <KanbanCard key={card.id} card={card} onClick={() => onCardClick?.(card)} isHighlighted={highlightedCardIds?.has(card.id)} labels={labelsMap?.get(card.id)} />
           ))}
         </SortableContext>
 
