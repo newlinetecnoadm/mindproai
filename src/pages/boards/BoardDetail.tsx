@@ -268,6 +268,13 @@ const BoardDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-cards", id] }),
   });
 
+  const reorderColumnsMut = useMutation({
+    mutationFn: async (columnIds: string[]) => {
+      await Promise.all(columnIds.map((cid, i) => supabase.from("board_columns").update({ position: i }).eq("id", cid)));
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board-columns", id] }),
+  });
+
   const updateTitleMut = useMutation({
     mutationFn: async (title: string) => {
       const { error } = await supabase.from("boards").update({ title }).eq("id", id!);
