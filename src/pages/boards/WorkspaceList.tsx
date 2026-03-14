@@ -465,46 +465,45 @@ const WorkspaceList = () => {
                   onDragLeave={() => setDragOverWsId(null)}
                   onDrop={(e) => handleWsDrop(e, ws.id)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-2"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("application/workspace-id", ws.id);
+                    }}
+                  >
                     <button
                       onClick={() => toggleCollapse(ws.id)}
-                      className="flex items-center gap-2 hover:text-foreground text-foreground/80 transition-colors"
+                      className="flex items-center gap-1 hover:text-foreground text-foreground/80 transition-colors cursor-grab active:cursor-grabbing"
                     >
                       {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       <h2 className="text-sm font-semibold">{ws.title}</h2>
                     </button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
+                      <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </Button>
                     <span className="text-xs text-muted-foreground">{wsBoards.length}</span>
                     <div className="ml-auto flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
                         <Plus className="w-3 h-3 mr-1" /> Board
                       </Button>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreHorizontal className="w-3.5 h-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
-                              <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
-                              <Share2 className="w-3.5 h-3.5 mr-2" /> Compartilhar
-                            </DropdownMenuItem>
-                            {!ws.is_default && (
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => {
-                                  if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
-                                    deleteWsMut.mutate(ws.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
+                        <Users className="w-3 h-3 mr-1" /> Membros
+                      </Button>
+                      {!ws.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            if (confirm("Remover este workspace? Os boards ficarão sem workspace.")) {
+                              deleteWsMut.mutate(ws.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   {!isCollapsed && (

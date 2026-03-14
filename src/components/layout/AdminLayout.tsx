@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, CreditCard, BarChart3, Settings, ArrowLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
+import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
+import logoIcon from "@/assets/logo-icon-color-2.png";
 
 const navItems = [
   { icon: BarChart3, label: "Métricas", path: "/admin" },
@@ -18,8 +19,8 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="flex flex-col w-60 border-r border-sidebar-border bg-sidebar sticky top-0 h-screen">
-        <div className="p-4 h-16 border-b border-sidebar-border flex items-center gap-2">
-          <img src={logoHorizontalColor} alt="Mind Pro AI" className="h-7" />
+        <div className="px-5 h-16 border-b border-sidebar-border flex items-center gap-2">
+          <img src={logoHorizontal} alt="MindPro" className="h-7" />
         </div>
 
         <div className="mx-3 mt-3 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2">
@@ -37,11 +38,11 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -50,7 +51,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
 
         <div className="p-3 border-t border-sidebar-border">
           <Link to="/dashboard">
-            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs">
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-sidebar-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4" /> Voltar ao App
             </Button>
           </Link>
