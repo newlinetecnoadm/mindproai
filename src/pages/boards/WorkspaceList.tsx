@@ -89,6 +89,7 @@ const WorkspaceList = () => {
   const [dragOverWsId, setDragOverWsId] = useState<string | null>(null);
   const [shareWs, setShareWs] = useState<{ id: string; title: string } | null>(null);
   const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
+  const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; boardCount: number } | null>(null);
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
