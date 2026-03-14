@@ -650,7 +650,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                 {linkedDiagram.title}
               </Badge>
             ) : (
-              <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker}>
+              <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker} modal={true}>
                 <PopoverTrigger asChild>
                   <button type="button" className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border border-border cursor-pointer hover:bg-muted/80 transition-colors">
                     <GitBranch className="w-3 h-3" /> Diagrama
