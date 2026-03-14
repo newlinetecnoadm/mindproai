@@ -153,11 +153,11 @@ const AdminPlans = () => {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Colaboradores</Label>
+                                <Label className="text-xs">Convidados/projeto</Label>
                                 <Input
                                   type="number"
-                                  value={editValues.max_collaborators}
-                                  onChange={(e) => setEditValues({ ...editValues, max_collaborators: parseInt(e.target.value) })}
+                                  value={editValues.max_guests_per_project}
+                                  onChange={(e) => setEditValues({ ...editValues, max_guests_per_project: parseInt(e.target.value) })}
                                   className="h-9"
                                 />
                               </div>
