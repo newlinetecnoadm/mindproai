@@ -231,7 +231,7 @@ const AdminPlans = () => {
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_diagrams ?? 3)} mapas</Badge>
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_boards ?? 2)} boards</Badge>
                                   <Badge variant="secondary" className="text-xs">{fmt(f.max_events ?? 10)} eventos/mês</Badge>
-                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_collaborators ?? 0)} colaboradores</Badge>
+                                  <Badge variant="secondary" className="text-xs">{fmt(f.max_guests_per_project ?? f.max_collaborators ?? 0)} convidados/projeto</Badge>
                                   {f.export_pdf && <Badge variant="secondary" className="text-xs">PDF</Badge>}
                                   {f.ai_suggestions && <Badge variant="secondary" className="text-xs">IA</Badge>}
                                 </>
