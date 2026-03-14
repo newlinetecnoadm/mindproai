@@ -23,6 +23,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
+import ShareWorkspaceDialog from "@/components/boards/ShareWorkspaceDialog";
 
 const defaultColors = ["#f97316", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#eab308"];
 
