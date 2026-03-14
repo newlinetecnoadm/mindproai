@@ -56,11 +56,8 @@ const Cadastro = () => {
   };
 
   const handleGoogleSignup = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
     if (error) toast.error("Erro ao cadastrar com Google");
   };
