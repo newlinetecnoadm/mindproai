@@ -294,7 +294,7 @@ const WorkspaceList = () => {
     },
   });
 
-
+  const moveBoardMut = useMutation({
     mutationFn: async ({ boardId, wsId }: { boardId: string; wsId: string | null }) => {
       const { error } = await supabase.from("boards").update({ workspace_id: wsId } as any).eq("id", boardId);
       if (error) throw error;
