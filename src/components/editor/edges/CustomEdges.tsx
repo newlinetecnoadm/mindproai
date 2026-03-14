@@ -7,7 +7,7 @@ import {
   type EdgeProps,
 } from "@xyflow/react";
 
-// ── Animated edge wrapper with CSS keyframes ──────────────
+// ── Animated edge CSS keyframes ───────────────────────────
 
 const animationDefs = `
   @keyframes edgeDashFlow {
@@ -20,6 +20,16 @@ const animationDefs = `
   @keyframes edgeGlow {
     0%, 100% { filter: drop-shadow(0 0 2px currentColor); }
     50% { filter: drop-shadow(0 0 8px currentColor); }
+  }
+  @keyframes edgeNeon {
+    0%, 100% {
+      filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor);
+      opacity: 0.85;
+    }
+    50% {
+      filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 14px currentColor) drop-shadow(0 0 20px currentColor);
+      opacity: 1;
+    }
   }
 `;
 
@@ -38,108 +48,57 @@ function getAnimationStyle(style: React.CSSProperties | undefined): React.CSSPro
   const dashArray = (style as any)?._dashArray as string | undefined;
 
   const base: React.CSSProperties = { ...style };
-  // Clean custom props
   delete (base as any)._animation;
   delete (base as any)._dashArray;
 
-  if (anim === "dash" && dashArray) {
-    return {
-      ...base,
-      strokeDasharray: dashArray,
-      animation: "edgeDashFlow 0.8s linear infinite",
-    };
+  switch (anim) {
+    case "dash":
+      return { ...base, strokeDasharray: dashArray || "6 3", animation: "edgeDashFlow 0.8s linear infinite" };
+    case "flow":
+      return { ...base, strokeDasharray: dashArray || "8 4", animation: "edgeDashFlow 1.5s linear infinite" };
+    case "pulse":
+      return { ...base, animation: "edgePulse 2s ease-in-out infinite" };
+    case "glow":
+      return { ...base, animation: "edgeGlow 2.5s ease-in-out infinite" };
+    case "neon":
+      return { ...base, animation: "edgeNeon 2s ease-in-out infinite" };
+    default:
+      return base;
   }
-  if (anim === "flow" && dashArray) {
-    return {
-      ...base,
-      strokeDasharray: dashArray,
-      animation: "edgeDashFlow 1.5s linear infinite",
-    };
-  }
-  if (anim === "pulse") {
-    return {
-      ...base,
-      animation: "edgePulse 2s ease-in-out infinite",
-    };
-  }
-  if (anim === "glow") {
-    return {
-      ...base,
-      animation: "edgeGlow 2.5s ease-in-out infinite",
-    };
-  }
-  return base;
 }
 
 // ── Curved (Bezier) Edge ──────────────────────────────────
 
 function CurvedEdgeComponent(props: EdgeProps) {
   const [edgePath] = getBezierPath({
-    sourceX: props.sourceX,
-    sourceY: props.sourceY,
-    sourcePosition: props.sourcePosition,
-    targetX: props.targetX,
-    targetY: props.targetY,
-    targetPosition: props.targetPosition,
+    sourceX: props.sourceX, sourceY: props.sourceY, sourcePosition: props.sourcePosition,
+    targetX: props.targetX, targetY: props.targetY, targetPosition: props.targetPosition,
   });
-
-  return (
-    <BaseEdge
-      id={props.id}
-      path={edgePath}
-      style={getAnimationStyle(props.style)}
-      markerEnd={props.markerEnd}
-    />
-  );
+  return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
-
 export const CurvedEdge = memo(CurvedEdgeComponent);
 
 // ── Orthogonal (SmoothStep) Edge ──────────────────────────
 
 function OrthogonalEdgeComponent(props: EdgeProps) {
   const [edgePath] = getSmoothStepPath({
-    sourceX: props.sourceX,
-    sourceY: props.sourceY,
-    sourcePosition: props.sourcePosition,
-    targetX: props.targetX,
-    targetY: props.targetY,
-    targetPosition: props.targetPosition,
+    sourceX: props.sourceX, sourceY: props.sourceY, sourcePosition: props.sourcePosition,
+    targetX: props.targetX, targetY: props.targetY, targetPosition: props.targetPosition,
     borderRadius: 8,
   });
-
-  return (
-    <BaseEdge
-      id={props.id}
-      path={edgePath}
-      style={getAnimationStyle(props.style)}
-      markerEnd={props.markerEnd}
-    />
-  );
+  return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
-
 export const OrthogonalEdge = memo(OrthogonalEdgeComponent);
 
 // ── Straight Edge ─────────────────────────────────────────
 
 function StraightEdgeComponent(props: EdgeProps) {
   const [edgePath] = getStraightPath({
-    sourceX: props.sourceX,
-    sourceY: props.sourceY,
-    targetX: props.targetX,
-    targetY: props.targetY,
+    sourceX: props.sourceX, sourceY: props.sourceY,
+    targetX: props.targetX, targetY: props.targetY,
   });
-
-  return (
-    <BaseEdge
-      id={props.id}
-      path={edgePath}
-      style={getAnimationStyle(props.style)}
-      markerEnd={props.markerEnd}
-    />
-  );
+  return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
-
 export const StraightEdge = memo(StraightEdgeComponent);
 
 // ── Hierarchy Edge (curved L-shape for org charts) ────────
@@ -147,17 +106,7 @@ export const StraightEdge = memo(StraightEdgeComponent);
 function HierarchyEdgeComponent(props: EdgeProps) {
   const { sourceX, sourceY, targetX, targetY } = props;
   const midY = sourceY + (targetY - sourceY) * 0.5;
-
   const edgePath = `M ${sourceX} ${sourceY} C ${sourceX} ${midY}, ${targetX} ${midY}, ${targetX} ${targetY}`;
-
-  return (
-    <BaseEdge
-      id={props.id}
-      path={edgePath}
-      style={getAnimationStyle(props.style)}
-      markerEnd={props.markerEnd}
-    />
-  );
+  return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
-
 export const HierarchyEdge = memo(HierarchyEdgeComponent);
