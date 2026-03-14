@@ -717,27 +717,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // AI: apply generated map
   const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
     takeSnapshot();
-    const colorIdx = (i: number) => childColors[i % childColors.length];
 
-    const newNodes: Node[] = genNodes.map((n, i) => ({
-      id: n.id,
-      type: nodeType,
-      position: { x: 0, y: 0 },
-      data: {
-        label: n.label,
-        color: n.isRoot ? "default" : colorIdx(i),
-        ...(n.isRoot ? { isRoot: true } : {}),
-      },
-    }));
-
-    const newEdges: Edge[] = genEdges.map((e) => ({
+    // Build temp edges to compute depth
+    const tempEdges: Edge[] = genEdges.map((e) => ({
       id: `e-${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
       type: "smoothstep",
     }));
 
-    applyAutoLayout(newNodes, newEdges);
+    const newNodes: Node[] = genNodes.map((n) => {
+      const depth = getNodeDepth(n.id, tempEdges);
+      return {
+        id: n.id,
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: {
+          label: n.label,
+          color: n.isRoot ? "orange" : getColorForDepth(depth),
+          ...(n.isRoot ? { isRoot: true } : {}),
+        },
+      };
+    });
+
+    applyAutoLayout(newNodes, tempEdges);
   }, [nodeType, takeSnapshot, applyAutoLayout]);
 
   // AI: apply suggestion
