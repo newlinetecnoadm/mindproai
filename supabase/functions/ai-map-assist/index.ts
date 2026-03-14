@@ -98,7 +98,7 @@ serve(async (req) => {
   }
 
   try {
-    const { mode, topic, diagramType, nodes, edges } = await req.json();
+    const { mode, topic, diagramType, nodes, edges, parentId } = await req.json();
 
     if (!mode || !["generate", "analyze", "expand"].includes(mode)) {
       return new Response(
