@@ -23,6 +23,8 @@ const AgendaPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventFormData | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date>(new Date());
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const limits = usePlanLimits();
 
   const { data: events = [] } = useQuery({
     queryKey: ["events", user?.id],
