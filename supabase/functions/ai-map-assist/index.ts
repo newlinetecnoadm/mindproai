@@ -155,6 +155,9 @@ serve(async (req) => {
     if (mode === "generate") {
       systemPrompt = GENERATE_SYSTEM;
       userMessage = `Crie um mapa do tipo "${diagramType || "mindmap"}" sobre o tema: "${topic}"`;
+    } else if (mode === "expand") {
+      systemPrompt = EXPAND_SYSTEM.replace(/PARENT_ID/g, parentId || "parent");
+      userMessage = `Gere sub-nós para expandir o conceito: "${topic}"`;
     } else {
       systemPrompt = ANALYZE_SYSTEM;
       const nodesSummary = (nodes || []).map((n: any) => `- [${n.id}] ${n.label || n.data?.label || "sem label"}`).join("\n");
