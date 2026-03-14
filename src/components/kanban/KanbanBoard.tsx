@@ -44,6 +44,7 @@ const KanbanBoard = ({
   onRenameColumn,
   onReorderColumns,
   onDropInboxItem,
+  highlightedCardIds,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
