@@ -17,7 +17,7 @@ import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import ShareWorkspaceDialog from "@/components/boards/ShareWorkspaceDialog";
