@@ -35,29 +35,38 @@ const simpleBgColors: Record<string, string> = {
 const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
 
 function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
-  const [editing, setEditing] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [editingRole, setEditingRole] = useState(false);
   const [label, setLabel] = useState(data.label);
   const [role, setRole] = useState(data.role || "");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const labelRef = useRef<HTMLInputElement>(null);
+  const roleRef = useRef<HTMLInputElement>(null);
   const isSimple = data.variant === "simple";
 
-  useEffect(() => { if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
+  useEffect(() => { if (editingLabel && labelRef.current) { labelRef.current.focus(); labelRef.current.select(); } }, [editingLabel]);
+  useEffect(() => { if (editingRole && roleRef.current) { roleRef.current.focus(); roleRef.current.select(); } }, [editingRole]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId === id) {
         if (detail?.replaceText) setLabel("");
-        setEditing(true);
+        setEditingLabel(true);
       }
     };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
   }, [id]);
 
+  // Keep data in sync
+  useEffect(() => { setLabel(data.label); }, [data.label]);
+  useEffect(() => { setRole(data.role || ""); }, [data.role]);
+
   const colorClass = deptColors[data.color || "default"] || deptColors.default;
   const simpleColorClass = simpleBgColors[data.color || "default"] || simpleBgColors.default;
-  const handleBlur = () => { setEditing(false); data.label = label; data.role = role; };
+  
+  const commitLabel = () => { setEditingLabel(false); data.label = label; };
+  const commitRole = () => { setEditingRole(false); data.role = role; };
 
   const handles = (
     <>
@@ -80,16 +89,16 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
           simpleColorClass,
           selected && "ring-2 ring-primary/50 shadow-md"
         )}
-        onDoubleClick={() => setEditing(true)}
+        onDoubleClick={() => setEditingLabel(true)}
       >
         {handles}
-        {editing ? (
+        {editingLabel ? (
           <input
-            ref={inputRef}
+            ref={labelRef}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={(e) => { if (e.key === "Enter") handleBlur(); }}
+            onBlur={commitLabel}
+            onKeyDown={(e) => { if (e.key === "Enter") commitLabel(); }}
             className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-semibold"
           />
         ) : (
@@ -106,7 +115,6 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
         colorClass,
         selected && "ring-2 ring-primary/50 shadow-md"
       )}
-      onDoubleClick={() => setEditing(true)}
     >
       {handles}
 
@@ -119,24 +127,46 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          {editing ? (
-            <div className="space-y-1">
-              <input ref={inputRef} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={handleBlur}
-                onKeyDown={(e) => { if (e.key === "Enter") handleBlur(); }}
-                className="bg-transparent outline-none w-full text-sm font-semibold" placeholder="Nome" />
-              <input value={role} onChange={(e) => setRole(e.target.value)} onBlur={handleBlur}
-                onKeyDown={(e) => { if (e.key === "Enter") handleBlur(); }}
-                className="bg-transparent outline-none w-full text-xs text-muted-foreground" placeholder="Cargo" />
-            </div>
+          {editingLabel ? (
+            <input
+              ref={labelRef}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onBlur={commitLabel}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { commitLabel(); }
+                if (e.key === "Tab") { e.preventDefault(); commitLabel(); setEditingRole(true); }
+              }}
+              className="bg-transparent outline-none w-full text-sm font-semibold"
+              placeholder="Nome"
+            />
           ) : (
-            <>
-              <p className="text-sm font-semibold truncate">{label}</p>
-              {(data.role || data.department) && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {data.role}{data.department ? ` · ${data.department}` : ""}
-                </p>
-              )}
-            </>
+            <p
+              className="text-sm font-semibold truncate cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5"
+              onDoubleClick={() => setEditingLabel(true)}
+              onClick={() => setEditingLabel(true)}
+            >
+              {label}
+            </p>
+          )}
+          {editingRole ? (
+            <input
+              ref={roleRef}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              onBlur={commitRole}
+              onKeyDown={(e) => { if (e.key === "Enter") commitRole(); }}
+              className="bg-transparent outline-none w-full text-xs text-muted-foreground mt-0.5"
+              placeholder="Cargo"
+            />
+          ) : (
+            <p
+              className="text-xs text-muted-foreground truncate cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5 mt-0.5"
+              onDoubleClick={() => setEditingRole(true)}
+              onClick={() => setEditingRole(true)}
+            >
+              {role || data.department || "Clique para editar cargo"}
+            </p>
           )}
         </div>
       </div>

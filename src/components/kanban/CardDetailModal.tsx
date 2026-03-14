@@ -633,16 +633,67 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             className="text-xl font-bold border-none bg-transparent px-0 h-auto focus-visible:ring-0 focus-visible:bg-muted rounded-lg px-2 -mx-2"
           />
 
-          {/* Labels */}
-          {assignedLabels.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {assignedLabels.map((l: any) => (
-                <Badge key={l.id} className="text-white text-xs" style={{ backgroundColor: l.color }}>
-                  {l.name || "Sem nome"}
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Labels + Diagram link */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {assignedLabels.map((l: any) => (
+              <Badge key={l.id} className="text-white text-xs" style={{ backgroundColor: l.color }}>
+                {l.name || "Sem nome"}
+              </Badge>
+            ))}
+            {linkedDiagram ? (
+              <Badge
+                variant="outline"
+                className="text-xs gap-1 cursor-pointer hover:bg-primary/10 border-primary/30 text-primary"
+                onClick={() => setDiagramPreviewId(linkedDiagram.id)}
+              >
+                <GitBranch className="w-3 h-3" />
+                {linkedDiagram.title}
+              </Badge>
+            ) : (
+              <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker}>
+                <PopoverTrigger asChild>
+                  <Badge variant="outline" className="text-xs gap-1 cursor-pointer hover:bg-muted/80">
+                    <GitBranch className="w-3 h-3" /> Diagrama
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3" align="start">
+                  <p className="text-xs font-medium mb-2">Seus diagramas</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {userDiagrams.length === 0 && (
+                      <p className="text-xs text-muted-foreground py-2 text-center">Nenhum diagrama encontrado</p>
+                    )}
+                    {userDiagrams.map((d: any) => (
+                      <button
+                        key={d.id}
+                        onClick={() => {
+                          updateCard.mutate({ diagram_id: d.id });
+                          setShowDiagramPicker(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded text-left text-xs hover:bg-muted/50 transition-colors"
+                      >
+                        {d.thumbnail ? (
+                          <img src={d.thumbnail} alt="" className="w-10 h-7 object-cover rounded shrink-0" />
+                        ) : (
+                          <div className="w-10 h-7 flex items-center justify-center rounded bg-muted shrink-0">
+                            <GitBranch className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{d.title}</p>
+                          <p className="text-[10px] text-muted-foreground capitalize">{d.type?.replace("_", " ")}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+            {linkedDiagram && (
+              <Button variant="ghost" size="sm" className="h-5 px-1 text-destructive" onClick={() => updateCard.mutate({ diagram_id: null })}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
 
           {/* Due date */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -786,72 +837,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             />
           </div>
 
-          {/* Linked Diagram */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <GitBranch className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Diagrama</span>
-            </div>
-            {linkedDiagram ? (
-              <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-muted/30">
-                {linkedDiagram.thumbnail ? (
-                  <img src={linkedDiagram.thumbnail} alt="" className="w-16 h-10 object-cover rounded shrink-0" />
-                ) : (
-                  <div className="w-16 h-10 flex items-center justify-center rounded bg-muted shrink-0">
-                    <GitBranch className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{linkedDiagram.title}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">{linkedDiagram.type?.replace("_", " ")}</p>
-                </div>
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setDiagramPreviewId(linkedDiagram.id)}>
-                  <ExternalLink className="w-3 h-3" /> Ver
-                </Button>
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => updateCard.mutate({ diagram_id: null })}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ) : (
-              <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                    <GitBranch className="w-3.5 h-3.5" /> Vincular diagrama
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-3" align="start">
-                  <p className="text-xs font-medium mb-2">Seus diagramas</p>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {userDiagrams.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-2 text-center">Nenhum diagrama encontrado</p>
-                    )}
-                    {userDiagrams.map((d: any) => (
-                      <button
-                        key={d.id}
-                        onClick={() => {
-                          updateCard.mutate({ diagram_id: d.id });
-                          setShowDiagramPicker(false);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded text-left text-xs hover:bg-muted/50 transition-colors"
-                      >
-                        {d.thumbnail ? (
-                          <img src={d.thumbnail} alt="" className="w-10 h-7 object-cover rounded shrink-0" />
-                        ) : (
-                          <div className="w-10 h-7 flex items-center justify-center rounded bg-muted shrink-0">
-                            <GitBranch className="w-3 h-3 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{d.title}</p>
-                          <p className="text-[10px] text-muted-foreground capitalize">{d.type?.replace("_", " ")}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
+          {/* Linked Diagram - inline next to labels */}
 
           <DiagramPreviewDialog
             diagramId={diagramPreviewId}
@@ -1030,14 +1016,17 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
+          {/* Activity Feed - collapsible */}
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
               <Activity className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Atividade</span>
+              <span className="text-[10px] text-muted-foreground ml-auto group-open:rotate-90 transition-transform">▶</span>
+            </summary>
+            <div className="mt-2">
+              <CardActivityFeed cardId={cardId!} />
             </div>
-            <CardActivityFeed cardId={cardId!} />
-          </div>
+          </details>
 
           {/* Card actions */}
           <div className="border-t border-border pt-4 space-y-3">

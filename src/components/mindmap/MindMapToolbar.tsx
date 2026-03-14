@@ -107,18 +107,7 @@ const MindMapToolbar = ({
         <Undo2 className="w-4 h-4" />
       </Button>
 
-      <div className="w-px h-5 bg-border mx-1" />
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 gap-1 text-xs"
-        onClick={onSave}
-        disabled={saving}
-      >
-        <Save className="w-4 h-4" />
-        {saving ? "Salvando..." : "Salvar"}
-      </Button>
+      {/* Save button removed — autosave handles persistence */}
     </div>
   );
 };

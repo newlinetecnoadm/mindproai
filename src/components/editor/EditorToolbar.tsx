@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Save, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid, Diamond, StickyNote, Spline, ArrowRight as ArrowIcon, MoveRight, GitBranch, Bot } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid, Diamond, StickyNote, Spline, ArrowRight as ArrowIcon, MoveRight, GitBranch, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
 const nodeColors = [
@@ -50,7 +51,6 @@ const shortcuts = [
   { keys: ["↑"], desc: "Irmão anterior" },
   { keys: ["↓"], desc: "Próximo irmão" },
   { keys: ["Delete"], desc: "Excluir nó selecionado" },
-  { keys: ["Ctrl", "S"], desc: "Salvar" },
   { keys: ["Ctrl", "Z"], desc: "Desfazer" },
   { keys: ["Ctrl", "⇧", "Z"], desc: "Refazer" },
   { keys: ["Ctrl", "D"], desc: "Duplicar nó" },
@@ -99,6 +99,17 @@ const edgeTypeOptions = [
   { value: "hierarchy", label: "Hierarquia", icon: GitBranch },
 ];
 
+const TipButton = ({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.ComponentProps<typeof Button>) => (
+  <TooltipProvider delayDuration={300}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button {...rest}>{children}</Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
@@ -107,21 +118,23 @@ const EditorToolbar = ({
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md">
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo} title="Desfazer (Ctrl+Z)">
+      <TipButton label="Desfazer (Ctrl+Z)" variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo}>
         <Undo2 className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)">
+      </TipButton>
+      <TipButton label="Refazer (Ctrl+Shift+Z)" variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo}>
         <Redo2 className="w-4 h-4" />
-      </Button>
+      </TipButton>
 
       <div className="w-px h-5 bg-border mx-1" />
 
       {/* Add node dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title={addLabels[diagramType] || "Adicionar nó (Tab)"}>
-            <Plus className="w-4 h-4" />
-          </Button>
+          <span>
+            <TipButton label={addLabels[diagramType] || "Adicionar nó (Tab)"} variant="ghost" size="icon" className="h-8 w-8">
+              <Plus className="w-4 h-4" />
+            </TipButton>
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={onAddNode}>
@@ -143,15 +156,17 @@ const EditorToolbar = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} disabled={!hasSelection} title="Excluir (Delete)">
+      <TipButton label="Excluir (Delete)" variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} disabled={!hasSelection}>
         <Trash2 className="w-4 h-4" />
-      </Button>
+      </TipButton>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!hasSelection} title="Cor do nó">
-            <Palette className="w-4 h-4" />
-          </Button>
+          <span>
+            <TipButton label="Cor do nó" variant="ghost" size="icon" className="h-8 w-8" disabled={!hasSelection}>
+              <Palette className="w-4 h-4" />
+            </TipButton>
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {nodeColors.map((c) => (
@@ -167,9 +182,11 @@ const EditorToolbar = ({
       {onEdgeTypeChange && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Tipo de aresta">
-              <Spline className="w-4 h-4" />
-            </Button>
+            <span>
+              <TipButton label="Tipo de aresta" variant="ghost" size="icon" className="h-8 w-8">
+                <Spline className="w-4 h-4" />
+              </TipButton>
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-[140px]">
             {edgeTypeOptions.map((opt) => (
@@ -189,27 +206,29 @@ const EditorToolbar = ({
 
       <div className="w-px h-5 bg-border mx-1" />
 
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomIn} title="Zoom in">
+      <TipButton label="Zoom in" variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomIn}>
         <ZoomIn className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomOut} title="Zoom out">
+      </TipButton>
+      <TipButton label="Zoom out" variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomOut}>
         <ZoomOut className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView} title="Ajustar visão">
+      </TipButton>
+      <TipButton label="Ajustar visão" variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView}>
         <Maximize className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReLayout} title="Reorganizar layout automático">
+      </TipButton>
+      <TipButton label="Reorganizar layout" variant="ghost" size="icon" className="h-8 w-8" onClick={onReLayout}>
         <LayoutGrid className="w-4 h-4" />
-      </Button>
+      </TipButton>
 
       <div className="w-px h-5 bg-border mx-1" />
 
       {/* Theme picker */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Tema do editor">
-            <SwatchBook className="w-4 h-4" />
-          </Button>
+          <span>
+            <TipButton label="Tema do editor" variant="ghost" size="icon" className="h-8 w-8">
+              <SwatchBook className="w-4 h-4" />
+            </TipButton>
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[160px]">
           {editorThemes.map((t) => (
@@ -230,9 +249,11 @@ const EditorToolbar = ({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={exporting} title="Exportar">
-            <Download className="w-4 h-4" />
-          </Button>
+          <span>
+            <TipButton label="Exportar" variant="ghost" size="icon" className="h-8 w-8" disabled={exporting}>
+              <Download className="w-4 h-4" />
+            </TipButton>
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={onExportPng}>
@@ -250,25 +271,22 @@ const EditorToolbar = ({
       </DropdownMenu>
 
       {onAIAssist && (
-        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onAIAssist} title="Assistente IA">
+        <TipButton label="Assistente IA" variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onAIAssist}>
           <Bot className="w-4 h-4" />
           IA
-        </Button>
+        </TipButton>
       )}
-
-      <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onSave} disabled={saving}>
-        <Save className="w-4 h-4" />
-        {saving ? "Salvando..." : "Salvar"}
-      </Button>
 
       <div className="w-px h-5 bg-border mx-1" />
 
       {/* Keyboard shortcuts help */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Atalhos de teclado (?)">
-            <Keyboard className="w-4 h-4" />
-          </Button>
+          <span>
+            <TipButton label="Atalhos de teclado" variant="ghost" size="icon" className="h-8 w-8">
+              <Keyboard className="w-4 h-4" />
+            </TipButton>
+          </span>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64 p-3" sideOffset={8}>
           <p className="text-xs font-semibold text-foreground mb-2">Atalhos de teclado</p>
