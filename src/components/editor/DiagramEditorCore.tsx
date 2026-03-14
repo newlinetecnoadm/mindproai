@@ -374,11 +374,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const colorIdx = nodes.length % childColors.length;
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColors[colorIdx] };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColors[colorIdx] };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColors[colorIdx] };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColors[colorIdx] };
+    let newData: Record<string, unknown> = { label: "Novo tópico", color: siblingColor };
+    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: siblingColor };
+    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: siblingColor };
+    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: siblingColor };
+    else if (nodeType === "concept") newData = { label: "Novo conceito", color: siblingColor };
 
     const pos = { x: selected.position.x, y: selected.position.y + 80 };
 
