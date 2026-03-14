@@ -19,9 +19,6 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import ShareBoardDialog from "@/components/boards/ShareBoardDialog";
 import ShareWorkspaceDialog from "@/components/boards/ShareWorkspaceDialog";
 
