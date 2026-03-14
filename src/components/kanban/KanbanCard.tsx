@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { GripVertical, Calendar, MessageSquare } from "lucide-react";
+import { Calendar, MessageSquare } from "lucide-react";
 
 export interface CardData {
   id: string;

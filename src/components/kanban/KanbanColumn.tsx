@@ -3,7 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
-import { Plus, MoreHorizontal, Trash2, Pencil, GripVertical } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
