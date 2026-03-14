@@ -1,0 +1,1 @@
+ALTER TABLE public.board_cards ADD COLUMN diagram_id uuid REFERENCES public.diagrams(id) ON DELETE SET NULL DEFAULT NULL;

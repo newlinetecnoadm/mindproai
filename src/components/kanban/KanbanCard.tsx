@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
-import { Calendar, MessageSquare } from "lucide-react";
+import { Calendar, MessageSquare, GitBranch } from "lucide-react";
 
 export interface CardData {
   id: string;
@@ -12,6 +12,7 @@ export interface CardData {
   due_date?: string | null;
   is_complete?: boolean | null;
   cover_color?: string | null;
+  diagram_id?: string | null;
 }
 
 interface KanbanCardProps {
@@ -64,7 +65,7 @@ const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
           </span>
         </div>
 
-        {(card.due_date || card.description) && (
+        {(card.due_date || card.description || card.diagram_id) && (
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             {card.due_date && (
               <span className={cn(
@@ -73,6 +74,11 @@ const KanbanCard = ({ card, onClick, isHighlighted }: KanbanCardProps) => {
               )}>
                 <Calendar className="w-3 h-3" />
                 {new Date(card.due_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+              </span>
+            )}
+            {card.diagram_id && (
+              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                <GitBranch className="w-3 h-3" />
               </span>
             )}
             {card.description && (
