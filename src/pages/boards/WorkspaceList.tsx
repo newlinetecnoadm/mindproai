@@ -631,6 +631,35 @@ const WorkspaceList = () => {
             onOpenChange={(v) => { if (!v) setShareWs(null); }}
           />
         )}
+
+        {/* Delete workspace confirmation */}
+        <Dialog open={!!deletingWs} onOpenChange={(v) => { if (!v) setDeletingWs(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Excluir Workspace
+              </DialogTitle>
+              <DialogDescription className="text-sm pt-2">
+                Esta ação é <strong>irreversível</strong>. Ao excluir o workspace <strong>"{deletingWs?.title}"</strong>,
+                {deletingWs?.boardCount
+                  ? <> todos os <strong>{deletingWs.boardCount} board{deletingWs.boardCount > 1 ? "s" : ""}</strong> dentro dele também serão excluídos permanentemente.</>
+                  : " o workspace será removido permanentemente."
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeletingWs(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={deleteWsMut.isPending}
+                onClick={() => deletingWs && deleteWsMut.mutate(deletingWs.id)}
+              >
+                {deleteWsMut.isPending ? "Excluindo..." : "Excluir permanentemente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageTransition>
     </DashboardLayout>
   );
