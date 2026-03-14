@@ -298,8 +298,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
-    takeSnapshot();
-    const colorIdx = nodes.length % childColors.length;
+    const parentDepth = getNodeDepth(parent.id, edges);
+    const childDepth = parentDepth + 1;
+    const childColor = getColorForDepth(childDepth);
     const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
     let newData: Record<string, unknown> = { label: "Novo tópico", color: childColors[colorIdx] };
