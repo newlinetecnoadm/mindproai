@@ -32,6 +32,7 @@ import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge } from "./edges
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
+import AIMapAssistDialog from "./AIMapAssistDialog";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 
