@@ -441,7 +441,16 @@ const WorkspaceList = () => {
               const wsBoards = boardsByWs.map.get(ws.id) || [];
               const isCollapsed = collapsedWs.has(ws.id);
               return (
-                <div key={ws.id} className="space-y-3">
+                <div
+                  key={ws.id}
+                  className={cn(
+                    "space-y-3 rounded-lg p-3 -m-3 transition-colors",
+                    dragOverWsId === ws.id && "bg-primary/5 ring-2 ring-primary/20"
+                  )}
+                  onDragOver={(e) => handleWsDragOver(e, ws.id)}
+                  onDragLeave={() => setDragOverWsId(null)}
+                  onDrop={(e) => handleWsDrop(e, ws.id)}
+                >
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleCollapse(ws.id)}
