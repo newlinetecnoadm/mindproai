@@ -7,7 +7,7 @@ export interface PlanLimits {
   maxDiagrams: number;
   maxBoards: number;
   maxEvents: number;
-  maxCollaborators: number;
+  maxGuestsPerProject: number;
   exportPdf: boolean;
   aiSuggestions: boolean;
   currentDiagrams: number;
