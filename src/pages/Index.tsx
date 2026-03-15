@@ -1,8 +1,9 @@
 import { LayoutDashboard, Calendar, Sparkles, Check, ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
 import logoVerticalColor from "@/assets/logo-vertical-color.png";
 import logoIconSimple from "@/assets/logo-icon-simple.png";
