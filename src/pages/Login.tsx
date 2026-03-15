@@ -96,6 +96,11 @@ const Login = () => {
                 <Input id="password" type="password" placeholder="••••••••" className="pl-10 h-12" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
             </div>
+            <div className="flex justify-end">
+              <Link to="/esqueci-senha" className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                Esqueceu a senha?
+              </Link>
+            </div>
             <Button variant="hero" className="w-full h-12" type="submit" disabled={loading}>
               {loading ? "Entrando..." : <>Entrar <ArrowRight className="w-4 h-4 ml-1" /></>}
             </Button>
