@@ -1,8 +1,9 @@
 import { LayoutDashboard, Calendar, Sparkles, Check, ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
 import logoVerticalColor from "@/assets/logo-vertical-color.png";
 import logoIconSimple from "@/assets/logo-icon-simple.png";
@@ -70,7 +71,20 @@ const fadeUp = {
 };
 
 const LandingPage = () => {
+  const { user, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
