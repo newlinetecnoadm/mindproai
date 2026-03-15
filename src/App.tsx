@@ -12,6 +12,8 @@ import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import DiagramList from "./pages/DiagramList.tsx";
 import DiagramEditor from "./pages/DiagramEditor.tsx";
 import NewDiagram from "./pages/NewDiagram.tsx";
