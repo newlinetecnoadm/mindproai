@@ -26,7 +26,16 @@ const navItems = [
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    return saved === "true";
+  });
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("sidebar-collapsed", String(next));
+  };
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -35,6 +44,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
+    localStorage.removeItem("sidebar-collapsed");
     await signOut();
     navigate("/login");
   };
@@ -167,7 +177,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             {!collapsed && <span>Sair</span>}
           </button>
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleCollapsed}
             className="flex items-center justify-center w-full py-2 rounded-lg text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
