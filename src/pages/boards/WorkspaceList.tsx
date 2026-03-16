@@ -320,10 +320,40 @@ const WorkspaceList = () => {
         unassigned.push(b);
       }
     }
+    // Also group shared boards that belong to a visible workspace
+    for (const b of sharedBoards) {
+      const wsId = (b as any).workspace_id;
+      if (wsId && workspaces.some((ws: any) => ws.id === wsId)) {
+        if (!map.has(wsId)) map.set(wsId, []);
+        map.get(wsId)!.push(b);
+      }
+    }
     return { map, unassigned };
-  }, [ownBoards]);
+  }, [ownBoards, sharedBoards, workspaces]);
+
+  // Shared boards not in any visible workspace
+  const orphanSharedBoards = useMemo(() => {
+    const wsIds = new Set(workspaces.map((ws: any) => ws.id));
+    return sharedBoards.filter(b => !(b as any).workspace_id || !wsIds.has((b as any).workspace_id));
+  }, [sharedBoards, workspaces]);
 
   const totalCount = ownBoards.length;
+
+  // Realtime: refresh when memberships change
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("board-memberships-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "board_members", filter: `user_id=eq.${user.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["boards", user.id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "workspace_members", filter: `user_id=eq.${user.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["workspaces", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["boards", user.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
 
   const renderBoardCard = (board: any) => (
     <div
