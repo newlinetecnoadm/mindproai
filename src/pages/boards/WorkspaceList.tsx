@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
