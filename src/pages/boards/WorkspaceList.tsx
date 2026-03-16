@@ -93,7 +93,11 @@ const WorkspaceList = () => {
   const limits = usePlanLimits();
 
   // Fetch workspaces (own)
-  const { data: workspaces = [], refetch: refetchWs } = useQuery({
+  const {
+    data: workspaces = [],
+    refetch: refetchWs,
+    isFetched: isWorkspacesFetched,
+  } = useQuery({
     queryKey: ["workspaces", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -108,20 +112,33 @@ const WorkspaceList = () => {
     },
   });
 
-  // Ensure default workspace exists — runs once
+  // Ensure default workspace exists only after initial fetch completes
   const defaultCreatedRef = useRef(false);
   useEffect(() => {
-    if (!user || defaultCreatedRef.current) return;
-    if (workspaces && workspaces.length === 0) {
-      defaultCreatedRef.current = true;
-      supabase.from("workspaces" as any).insert({
+    if (!user || !isWorkspacesFetched || defaultCreatedRef.current) return;
+    if (workspaces.length > 0) return;
+
+    defaultCreatedRef.current = true;
+    (async () => {
+      const { error } = await supabase.from("workspaces" as any).insert({
         user_id: user.id,
         title: "Meus Boards",
         is_default: true,
         position: 0,
-      } as any).then(() => refetchWs());
-    }
-  }, [user, workspaces]);
+      } as any);
+
+      if (error) {
+        // Unique index can reject concurrent duplicate creation; just refresh list in that case.
+        if (error.code !== "23505") {
+          toast.error("Erro ao criar workspace padrão");
+          defaultCreatedRef.current = false;
+          return;
+        }
+      }
+
+      await refetchWs();
+    })();
+  }, [user, workspaces.length, isWorkspacesFetched, refetchWs]);
 
   // Fetch boards (own)
   const { data: boards = [], isLoading, isFetching, error, refetch } = useQuery({
@@ -271,6 +288,9 @@ const WorkspaceList = () => {
       queryClient.invalidateQueries({ queryKey: ["board-count"] });
       setDeletingWs(null);
       toast.success("Workspace e boards excluídos");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao excluir workspace");
     },
   });
   const renameWsMut = useMutation({
