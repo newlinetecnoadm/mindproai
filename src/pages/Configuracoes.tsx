@@ -168,7 +168,7 @@ const Configuracoes = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition className="p-6 lg:p-8 max-w-3xl">
+      <PageTransition className="p-6 lg:p-8 max-w-4xl mx-auto w-full">
         <h1 className="text-2xl font-display font-bold mb-1">Configurações</h1>
         <p className="text-muted-foreground mb-8">Gerencie sua conta e preferências</p>
 
