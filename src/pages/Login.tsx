@@ -124,7 +124,7 @@ const Login = () => {
           {/* Logo with glow */}
           <div className="relative inline-block mb-8">
             <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-150" />
-            <img src={logoIconFull} alt="Mind Pro AI" className="relative h-36 mx-auto" />
+            <img src={logoVerticalBrand} alt="Mind Pro AI" className="relative h-44 mx-auto" />
           </div>
 
           <p className="text-white/50 text-sm leading-relaxed mb-8">
