@@ -90,12 +90,7 @@ const ShareDiagramDialog = ({
       if (!user) throw new Error("Não autenticado");
       if (!email.trim()) throw new Error("Email obrigatório");
 
-      // Check if already a collaborator
-      const { data: existing } = await supabase
-        .from("diagram_collaborators")
-        .select("id")
-        .eq("diagram_id", diagramId)
-        .eq("user_id", user.id);
+      const normalizedEmail = email.trim().toLowerCase();
 
       // Check if invitation already exists
       const { data: existingInvite } = await supabase
@@ -103,15 +98,39 @@ const ShareDiagramDialog = ({
         .select("id")
         .eq("resource_id", diagramId)
         .eq("resource_type", "diagram")
-        .eq("invited_email", email.trim().toLowerCase())
+        .eq("invited_email", normalizedEmail)
         .eq("status", "pending");
 
       if (existingInvite && existingInvite.length > 0) {
         throw new Error("Já existe um convite pendente para este email");
       }
 
+      const { data: invitedProfiles, error: invitedProfileError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .ilike("email", normalizedEmail)
+        .limit(1);
+
+      if (invitedProfileError) throw invitedProfileError;
+      const invitedUserId = invitedProfiles?.[0]?.user_id ?? null;
+
+      if (invitedUserId) {
+        const { data: existingCollab, error: collabError } = await supabase
+          .from("diagram_collaborators")
+          .select("id")
+          .eq("diagram_id", diagramId)
+          .eq("user_id", invitedUserId)
+          .limit(1);
+
+        if (collabError) throw collabError;
+        if (existingCollab && existingCollab.length > 0) {
+          throw new Error("Este usuário já é colaborador deste diagrama");
+        }
+      }
+
       const { error } = await supabase.from("invitations").insert({
-        invited_email: email.trim().toLowerCase(),
+        invited_email: normalizedEmail,
+        invited_user_id: invitedUserId,
         invited_by: user.id,
         resource_id: diagramId,
         resource_type: "diagram",

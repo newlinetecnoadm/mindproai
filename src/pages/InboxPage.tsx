@@ -46,17 +46,16 @@ const InboxPage = () => {
     queryKey: ["inbox-invitations", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("email")
-        .eq("user_id", user!.id)
-        .single();
-      if (!profile?.email) return [];
+      const filters = [`invited_user_id.eq.${user!.id}`];
+      if (user?.email) {
+        filters.push(`invited_email.ilike.${user.email}`);
+      }
+
       const { data, error } = await supabase
         .from("invitations")
         .select("*")
-        .eq("invited_email", profile.email)
         .eq("status", "pending")
+        .or(filters.join(","))
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -113,7 +112,7 @@ const InboxPage = () => {
     items.push({
       id: `inv-${inv.id}`,
       type: "invitation",
-      title: `Convite para ${inv.resource_type === "board" ? "Board" : "Diagrama"}`,
+      title: `Convite para ${inv.resource_type === "board" ? "Board" : inv.resource_type === "workspace" ? "Workspace" : "Diagrama"}`,
       description: `Você foi convidado como ${inv.role}`,
       date: inv.created_at!,
       link: `/convite?token=${inv.token}`,

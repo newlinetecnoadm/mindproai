@@ -49,10 +49,14 @@ const NotificationBell = () => {
         toast.success(
           invitation.resource_type === "board"
             ? "Convite de board aceito!"
-            : "Convite de diagrama aceito!"
+            : invitation.resource_type === "workspace"
+              ? "Convite de workspace aceito!"
+              : "Convite de diagrama aceito!"
         );
         if (invitation.resource_type === "board") {
           navigate(`/boards/${invitation.resource_id}`);
+        } else if (invitation.resource_type === "workspace") {
+          navigate("/boards");
         } else {
           navigate(`/diagramas/${invitation.resource_id}`);
         }
