@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
       ? invitationQuery.eq("id", invitationId)
       : invitationQuery.eq("token", invitationToken);
 
-    const { data: invitation, error: invitationError } =
-      await invitationQuery.maybeSingle<InvitationRow>();
+    const { data: invitationData, error: invitationError } = await invitationQuery.maybeSingle();
+    const invitation = invitationData as InvitationRow | null;
 
     if (invitationError) {
       return new Response(JSON.stringify({ error: invitationError.message }), {
