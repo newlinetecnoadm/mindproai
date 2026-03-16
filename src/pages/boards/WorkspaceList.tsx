@@ -140,7 +140,7 @@ const WorkspaceList = () => {
     })();
   }, [user, workspaces.length, isWorkspacesFetched, refetchWs]);
 
-  // Fetch boards (own)
+  // Fetch boards (accessible via RLS - own + shared)
   const { data: boards = [], isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
     enabled: !!user,
@@ -149,7 +149,6 @@ const WorkspaceList = () => {
       const { data, error } = await supabase
         .from("boards")
         .select("id, title, cover_color, updated_at, is_closed, is_starred, workspace_id, user_id")
-        .eq("user_id", user!.id)
         .eq("is_closed", false)
         .order("is_starred", { ascending: false })
         .order("updated_at", { ascending: false });
