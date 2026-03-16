@@ -15,6 +15,12 @@ const AdminPlans = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPlan, setNewPlan] = useState({
+    name: "",
+    display_name: "",
+    price_brl: 0,
+  });
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["admin-plans"],
