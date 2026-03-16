@@ -484,7 +484,7 @@ const WorkspaceList = () => {
               <RefreshCw className={cn("w-4 h-4 mr-1", isFetching && "animate-spin")} /> Tentar novamente
             </Button>
           </div>
-        ) : totalCount === 0 && sharedBoards.length === 0 ? (
+        ) : totalCount === 0 && sharedBoards.length === 0 && orphanSharedBoards.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4">
               <Kanban className="w-8 h-8 text-accent-foreground" />
