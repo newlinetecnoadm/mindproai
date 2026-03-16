@@ -34,7 +34,22 @@ export function useNotifications() {
     },
   });
 
-  // Realtime subscription
+  // Fetch pending invitations for the current user
+  const { data: pendingInvitations = [] } = useQuery({
+    queryKey: ["pending-invitations", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user?.email) return [];
+      const { data, error } = await supabase
+        .from("invitations")
+        .select("*")
+        .eq("invited_email", user.email.toLowerCase())
+        .eq("status", "pending");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -46,11 +61,18 @@ export function useNotifications() {
           queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "invitations" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pending-invitations", user.id] });
+        }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, queryClient]);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length + pendingInvitations.length;
 
   const markAsRead = useMutation({
     mutationFn: async (notifId: string) => {
@@ -66,9 +88,55 @@ export function useNotifications() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
+  const acceptInvitation = useMutation({
+    mutationFn: async (invitation: any) => {
+      if (!user) throw new Error("Não autenticado");
+
+      if (invitation.resource_type === "diagram") {
+        const { error } = await supabase
+          .from("diagram_collaborators")
+          .upsert({
+            diagram_id: invitation.resource_id,
+            user_id: user.id,
+            role: invitation.role,
+          }, { onConflict: "diagram_id,user_id" });
+        if (error) throw error;
+      } else if (invitation.resource_type === "board") {
+        const { error } = await supabase
+          .from("board_members")
+          .upsert({
+            board_id: invitation.resource_id,
+            user_id: user.id,
+            role: invitation.role === "viewer" ? "viewer" : "member",
+          }, { onConflict: "board_id,user_id" });
+        if (error) throw error;
+      }
+
+      await supabase
+        .from("invitations")
+        .update({ status: "accepted", invited_user_id: user.id })
+        .eq("id", invitation.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-invitations", user?.id] });
+    },
+  });
+
+  const declineInvitation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      await supabase
+        .from("invitations")
+        .update({ status: "declined" })
+        .eq("id", invitationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-invitations", user?.id] });
+    },
+  });
+
   const createNotification = useCallback(
     async (params: { userId: string; type: string; title: string; body?: string; boardId?: string; cardId?: string }) => {
-      if (params.userId === user?.id) return; // Don't notify yourself
+      if (params.userId === user?.id) return;
       await supabase.from("notifications").insert({
         user_id: params.userId,
         type: params.type,
@@ -81,5 +149,15 @@ export function useNotifications() {
     [user]
   );
 
-  return { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, createNotification };
+  return {
+    notifications,
+    pendingInvitations,
+    unreadCount,
+    isLoading,
+    markAsRead,
+    markAllAsRead,
+    acceptInvitation,
+    declineInvitation,
+    createNotification,
+  };
 }

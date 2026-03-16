@@ -6,10 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function createSmtpClient(host: string, port: number, user: string, pass: string) {
+  const useTls = port === 465;
+  return new SMTPClient({
+    connection: {
+      hostname: host,
+      port,
+      tls: useTls,
+      auth: { username: user, password: pass },
+    },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  let client: SMTPClient | null = null;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -19,7 +33,6 @@ Deno.serve(async (req) => {
     const now = new Date();
     const nowIso = now.toISOString();
 
-    // ── Part 1: Process explicit reminders ──
     const { data: reminders, error } = await supabase
       .from("card_reminders")
       .select("id, card_id, user_id, remind_at")
@@ -29,7 +42,6 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // ── Part 2: Find cards due within 24h that haven't been notified yet ──
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
     const { data: dueSoonCards } = await supabase
       .from("board_cards")
@@ -45,7 +57,6 @@ Deno.serve(async (req) => {
     const smtpPass = Deno.env.get("SMTP_PASS");
 
     if (!smtpHost || !smtpUser || !smtpPass) {
-      // Mark reminders as sent to avoid re-processing
       if (reminders?.length) {
         await supabase.from("card_reminders").update({ sent: true }).in("id", reminders.map((r: any) => r.id));
       }
@@ -54,13 +65,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const client = new SMTPClient({
-      connection: { hostname: smtpHost, port: smtpPort, tls: true, auth: { username: smtpUser, password: smtpPass } },
-    });
-
+    client = createSmtpClient(smtpHost, smtpPort, smtpUser, smtpPass);
     let sentCount = 0;
 
-    // ── Send explicit reminders ──
     if (reminders?.length) {
       for (const reminder of reminders) {
         const { data: profile } = await supabase
@@ -101,10 +108,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Send due-soon notifications ──
     if (dueSoonCards?.length) {
       for (const card of dueSoonCards) {
-        // Get board owner + members
         const { data: board } = await supabase.from("boards").select("user_id").eq("id", card.board_id).single();
         const { data: cardMembers } = await supabase.from("card_members").select("user_id").eq("card_id", card.id);
 
@@ -114,7 +119,6 @@ Deno.serve(async (req) => {
 
         if (userIds.size === 0) continue;
 
-        // Get profiles with notify_due_soon enabled
         const { data: profiles } = await supabase
           .from("user_profiles")
           .select("user_id, email, full_name, notify_due_soon")
@@ -122,8 +126,6 @@ Deno.serve(async (req) => {
 
         const notifiable = (profiles || []).filter((p: any) => p.email && p.notify_due_soon !== false);
 
-        // Check if we already sent a due-soon notification for this card today
-        // Use card_reminders with a special convention: remind_at = due_date and sent = true
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         const { data: alreadySent } = await supabase
           .from("card_reminders")
@@ -133,7 +135,7 @@ Deno.serve(async (req) => {
           .eq("sent", true)
           .limit(1);
 
-        if (alreadySent?.length) continue; // Already notified today
+        if (alreadySent?.length) continue;
 
         const dueStr = new Date(card.due_date!).toLocaleDateString("pt-BR", {
           day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
@@ -161,7 +163,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Mark as sent for today to avoid duplicate notifications
         if (notifiable.length > 0) {
           await supabase.from("card_reminders").insert({
             card_id: card.id,
@@ -169,7 +170,6 @@ Deno.serve(async (req) => {
             remind_at: card.due_date,
             sent: true,
           });
-          // Create in-app notifications for due_soon
           for (const profile of notifiable) {
             await supabase.from("notifications").insert({
               user_id: profile.user_id,
@@ -183,13 +183,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    await client.close();
+    try { await client.close(); } catch (_) { /* ignore close errors */ }
 
     return new Response(JSON.stringify({ sent: sentCount }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Error:", err);
+    try { if (client) await client.close(); } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

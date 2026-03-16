@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, MessageSquare, AtSign, ArrowRightLeft, UserPlus, Clock } from "lucide-react";
+import { Bell, Check, CheckCheck, MessageSquare, AtSign, ArrowRightLeft, UserPlus, Clock, Mail, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useNotifications, type AppNotification } from "@/hooks/useNotifications";
+import { toast } from "sonner";
 import {
   Popover,
   PopoverContent,
@@ -22,7 +23,15 @@ const typeConfig: Record<string, { icon: React.ElementType; color: string }> = {
 };
 
 const NotificationBell = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    notifications,
+    pendingInvitations,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    acceptInvitation,
+    declineInvitation,
+  } = useNotifications();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -32,6 +41,32 @@ const NotificationBell = () => {
       navigate(`/boards/${notif.board_id}`);
       setOpen(false);
     }
+  };
+
+  const handleAccept = (invitation: any) => {
+    acceptInvitation.mutate(invitation, {
+      onSuccess: () => {
+        toast.success(
+          invitation.resource_type === "board"
+            ? "Convite de board aceito!"
+            : "Convite de diagrama aceito!"
+        );
+        if (invitation.resource_type === "board") {
+          navigate(`/boards/${invitation.resource_id}`);
+        } else {
+          navigate(`/diagramas/${invitation.resource_id}`);
+        }
+        setOpen(false);
+      },
+      onError: (err: any) => toast.error(err.message || "Erro ao aceitar convite"),
+    });
+  };
+
+  const handleDecline = (invitationId: string) => {
+    declineInvitation.mutate(invitationId, {
+      onSuccess: () => toast.info("Convite recusado"),
+      onError: (err: any) => toast.error(err.message || "Erro ao recusar convite"),
+    });
   };
 
   return (
@@ -57,12 +92,63 @@ const NotificationBell = () => {
               onClick={() => markAllAsRead.mutate()}
             >
               <CheckCheck className="w-3 h-3" />
-              Marcar todas como lidas
+              Marcar lidas
             </Button>
           )}
         </div>
         <ScrollArea className="max-h-[400px]">
-          {notifications.length === 0 ? (
+          {/* Pending invitations */}
+          {pendingInvitations.length > 0 && (
+            <div className="border-b border-border">
+              <div className="px-4 py-2 bg-primary/5">
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Convites pendentes</p>
+              </div>
+              {pendingInvitations.map((inv: any) => (
+                <div key={inv.id} className="px-4 py-3 border-b border-border/50 last:border-0">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0 text-primary">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium leading-relaxed">
+                        Convite para {inv.resource_type === "board" ? "board" : "diagrama"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Permissão: {inv.role === "editor" ? "Editar" : inv.role === "member" ? "Membro" : "Visualizar"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {formatDistanceToNow(new Date(inv.created_at), { addSuffix: true, locale: ptBR })}
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          className="h-6 text-[10px] px-3 gap-1"
+                          onClick={() => handleAccept(inv)}
+                          disabled={acceptInvitation.isPending}
+                        >
+                          <Check className="w-3 h-3" />
+                          Aceitar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] px-3 gap-1"
+                          onClick={() => handleDecline(inv.id)}
+                          disabled={declineInvitation.isPending}
+                        >
+                          <X className="w-3 h-3" />
+                          Recusar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Regular notifications */}
+          {notifications.length === 0 && pendingInvitations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
               <Bell className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">Nenhuma notificação</p>

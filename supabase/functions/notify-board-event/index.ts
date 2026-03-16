@@ -19,29 +19,15 @@ function buildEmailHtml(type: NotificationType, data: Record<string, any>): { su
   const templates: Record<NotificationType, { subject: string; body: string }> = {
     card_moved: {
       subject: `🔀 Card "${data.card_title}" foi movido — MindPro AI`,
-      body: `
-        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;">
-          <strong>${data.actor_name}</strong> moveu o card <strong>"${data.card_title}"</strong>
-          de <strong>${data.from_column}</strong> para <strong>${data.to_column}</strong>.
-        </p>
-      `,
+      body: `<p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;"><strong>${data.actor_name}</strong> moveu o card <strong>"${data.card_title}"</strong> de <strong>${data.from_column}</strong> para <strong>${data.to_column}</strong>.</p>`,
     },
     member_added: {
       subject: `👤 Você foi adicionado ao card "${data.card_title}" — MindPro AI`,
-      body: `
-        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;">
-          <strong>${data.actor_name}</strong> adicionou você como membro do card <strong>"${data.card_title}"</strong>.
-        </p>
-      `,
+      body: `<p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;"><strong>${data.actor_name}</strong> adicionou você como membro do card <strong>"${data.card_title}"</strong>.</p>`,
     },
     due_soon: {
       subject: `⏰ Prazo próximo: "${data.card_title}" — MindPro AI`,
-      body: `
-        <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;">
-          O card <strong>"${data.card_title}"</strong> tem prazo para
-          <strong>${data.due_date}</strong>.
-        </p>
-      `,
+      body: `<p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;">O card <strong>"${data.card_title}"</strong> tem prazo para <strong>${data.due_date}</strong>.</p>`,
     },
   };
 
@@ -56,9 +42,7 @@ function buildEmailHtml(type: NotificationType, data: Record<string, any>): { su
     </div>
     <div style="padding:32px 24px;">
       ${t.body}
-      ${data.board_url ? `<div style="text-align:center;margin:28px 0;">
-        <a href="${data.board_url}" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EA580C);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Ver board</a>
-      </div>` : ""}
+      ${data.board_url ? `<div style="text-align:center;margin:28px 0;"><a href="${data.board_url}" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EA580C);color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Ver board</a></div>` : ""}
     </div>
     <div style="padding:16px 24px;background:#fafafa;border-top:1px solid #f0f0f0;text-align:center;">
       <p style="margin:0 0 4px;color:#a1a1aa;font-size:11px;">Mind Pro AI — mindproai.com.br</p>
@@ -76,52 +60,42 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let smtpClient: SMTPClient | null = null;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", "")
-    );
+    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Token inválido" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { type, user_ids, data } = await req.json() as {
-      type: NotificationType;
-      user_ids: string[];
-      data: Record<string, any>;
+      type: NotificationType; user_ids: string[]; data: Record<string, any>;
     };
 
     if (!type || !user_ids?.length) {
       return new Response(JSON.stringify({ error: "type e user_ids obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const prefColumn = PREF_MAP[type];
     if (!prefColumn) {
       return new Response(JSON.stringify({ error: "Tipo de notificação inválido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Filter out the actor and get profiles with preference enabled
     const targetIds = user_ids.filter((id) => id !== user.id);
     if (!targetIds.length) {
       return new Response(JSON.stringify({ success: true, notified: 0 }), {
@@ -134,9 +108,7 @@ Deno.serve(async (req) => {
       .select(`user_id, email, full_name, ${prefColumn}`)
       .in("user_id", targetIds);
 
-    const notifiable = (profiles || []).filter(
-      (p: any) => p.email && p[prefColumn] !== false
-    );
+    const notifiable = (profiles || []).filter((p: any) => p.email && p[prefColumn] !== false);
 
     if (!notifiable.length) {
       return new Response(JSON.stringify({ success: true, notified: 0 }), {
@@ -144,7 +116,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get actor name
     const { data: actorProfile } = await supabase
       .from("user_profiles")
       .select("full_name, email")
@@ -155,24 +126,23 @@ Deno.serve(async (req) => {
     const emailData = { ...data, actor_name: actorName };
     const { subject, html } = buildEmailHtml(type, emailData);
 
-    // Send via SMTP
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = Deno.env.get("SMTP_PORT");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       return new Response(JSON.stringify({ error: "SMTP não configurado" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const client = new SMTPClient({
+    const useTls = smtpPort === 465;
+    smtpClient = new SMTPClient({
       connection: {
         hostname: smtpHost,
-        port: parseInt(smtpPort || "465"),
-        tls: true,
+        port: smtpPort,
+        tls: useTls,
         auth: { username: smtpUser, password: smtpPass },
       },
     });
@@ -180,23 +150,23 @@ Deno.serve(async (req) => {
     let sent = 0;
     for (const profile of notifiable) {
       try {
-        await client.send({ from: "agente@mindproai.com.br", to: profile.email!, subject, html });
+        await smtpClient.send({ from: smtpUser, to: profile.email!, subject, html });
         sent++;
       } catch (e) {
         console.error(`Failed to send to ${profile.email}:`, e);
       }
     }
 
-    await client.close();
+    try { await smtpClient.close(); } catch (_) { /* ignore */ }
 
     return new Response(JSON.stringify({ success: true, notified: sent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("notify-board-event error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Erro interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    try { if (smtpClient) await smtpClient.close(); } catch (_) { /* ignore */ }
+    return new Response(JSON.stringify({ error: error.message || "Erro interno" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
