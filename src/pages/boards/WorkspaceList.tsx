@@ -588,16 +588,16 @@ const WorkspaceList = () => {
               </div>
             )}
 
-            {/* Shared with me */}
-            {sharedBoards.length > 0 && (
+            {/* Shared with me (boards not in any visible workspace) */}
+            {orphanSharedBoards.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
-                  <span className="text-xs text-muted-foreground">{sharedBoards.length}</span>
+                  <span className="text-xs text-muted-foreground">{orphanSharedBoards.length}</span>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {sharedBoards.map(renderBoardCard)}
+                  {orphanSharedBoards.map(renderBoardCard)}
                 </div>
               </div>
             )}
