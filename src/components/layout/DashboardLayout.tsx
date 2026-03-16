@@ -26,7 +26,16 @@ const navItems = [
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    return saved === "true";
+  });
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("sidebar-collapsed", String(next));
+  };
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
