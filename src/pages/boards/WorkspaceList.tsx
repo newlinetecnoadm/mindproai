@@ -116,7 +116,8 @@ const WorkspaceList = () => {
   const defaultCreatedRef = useRef(false);
   useEffect(() => {
     if (!user || !isWorkspacesFetched || defaultCreatedRef.current) return;
-    if (workspaces.length > 0) return;
+    const ownWorkspaces = workspaces.filter((ws: any) => ws.user_id === user.id);
+    if (ownWorkspaces.length > 0) return;
 
     defaultCreatedRef.current = true;
     (async () => {
