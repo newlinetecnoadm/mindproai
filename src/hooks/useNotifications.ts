@@ -99,6 +99,8 @@ export function useNotifications() {
       queryClient.invalidateQueries({ queryKey: ["pending-invitations", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["boards", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["workspaces", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["diagrams-shared", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["diagrams-own", user?.id] });
     },
   });
 
