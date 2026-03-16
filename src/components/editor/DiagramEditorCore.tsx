@@ -875,7 +875,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
         onEdgeTypeChange={handleEdgeTypeChange}
-        onAIAssist={limits.aiSuggestions ? () => setAiDialogOpen(true) : undefined}
+        onAIAssist={limits.aiGeneration ? () => setAiDialogOpen(true) : undefined}
         currentThemeId={theme.id}
         currentEdgeType={currentEdgeType}
         canUndo={canUndo}
