@@ -1,42 +1,13 @@
-import { LayoutDashboard, Calendar, Sparkles, Check, ArrowRight, Menu, X } from "lucide-react";
+import { Sparkles, Check, ArrowRight, Menu, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
 import logoVerticalColor from "@/assets/logo-vertical-color.png";
-import logoIconSimple from "@/assets/logo-icon-simple.png";
-
-const plans = [
-  {
-    name: "Gratuito",
-    price: "R$ 0",
-    period: "/mês",
-    description: "Perfeito para começar",
-    features: ["3 mapas mentais", "2 boards Kanban", "Exportar PNG", "Templates básicos"],
-    cta: "Começar Grátis",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "R$ 29,90",
-    period: "/mês",
-    description: "Para profissionais",
-    features: ["Diagramas ilimitados", "Boards ilimitados", "Até 5 colaboradores", "Exportar PDF + PNG", "Todos os templates", "Sugestões de IA", "Histórico de versões"],
-    cta: "Assinar Pro",
-    highlighted: true,
-  },
-  {
-    name: "Business",
-    price: "R$ 79,90",
-    period: "/mês",
-    description: "Para equipes",
-    features: ["Tudo do Pro", "Colaboradores ilimitados", "Suporte prioritário", "Funcionalidades avançadas"],
-    cta: "Falar com Vendas",
-    highlighted: false,
-  },
-];
 
 const features = [
   {
@@ -73,6 +44,20 @@ const fadeUp = {
 const LandingPage = () => {
   const { user, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { data: plans, isLoading: plansLoading } = useQuery({
+    queryKey: ["landing-plans"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("is_active", true)
+        .order("price_brl");
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
   if (loading) {
     return (
@@ -162,7 +147,6 @@ const LandingPage = () => {
             </a>
           </motion.div>
 
-          {/* Logo icon as decorative element */}
           <motion.div
             className="mt-16"
             initial={{ opacity: 0, scale: 0.8 }}
@@ -200,7 +184,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing - Dynamic from DB */}
       <section id="pricing" className="py-20 px-4">
         <div className="container mx-auto max-w-5xl">
           <motion.div className="text-center mb-16" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}>
@@ -210,47 +194,65 @@ const LandingPage = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                className={`relative p-8 rounded-2xl border transition-all duration-300 ${
-                  plan.highlighted
-                    ? "border-primary bg-card shadow-glow scale-[1.02]"
-                    : "border-border bg-card hover:border-primary/30"
-                }`}
-                initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
-              >
-                {plan.highlighted && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-primary text-primary-foreground text-xs font-semibold">
-                    Mais popular
-                  </span>
-                )}
-                <h3 className="font-display font-bold text-xl mb-1">{plan.name}</h3>
-                <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-extrabold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/cadastro">
-                  <Button
-                    variant={plan.highlighted ? "hero" : "outline"}
-                    className="w-full"
+          {plansLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {(plans ?? []).map((plan: any, i: number) => {
+                const f = (plan.features ?? {}) as any;
+                const featureList: string[] = f.list ?? [];
+                const description = f.description ?? "";
+                const ctaText = f.cta_text || (plan.name === "free" ? "Começar Grátis" : "Selecionar");
+                const isHighlighted = f.is_highlighted ?? false;
+
+                return (
+                  <motion.div
+                    key={plan.id}
+                    className={`relative p-8 rounded-2xl border transition-all duration-300 ${
+                      isHighlighted
+                        ? "border-primary bg-card shadow-glow scale-[1.02]"
+                        : "border-border bg-card hover:border-primary/30"
+                    }`}
+                    initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
                   >
-                    {plan.cta}
-                  </Button>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                    {isHighlighted && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-primary text-primary-foreground text-xs font-semibold">
+                        Mais popular
+                      </span>
+                    )}
+                    <h3 className="font-display font-bold text-xl mb-1">{plan.display_name}</h3>
+                    {description && <p className="text-muted-foreground text-sm mb-4">{description}</p>}
+                    <div className="flex items-baseline gap-1 mb-6">
+                      <span className="text-4xl font-extrabold">
+                        R$ {Number(plan.price_brl).toFixed(2).replace(".", ",")}
+                      </span>
+                      <span className="text-muted-foreground">/mês</span>
+                    </div>
+                    {featureList.length > 0 && (
+                      <ul className="space-y-3 mb-8">
+                        {featureList.map((item: string) => (
+                          <li key={item} className="flex items-center gap-2 text-sm">
+                            <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <Link to="/cadastro">
+                      <Button
+                        variant={isHighlighted ? "hero" : "outline"}
+                        className="w-full"
+                      >
+                        {ctaText}
+                      </Button>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
