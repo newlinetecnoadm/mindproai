@@ -50,8 +50,9 @@ interface TemplateData {
 }
 
 function renderInvite(d: TemplateData): { subject: string; html: string } {
-  const roleLabel = d.role === "editor" ? "Editar" : "Visualizar";
-  const resourceLabel = d.resourceType === "board" ? "board" : "diagrama";
+  const roleLabel = d.role === "editor" ? "Editar" : d.role === "member" ? "Membro" : "Visualizar";
+  const resourceLabels: Record<string, string> = { board: "board", diagram: "diagrama", workspace: "workspace" };
+  const resourceLabel = resourceLabels[d.resourceType || ""] || d.resourceType || "recurso";
   const link = d.inviteLink || "";
 
   const body = `
@@ -65,7 +66,7 @@ function renderInvite(d: TemplateData): { subject: string; html: string } {
     <p style="margin:12px 0 0;color:#a1a1aa;font-size:11px;">Este convite expira em 7 dias.</p>`;
 
   return {
-    subject: `Convite para colaborar — ${d.resourceTitle || "Mind Pro AI"}`,
+    subject: `${d.inviterName || "Alguém"} convidou você para "${d.resourceTitle || "Mind Pro AI"}" — Mind Pro AI`,
     html: wrapLayout(body),
   };
 }
