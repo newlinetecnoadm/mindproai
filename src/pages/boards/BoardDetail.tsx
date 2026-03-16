@@ -550,7 +550,7 @@ const BoardDetail = () => {
         />
         <div className="ml-auto flex items-center gap-2">
           <NotificationBell />
-          {limits.aiSuggestions && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
+          {limits.aiGeneration && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
           <BoardThemePicker
             currentTheme={(board as any).theme || "default"}
             onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
