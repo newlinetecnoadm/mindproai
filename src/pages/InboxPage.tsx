@@ -112,7 +112,7 @@ const InboxPage = () => {
     items.push({
       id: `inv-${inv.id}`,
       type: "invitation",
-      title: `Convite para ${inv.resource_type === "board" ? "Board" : "Diagrama"}`,
+      title: `Convite para ${inv.resource_type === "board" ? "Board" : inv.resource_type === "workspace" ? "Workspace" : "Diagrama"}`,
       description: `Você foi convidado como ${inv.role}`,
       date: inv.created_at!,
       link: `/convite?token=${inv.token}`,

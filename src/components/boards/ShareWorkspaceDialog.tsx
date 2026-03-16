@@ -67,8 +67,20 @@ const ShareWorkspaceDialog = ({ workspaceId, workspaceTitle, open, onOpenChange 
   const inviteMut = useMutation({
     mutationFn: async () => {
       if (!user || !email.trim()) return;
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const { data: invitedProfiles, error: invitedProfileError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .ilike("email", normalizedEmail)
+        .limit(1);
+
+      if (invitedProfileError) throw invitedProfileError;
+      const invitedUserId = invitedProfiles?.[0]?.user_id ?? null;
+
       const { error } = await supabase.from("invitations").insert({
-        invited_email: email.trim().toLowerCase(),
+        invited_email: normalizedEmail,
+        invited_user_id: invitedUserId,
         invited_by: user.id,
         resource_id: workspaceId,
         resource_type: "workspace",

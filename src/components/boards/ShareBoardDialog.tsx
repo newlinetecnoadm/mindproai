@@ -81,20 +81,32 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
       if (!user) throw new Error("Não autenticado");
       if (!email.trim()) throw new Error("Email obrigatório");
 
+      const normalizedEmail = email.trim().toLowerCase();
+
       const { data: existingInvite } = await supabase
         .from("invitations")
         .select("id")
         .eq("resource_id", boardId)
         .eq("resource_type", "board")
-        .eq("invited_email", email.trim().toLowerCase())
+        .eq("invited_email", normalizedEmail)
         .eq("status", "pending");
 
       if (existingInvite && existingInvite.length > 0) {
         throw new Error("Já existe um convite pendente para este email");
       }
 
+      const { data: invitedProfiles, error: invitedProfileError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .ilike("email", normalizedEmail)
+        .limit(1);
+
+      if (invitedProfileError) throw invitedProfileError;
+      const invitedUserId = invitedProfiles?.[0]?.user_id ?? null;
+
       const { error } = await supabase.from("invitations").insert({
-        invited_email: email.trim().toLowerCase(),
+        invited_email: normalizedEmail,
+        invited_user_id: invitedUserId,
         invited_by: user.id,
         resource_id: boardId,
         resource_type: "board",

@@ -39,12 +39,17 @@ export function useNotifications() {
     queryKey: ["pending-invitations", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      if (!user?.email) return [];
+      const filters = [`invited_user_id.eq.${user!.id}`];
+      if (user?.email) {
+        filters.push(`invited_email.ilike.${user.email}`);
+      }
+
       const { data, error } = await supabase
         .from("invitations")
         .select("*")
-        .eq("invited_email", user.email.toLowerCase())
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .or(filters.join(","));
+
       if (error) throw error;
       return data || [];
     },
