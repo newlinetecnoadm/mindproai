@@ -1,6 +1,6 @@
 # Mind Pro AI
 
-Plataforma de produtividade visual com mapas mentais, boards Kanban estilo Trello e agenda integrada.
+Plataforma de produtividade visual com mapas mentais, boards Kanban e agenda integrada.
 
 ## Tecnologias
 
