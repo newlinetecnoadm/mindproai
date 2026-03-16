@@ -143,48 +143,6 @@ const MobileDrawer = () => {
         )}
       </AnimatePresence>
 
-      {/* FAB (Floating Action Button) */}
-      <div className="fixed bottom-6 right-6 z-50 md:hidden">
-        <AnimatePresence>
-          {fabExpanded && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              className="absolute bottom-16 right-0 flex flex-col gap-2 items-end"
-            >
-              {quickActions.map((action) => (
-                <motion.button
-                  key={action.path}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  onClick={() => handleQuickAction(action.path)}
-                  className="flex items-center gap-2 pl-4 pr-3 py-2.5 rounded-full bg-card border border-border shadow-lg text-sm font-medium whitespace-nowrap"
-                >
-                  <span>{action.label}</span>
-                  <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", action.color)}>
-                    <action.icon className="w-4 h-4" />
-                  </div>
-                </motion.button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setFabExpanded(!fabExpanded)}
-          className={cn(
-            "w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300",
-            fabExpanded
-              ? "bg-secondary text-foreground rotate-45"
-              : "bg-primary text-primary-foreground"
-          )}
-        >
-          <Plus className="w-6 h-6" />
-        </motion.button>
-      </div>
     </>
   );
 };
