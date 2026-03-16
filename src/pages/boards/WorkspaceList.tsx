@@ -108,30 +108,20 @@ const WorkspaceList = () => {
     },
   });
 
-  // Ensure default workspace exists
-  const ensureDefault = useMutation({
-    mutationFn: async () => {
-      if (!user) return;
-      const hasDefault = workspaces.some((ws: any) => ws.is_default);
-      if (!hasDefault) {
-        const { data } = await supabase.from("workspaces" as any).insert({
-          user_id: user.id,
-          title: "Meus Boards",
-          is_default: true,
-          position: 0,
-        } as any).select("id").single();
-        return data;
-      }
-    },
-    onSuccess: () => refetchWs(),
-  });
-
-  // Auto-create default on first load
-  useMemo(() => {
-    if (user && workspaces !== undefined && workspaces.length === 0) {
-      ensureDefault.mutate();
+  // Ensure default workspace exists — runs once
+  const defaultCreatedRef = useRef(false);
+  useEffect(() => {
+    if (!user || defaultCreatedRef.current) return;
+    if (workspaces && workspaces.length === 0) {
+      defaultCreatedRef.current = true;
+      supabase.from("workspaces" as any).insert({
+        user_id: user.id,
+        title: "Meus Boards",
+        is_default: true,
+        position: 0,
+      } as any).then(() => refetchWs());
     }
-  }, [user, workspaces?.length]);
+  }, [user, workspaces]);
 
   // Fetch boards (own)
   const { data: boards = [], isLoading, isFetching, error, refetch } = useQuery({
