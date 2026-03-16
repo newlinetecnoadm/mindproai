@@ -528,29 +528,40 @@ const WorkspaceList = () => {
                       {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       <h2 className="text-sm font-semibold">{ws.title}</h2>
                     </button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
-                      <Pencil className="w-3 h-3 text-muted-foreground" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground">{wsBoards.length}</span>
-                    <div className="ml-auto flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
-                        <Plus className="w-3 h-3 mr-1" /> Board
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
-                        <Users className="w-3 h-3 mr-1" /> Membros
-                      </Button>
-                      {!ws.is_default && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            const wsBoards2 = boardsByWs.map.get(ws.id) || [];
-                            setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                    {ws.user_id === user?.id && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
                         </Button>
+                      </>
+                    )}
+                    <span className="text-xs text-muted-foreground">{wsBoards.length}</span>
+                    {ws.user_id !== user?.id && (
+                      <Badge variant="secondary" className="text-[10px] ml-1">Compartilhado</Badge>
+                    )}
+                    <div className="ml-auto flex items-center gap-1">
+                      {ws.user_id === user?.id && (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
+                            <Plus className="w-3 h-3 mr-1" /> Board
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
+                            <Users className="w-3 h-3 mr-1" /> Membros
+                          </Button>
+                          {!ws.is_default && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                const wsBoards2 = boardsByWs.map.get(ws.id) || [];
+                                setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
