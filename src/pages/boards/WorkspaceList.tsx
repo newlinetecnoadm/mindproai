@@ -306,11 +306,11 @@ const WorkspaceList = () => {
     });
   };
 
-  // Group boards by workspace
+  // Group own boards by workspace
   const boardsByWs = useMemo(() => {
-    const map = new Map<string, typeof boards>();
-    const unassigned: typeof boards = [];
-    for (const b of boards) {
+    const map = new Map<string, typeof ownBoards>();
+    const unassigned: typeof ownBoards = [];
+    for (const b of ownBoards) {
       const wsId = (b as any).workspace_id;
       if (wsId) {
         if (!map.has(wsId)) map.set(wsId, []);
@@ -320,9 +320,9 @@ const WorkspaceList = () => {
       }
     }
     return { map, unassigned };
-  }, [boards]);
+  }, [ownBoards]);
 
-  const totalCount = boards.length;
+  const totalCount = ownBoards.length;
 
   const renderBoardCard = (board: any) => (
     <div
