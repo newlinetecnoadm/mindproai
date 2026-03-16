@@ -289,6 +289,9 @@ const WorkspaceList = () => {
       setDeletingWs(null);
       toast.success("Workspace e boards excluídos");
     },
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao excluir workspace");
+    },
   });
   const renameWsMut = useMutation({
     mutationFn: async ({ wsId, title }: { wsId: string; title: string }) => {
