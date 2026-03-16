@@ -603,10 +603,41 @@ export type Database = {
           },
         ]
       }
+      diagram_workspaces: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_default: boolean
+          position: number
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          position?: number
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean
+          position?: number
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       diagrams: {
         Row: {
           created_at: string | null
           data: Json
+          diagram_workspace_id: string | null
           id: string
           is_public: boolean | null
           public_token: string | null
@@ -622,6 +653,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           data?: Json
+          diagram_workspace_id?: string | null
           id?: string
           is_public?: boolean | null
           public_token?: string | null
@@ -637,6 +669,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           data?: Json
+          diagram_workspace_id?: string | null
           id?: string
           is_public?: boolean | null
           public_token?: string | null
@@ -649,7 +682,15 @@ export type Database = {
           user_id?: string
           version?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diagrams_diagram_workspace_id_fkey"
+            columns: ["diagram_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "diagram_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
