@@ -15,6 +15,12 @@ const AdminPlans = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPlan, setNewPlan] = useState({
+    name: "",
+    display_name: "",
+    price_brl: 0,
+  });
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["admin-plans"],
@@ -72,6 +78,29 @@ const AdminPlans = () => {
     onError: () => toast.error("Erro ao atualizar plano"),
   });
 
+  const createPlanMut = useMutation({
+    mutationFn: async () => {
+      if (!newPlan.name || !newPlan.display_name) throw new Error("Preencha nome e nome exibido");
+      const { error } = await supabase
+        .from("subscription_plans")
+        .insert({
+          name: newPlan.name.toLowerCase().replace(/\s+/g, "_"),
+          display_name: newPlan.display_name,
+          price_brl: newPlan.price_brl,
+          is_active: true,
+          features: { list: [], description: "", cta_text: "", is_highlighted: false, max_diagrams: 3, max_boards: 2, max_events: 10, max_guests_per_project: 0, export_pdf: false, ai_suggestions: false },
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+      setShowCreate(false);
+      setNewPlan({ name: "", display_name: "", price_brl: 0 });
+      toast.success("Plano criado com sucesso");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao criar plano"),
+  });
+
   const startEdit = (plan: any) => {
     const f = plan.features ?? {};
     setEditingId(plan.id);
@@ -112,9 +141,58 @@ const AdminPlans = () => {
       <div className="p-6 lg:p-8 max-w-4xl">
         <h1 className="text-2xl font-display font-bold mb-1">Planos & Assinaturas</h1>
         <p className="text-muted-foreground mb-2">Gerencie os planos disponíveis no sistema</p>
-        <p className="text-xs text-muted-foreground/70 mb-8">
+        <p className="text-xs text-muted-foreground/70 mb-4">
           As alterações aqui refletem automaticamente na landing page, página de assinaturas e limites dos usuários.
         </p>
+
+        {/* Create new plan */}
+        {!showCreate ? (
+          <Button variant="outline" size="sm" className="mb-6 gap-1.5 text-xs" onClick={() => setShowCreate(true)}>
+            <Plus className="w-3.5 h-3.5" /> Novo Plano
+          </Button>
+        ) : (
+          <div className="rounded-xl border border-primary/30 bg-card p-5 mb-6 max-w-lg space-y-3">
+            <h3 className="font-semibold text-sm">Criar novo plano</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Slug (único)</Label>
+                <Input
+                  value={newPlan.name}
+                  onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                  placeholder="ex: enterprise"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Nome exibido</Label>
+                <Input
+                  value={newPlan.display_name}
+                  onChange={(e) => setNewPlan({ ...newPlan, display_name: e.target.value })}
+                  placeholder="ex: Enterprise"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Preço (BRL)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newPlan.price_brl}
+                  onChange={(e) => setNewPlan({ ...newPlan, price_brl: parseFloat(e.target.value) || 0 })}
+                  className="h-9"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="hero" className="h-8 text-xs gap-1" onClick={() => createPlanMut.mutate()} disabled={createPlanMut.isPending}>
+                <Save className="w-3.5 h-3.5" /> Criar Plano
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowCreate(false)}>
+                <X className="w-3.5 h-3.5" /> Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex justify-center py-20">

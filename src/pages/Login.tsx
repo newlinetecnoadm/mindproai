@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import logoIconFull from "@/assets/logo-icon-full.png";
+
+import logoVerticalBrand from "@/assets/logo-vertical-brand.png";
 import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
 
 const floatingIcons = [
@@ -123,7 +124,7 @@ const Login = () => {
           {/* Logo with glow */}
           <div className="relative inline-block mb-8">
             <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-150" />
-            <img src={logoIconFull} alt="Mind Pro AI" className="relative h-36 mx-auto" />
+            <img src={logoVerticalBrand} alt="Mind Pro AI" className="relative h-44 mx-auto" />
           </div>
 
           <p className="text-white/50 text-sm leading-relaxed mb-8">
