@@ -3,11 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Check, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -19,7 +18,6 @@ const PLAN_PRICE_MAP: Record<string, string> = {
 
 const AssinaturasPage = () => {
   const { data: currentPlan, isLoading: planLoading } = usePlan();
-  const queryClient = useQueryClient();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -141,12 +139,15 @@ const AssinaturasPage = () => {
           </div>
         </div>
 
-        {/* Plans */}
+        {/* Plans - Dynamic from DB */}
         <div className="grid md:grid-cols-3 gap-6">
           {(plans ?? []).map((plan: any) => {
             const isCurrent = currentPlanName === plan.name;
-            const isHighlighted = plan.name === "pro";
-            const features = (plan.features as any)?.list ?? [];
+            const f = (plan.features ?? {}) as any;
+            const isHighlighted = f.is_highlighted ?? (plan.name === "pro");
+            const featureList: string[] = f.list ?? [];
+            const description = f.description ?? "";
+            const ctaText = f.cta_text || "";
             const isDowngrade = currentPlanName !== "free" && plan.name === "free";
 
             return (
@@ -162,19 +163,21 @@ const AssinaturasPage = () => {
                   </span>
                 )}
                 <h3 className="font-display font-bold text-lg">{plan.display_name}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{plan.name === "free" ? "Para uso pessoal básico" : plan.name === "pro" ? "Para profissionais" : "Para equipes"}</p>
+                {description && (
+                  <p className="text-sm text-muted-foreground mb-3">{description}</p>
+                )}
                 <div className="flex items-baseline gap-1 mb-5">
                   <span className="text-3xl font-extrabold">
                     R$ {Number(plan.price_brl).toFixed(2).replace(".", ",")}
                   </span>
                   <span className="text-muted-foreground text-sm">/mês</span>
                 </div>
-                {features.length > 0 && (
+                {featureList.length > 0 && (
                   <ul className="space-y-2 mb-6">
-                    {features.map((f: string) => (
-                      <li key={f} className="flex items-center gap-2 text-sm">
+                    {featureList.map((item: string) => (
+                      <li key={item} className="flex items-center gap-2 text-sm">
                         <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span>{f}</span>
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -192,7 +195,11 @@ const AssinaturasPage = () => {
                   }}
                 >
                   {loadingPlan === plan.name && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                  {isCurrent ? "Plano Atual" : isDowngrade ? "Voltar ao Gratuito" : plan.name === "free" ? "Gratuito" : "Selecionar"}
+                  {isCurrent
+                    ? "Plano Atual"
+                    : isDowngrade
+                    ? "Voltar ao Gratuito"
+                    : ctaText || (plan.name === "free" ? "Gratuito" : "Selecionar")}
                 </Button>
               </div>
             );
