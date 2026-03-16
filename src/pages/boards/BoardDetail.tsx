@@ -29,6 +29,7 @@ const BoardDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const limits = usePlanLimits();
   const [boardTitle, setBoardTitle] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
