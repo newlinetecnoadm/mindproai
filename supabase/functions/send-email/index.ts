@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     });
 
     await client.send({
-      from: "agente@mindproai.com.br",
+      from: "Mind Pro AI <agente@mindproai.com.br>",
       to,
       subject: finalSubject,
       html: rendered.html,
