@@ -10,6 +10,8 @@ export interface PlanLimits {
   maxGuestsPerProject: number;
   exportPdf: boolean;
   aiSuggestions: boolean;
+  aiGeneration: boolean;
+  aiMode: "conversion" | "basic" | "instructive" | "full";
   currentDiagrams: number;
   currentBoards: number;
   currentEvents: number;
