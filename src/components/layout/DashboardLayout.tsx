@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Map, Kanban, Calendar, Settings, CreditCard, ChevronLeft, ChevronRight, LogOut, Shield } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -186,6 +187,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       <main className="flex-1 overflow-auto">
+        <div className="flex justify-end items-center px-6 pt-3 pb-0">
+          <NotificationBell />
+        </div>
         <div className="animate-fade-in">
           {children}
         </div>
