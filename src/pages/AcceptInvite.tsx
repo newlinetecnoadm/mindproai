@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { acceptInvitation } from "@/lib/invitations";
 
 const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
@@ -28,100 +27,32 @@ const AcceptInvite = () => {
       return;
     }
 
-    const acceptInvitation = async () => {
+    let mounted = true;
+
+    const handleAccept = async () => {
+      setStatus("loading");
+
       try {
-        // Find the invitation
-        const { data: invitation, error: fetchErr } = await supabase
-          .from("invitations")
-          .select("*")
-          .eq("token", token)
-          .eq("status", "pending")
-          .single();
+        const result = await acceptInvitation({ token });
+        if (!mounted) return;
 
-        if (fetchErr || !invitation) {
-          setStatus("error");
-          setMessage("Convite não encontrado ou já foi usado.");
-          return;
-        }
+        setStatus("success");
+        setMessage(result.message || "Convite aceito com sucesso!");
 
-        // Check expiration
-        if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
-          setStatus("error");
-          setMessage("Este convite expirou.");
-          return;
-        }
-
-        if (invitation.resource_type === "diagram") {
-          const { error: collabErr } = await supabase
-            .from("diagram_collaborators")
-            .upsert({
-              diagram_id: invitation.resource_id,
-              user_id: user.id,
-              role: invitation.role,
-            }, { onConflict: "diagram_id,user_id" });
-
-          if (collabErr) throw collabErr;
-
-          await supabase
-            .from("invitations")
-            .update({ status: "accepted", invited_user_id: user.id })
-            .eq("id", invitation.id);
-
-          setStatus("success");
-          setMessage("Você agora é colaborador deste diagrama!");
-          setTimeout(() => navigate(`/diagramas/${invitation.resource_id}`), 2000);
-
-        } else if (invitation.resource_type === "board") {
-          const { error: memberErr } = await supabase
-            .from("board_members")
-            .upsert({
-              board_id: invitation.resource_id,
-              user_id: user.id,
-              role: invitation.role === "viewer" ? "viewer" : "member",
-            }, { onConflict: "board_id,user_id" });
-
-          if (memberErr) throw memberErr;
-
-          await supabase
-            .from("invitations")
-            .update({ status: "accepted", invited_user_id: user.id })
-            .eq("id", invitation.id);
-
-          setStatus("success");
-          setMessage("Você agora é membro deste board!");
-          setTimeout(() => navigate(`/boards/${invitation.resource_id}`), 2000);
-
-        } else if (invitation.resource_type === "workspace") {
-          const { error: wsMemberErr } = await supabase
-            .from("workspace_members")
-            .upsert({
-              workspace_id: invitation.resource_id,
-              user_id: user.id,
-              role: invitation.role === "viewer" ? "viewer" : "member",
-            }, { onConflict: "workspace_id,user_id" });
-
-          if (wsMemberErr) throw wsMemberErr;
-
-          await supabase
-            .from("invitations")
-            .update({ status: "accepted", invited_user_id: user.id })
-            .eq("id", invitation.id);
-
-          setStatus("success");
-          setMessage("Você agora é membro deste workspace!");
-          setTimeout(() => navigate("/boards"), 2000);
-
-        } else {
-          setStatus("error");
-          setMessage("Tipo de convite não suportado.");
-        }
+        const redirectPath = result.redirectPath || "/dashboard";
+        setTimeout(() => navigate(redirectPath), 1500);
       } catch (err: any) {
+        if (!mounted) return;
         setStatus("error");
         setMessage(err.message || "Erro ao aceitar convite.");
       }
     };
 
-    acceptInvitation();
+    handleAccept();
+
+    return () => {
+      mounted = false;
+    };
   }, [token, user, authLoading, navigate]);
 
   if (status === "auth_required") {

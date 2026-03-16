@@ -433,7 +433,7 @@ const WorkspaceList = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition className="p-6 lg:p-8 max-w-6xl">
+      <PageTransition className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-display font-bold mb-1">Boards</h1>

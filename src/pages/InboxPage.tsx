@@ -9,6 +9,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { fetchPendingInvitations } from "@/lib/invitations";
 
 interface InboxItem {
   id: string;
@@ -45,21 +46,7 @@ const InboxPage = () => {
   const { data: invitations = [] } = useQuery({
     queryKey: ["inbox-invitations", user?.id],
     enabled: !!user,
-    queryFn: async () => {
-      const filters = [`invited_user_id.eq.${user!.id}`];
-      if (user?.email) {
-        filters.push(`invited_email.ilike.${user.email}`);
-      }
-
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("status", "pending")
-        .or(filters.join(","))
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: async () => fetchPendingInvitations(user!.id, user?.email),
   });
 
   // Today's events
@@ -139,7 +126,7 @@ const InboxPage = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition className="p-4 lg:p-8 max-w-3xl">
+      <PageTransition className="p-4 lg:p-8 max-w-3xl mx-auto w-full">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <Inbox className="w-5 h-5 text-primary" />
