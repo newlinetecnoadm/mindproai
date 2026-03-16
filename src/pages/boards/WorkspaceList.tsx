@@ -92,7 +92,7 @@ const WorkspaceList = () => {
   const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; boardCount: number } | null>(null);
   const limits = usePlanLimits();
 
-  // Fetch workspaces (own)
+  // Fetch workspaces (own + shared via workspace_members)
   const {
     data: workspaces = [],
     refetch: refetchWs,
@@ -101,10 +101,10 @@ const WorkspaceList = () => {
     queryKey: ["workspaces", user?.id],
     enabled: !!user,
     queryFn: async () => {
+      // RLS policy "Member reads workspace" allows reading owned + shared workspaces
       const { data, error } = await supabase
         .from("workspaces" as any)
         .select("*")
-        .eq("user_id", user!.id)
         .order("position")
         .order("created_at");
       if (error) throw error;
