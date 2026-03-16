@@ -69,6 +69,8 @@ const AIChatWidget = () => {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const limits = usePlanLimits();
+  const hasAI = limits.aiSuggestions;
 
   useEffect(() => {
     // Scroll to bottom on new messages
