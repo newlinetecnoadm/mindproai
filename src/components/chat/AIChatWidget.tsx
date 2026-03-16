@@ -163,8 +163,16 @@ const AIChatWidget = () => {
                   <Bot className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">Olá! Como posso ajudar?</p>
                   <p className="text-xs text-muted-foreground/60 mt-1">
-                    Pergunte sobre mapas mentais, boards, agenda...
+                    {hasAI
+                      ? "Pergunte sobre mapas mentais, boards, agenda..."
+                      : "Tire dúvidas sobre o uso do sistema. Para IA avançada, faça upgrade."}
                   </p>
+                  {!hasAI && (
+                    <div className="mt-3 flex items-center justify-center gap-1 text-xs text-primary/70">
+                      <Lock className="w-3 h-3" />
+                      <span>Modo básico — apenas dúvidas sobre o sistema</span>
+                    </div>
+                  )}
                 </div>
               )}
               {messages.map((msg, i) => (
