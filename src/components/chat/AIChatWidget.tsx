@@ -15,10 +15,12 @@ async function streamChat({
   messages,
   onDelta,
   onDone,
+  mode = "full",
 }: {
   messages: Msg[];
   onDelta: (text: string) => void;
   onDone: () => void;
+  mode?: "full" | "basic";
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
