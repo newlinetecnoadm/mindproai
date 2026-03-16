@@ -106,6 +106,7 @@ const AIChatWidget = () => {
         messages: [...messages, userMsg],
         onDelta: upsert,
         onDone: () => setLoading(false),
+        mode: hasAI ? "full" : "basic",
       });
     } catch (e: any) {
       setLoading(false);
