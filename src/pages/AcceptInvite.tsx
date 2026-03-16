@@ -91,6 +91,26 @@ const AcceptInvite = () => {
           setMessage("Você agora é membro deste board!");
           setTimeout(() => navigate(`/boards/${invitation.resource_id}`), 2000);
 
+        } else if (invitation.resource_type === "workspace") {
+          const { error: wsMemberErr } = await supabase
+            .from("workspace_members")
+            .upsert({
+              workspace_id: invitation.resource_id,
+              user_id: user.id,
+              role: invitation.role === "viewer" ? "viewer" : "member",
+            }, { onConflict: "workspace_id,user_id" });
+
+          if (wsMemberErr) throw wsMemberErr;
+
+          await supabase
+            .from("invitations")
+            .update({ status: "accepted", invited_user_id: user.id })
+            .eq("id", invitation.id);
+
+          setStatus("success");
+          setMessage("Você agora é membro deste workspace!");
+          setTimeout(() => navigate("/boards"), 2000);
+
         } else {
           setStatus("error");
           setMessage("Tipo de convite não suportado.");

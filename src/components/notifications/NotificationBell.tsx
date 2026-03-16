@@ -111,7 +111,7 @@ const NotificationBell = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium leading-relaxed">
-                        Convite para {inv.resource_type === "board" ? "board" : "diagrama"}
+                        Convite para {inv.resource_type === "board" ? "board" : inv.resource_type === "workspace" ? "workspace" : "diagrama"}
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         Permissão: {inv.role === "editor" ? "Editar" : inv.role === "member" ? "Membro" : "Visualizar"}

@@ -110,6 +110,15 @@ export function useNotifications() {
             role: invitation.role === "viewer" ? "viewer" : "member",
           }, { onConflict: "board_id,user_id" });
         if (error) throw error;
+      } else if (invitation.resource_type === "workspace") {
+        const { error } = await supabase
+          .from("workspace_members")
+          .upsert({
+            workspace_id: invitation.resource_id,
+            user_id: user.id,
+            role: invitation.role === "viewer" ? "viewer" : "member",
+          }, { onConflict: "workspace_id,user_id" });
+        if (error) throw error;
       }
 
       await supabase
