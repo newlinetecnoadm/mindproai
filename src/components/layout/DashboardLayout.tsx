@@ -44,6 +44,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
+    localStorage.removeItem("sidebar-collapsed");
     await signOut();
     navigate("/login");
   };
