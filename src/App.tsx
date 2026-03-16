@@ -12,6 +12,8 @@ import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Cadastro from "./pages/Cadastro.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import DiagramList from "./pages/DiagramList.tsx";
 import DiagramEditor from "./pages/DiagramEditor.tsx";
 import NewDiagram from "./pages/NewDiagram.tsx";
@@ -42,6 +44,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/esqueci-senha" element={<ForgotPassword />} />
+          <Route path="/redefinir-senha" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
           <Route path="/diagramas/novo" element={<ProtectedRoute><NewDiagram /></ProtectedRoute>} />
