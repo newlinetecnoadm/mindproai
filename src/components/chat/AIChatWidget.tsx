@@ -89,6 +89,19 @@ const MODE_LABELS: Record<AiMode, { icon: React.ReactNode; label: string; sublab
   },
 };
 
+const useAiMode = (): AiMode => {
+  let user = null;
+  try {
+    const auth = useAuth();
+    user = auth.user;
+  } catch {
+    return "conversion";
+  }
+  const limits = usePlanLimits();
+  if (!user) return "conversion";
+  return limits.aiMode;
+};
+
 const AIChatWidget = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -96,18 +109,7 @@ const AIChatWidget = () => {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  let aiMode: AiMode = "conversion";
-  try {
-    const { user } = useAuth();
-    if (user) {
-      const limits = usePlanLimits();
-      aiMode = limits.aiMode;
-    }
-  } catch {
-    // Outside AuthProvider — treat as visitor
-    aiMode = "conversion";
-  }
+  const aiMode = useAiMode();
 
   useEffect(() => {
     requestAnimationFrame(() => {
