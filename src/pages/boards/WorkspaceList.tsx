@@ -4,6 +4,7 @@ import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/t
 import { Button } from "@/components/ui/button";
 import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, GripVertical, Pencil, Share2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,7 +93,7 @@ const WorkspaceList = () => {
   const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; boardCount: number } | null>(null);
   const limits = usePlanLimits();
 
-  // Fetch workspaces (own)
+  // Fetch workspaces (own + shared via workspace_members)
   const {
     data: workspaces = [],
     refetch: refetchWs,
@@ -101,10 +102,10 @@ const WorkspaceList = () => {
     queryKey: ["workspaces", user?.id],
     enabled: !!user,
     queryFn: async () => {
+      // RLS policy "Member reads workspace" allows reading owned + shared workspaces
       const { data, error } = await supabase
         .from("workspaces" as any)
         .select("*")
-        .eq("user_id", user!.id)
         .order("position")
         .order("created_at");
       if (error) throw error;
@@ -116,7 +117,8 @@ const WorkspaceList = () => {
   const defaultCreatedRef = useRef(false);
   useEffect(() => {
     if (!user || !isWorkspacesFetched || defaultCreatedRef.current) return;
-    if (workspaces.length > 0) return;
+    const ownWorkspaces = workspaces.filter((ws: any) => ws.user_id === user.id);
+    if (ownWorkspaces.length > 0) return;
 
     defaultCreatedRef.current = true;
     (async () => {
@@ -140,7 +142,7 @@ const WorkspaceList = () => {
     })();
   }, [user, workspaces.length, isWorkspacesFetched, refetchWs]);
 
-  // Fetch boards (own)
+  // Fetch boards (accessible via RLS - own + shared)
   const { data: boards = [], isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["boards", user?.id],
     enabled: !!user,
@@ -149,7 +151,6 @@ const WorkspaceList = () => {
       const { data, error } = await supabase
         .from("boards")
         .select("id, title, cover_color, updated_at, is_closed, is_starred, workspace_id, user_id")
-        .eq("user_id", user!.id)
         .eq("is_closed", false)
         .order("is_starred", { ascending: false })
         .order("updated_at", { ascending: false });
@@ -158,26 +159,9 @@ const WorkspaceList = () => {
     },
   });
 
-  // Fetch shared boards (via board_members)
-  const { data: sharedBoards = [] } = useQuery({
-    queryKey: ["shared-boards", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data: memberships } = await supabase
-        .from("board_members")
-        .select("board_id")
-        .eq("user_id", user!.id);
-      if (!memberships?.length) return [];
-      const boardIds = memberships.map((m) => m.board_id);
-      const { data } = await supabase
-        .from("boards")
-        .select("id, title, cover_color, updated_at, is_closed, is_starred, user_id")
-        .in("id", boardIds)
-        .neq("user_id", user!.id)
-        .eq("is_closed", false);
-      return data || [];
-    },
-  });
+  // Separate own boards vs shared boards from the unified query
+  const ownBoards = useMemo(() => boards.filter(b => b.user_id === user?.id), [boards, user?.id]);
+  const sharedBoards = useMemo(() => boards.filter(b => b.user_id !== user?.id), [boards, user?.id]);
 
   const toggleStarMut = useMutation({
     mutationFn: async ({ boardId, starred }: { boardId: string; starred: boolean }) => {
@@ -324,11 +308,11 @@ const WorkspaceList = () => {
     });
   };
 
-  // Group boards by workspace
+  // Group own boards by workspace
   const boardsByWs = useMemo(() => {
-    const map = new Map<string, typeof boards>();
-    const unassigned: typeof boards = [];
-    for (const b of boards) {
+    const map = new Map<string, typeof ownBoards>();
+    const unassigned: typeof ownBoards = [];
+    for (const b of ownBoards) {
       const wsId = (b as any).workspace_id;
       if (wsId) {
         if (!map.has(wsId)) map.set(wsId, []);
@@ -337,10 +321,40 @@ const WorkspaceList = () => {
         unassigned.push(b);
       }
     }
+    // Also group shared boards that belong to a visible workspace
+    for (const b of sharedBoards) {
+      const wsId = (b as any).workspace_id;
+      if (wsId && workspaces.some((ws: any) => ws.id === wsId)) {
+        if (!map.has(wsId)) map.set(wsId, []);
+        map.get(wsId)!.push(b);
+      }
+    }
     return { map, unassigned };
-  }, [boards]);
+  }, [ownBoards, sharedBoards, workspaces]);
 
-  const totalCount = boards.length;
+  // Shared boards not in any visible workspace
+  const orphanSharedBoards = useMemo(() => {
+    const wsIds = new Set(workspaces.map((ws: any) => ws.id));
+    return sharedBoards.filter(b => !(b as any).workspace_id || !wsIds.has((b as any).workspace_id));
+  }, [sharedBoards, workspaces]);
+
+  const totalCount = ownBoards.length;
+
+  // Realtime: refresh when memberships change
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("board-memberships-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "board_members", filter: `user_id=eq.${user.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["boards", user.id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "workspace_members", filter: `user_id=eq.${user.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["workspaces", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["boards", user.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
 
   const renderBoardCard = (board: any) => (
     <div
@@ -471,7 +485,7 @@ const WorkspaceList = () => {
               <RefreshCw className={cn("w-4 h-4 mr-1", isFetching && "animate-spin")} /> Tentar novamente
             </Button>
           </div>
-        ) : totalCount === 0 && sharedBoards.length === 0 ? (
+        ) : totalCount === 0 && sharedBoards.length === 0 && orphanSharedBoards.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4">
               <Kanban className="w-8 h-8 text-accent-foreground" />
@@ -515,29 +529,40 @@ const WorkspaceList = () => {
                       {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       <h2 className="text-sm font-semibold">{ws.title}</h2>
                     </button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
-                      <Pencil className="w-3 h-3 text-muted-foreground" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground">{wsBoards.length}</span>
-                    <div className="ml-auto flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
-                        <Plus className="w-3 h-3 mr-1" /> Board
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
-                        <Users className="w-3 h-3 mr-1" /> Membros
-                      </Button>
-                      {!ws.is_default && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            const wsBoards2 = boardsByWs.map.get(ws.id) || [];
-                            setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                    {ws.user_id === user?.id && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRenamingWs({ id: ws.id, title: ws.title })}>
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
                         </Button>
+                      </>
+                    )}
+                    <span className="text-xs text-muted-foreground">{wsBoards.length}</span>
+                    {ws.user_id !== user?.id && (
+                      <Badge variant="secondary" className="text-[10px] ml-1">Compartilhado</Badge>
+                    )}
+                    <div className="ml-auto flex items-center gap-1">
+                      {ws.user_id === user?.id && (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleNewBoard(ws.id)}>
+                            <Plus className="w-3 h-3 mr-1" /> Board
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShareWs({ id: ws.id, title: ws.title })}>
+                            <Users className="w-3 h-3 mr-1" /> Membros
+                          </Button>
+                          {!ws.is_default && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                const wsBoards2 = boardsByWs.map.get(ws.id) || [];
+                                setDeletingWs({ id: ws.id, title: ws.title, boardCount: wsBoards2.length });
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -564,16 +589,16 @@ const WorkspaceList = () => {
               </div>
             )}
 
-            {/* Shared with me */}
-            {sharedBoards.length > 0 && (
+            {/* Shared with me (boards not in any visible workspace) */}
+            {orphanSharedBoards.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
-                  <span className="text-xs text-muted-foreground">{sharedBoards.length}</span>
+                  <span className="text-xs text-muted-foreground">{orphanSharedBoards.length}</span>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {sharedBoards.map(renderBoardCard)}
+                  {orphanSharedBoards.map(renderBoardCard)}
                 </div>
               </div>
             )}

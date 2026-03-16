@@ -98,7 +98,6 @@ export function useNotifications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-invitations", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["boards", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["shared-boards", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["workspaces", user?.id] });
     },
   });
