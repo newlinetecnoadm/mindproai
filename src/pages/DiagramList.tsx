@@ -277,7 +277,7 @@ const DiagramList = () => {
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
                   <span className="text-xs text-muted-foreground">{sharedDiagrams.length}</span>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {sharedDiagrams.map((d) => renderDiagramCard(d, false))}
                 </div>
               </div>
