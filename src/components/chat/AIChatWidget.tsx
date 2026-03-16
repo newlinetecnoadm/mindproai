@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -14,10 +15,12 @@ async function streamChat({
   messages,
   onDelta,
   onDone,
+  mode = "full",
 }: {
   messages: Msg[];
   onDelta: (text: string) => void;
   onDone: () => void;
+  mode?: "full" | "basic";
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -25,7 +28,7 @@ async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, mode }),
   });
 
   if (!resp.ok) {
@@ -68,6 +71,8 @@ const AIChatWidget = () => {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const limits = usePlanLimits();
+  const hasAI = limits.aiSuggestions;
 
   useEffect(() => {
     // Scroll to bottom on new messages
@@ -103,6 +108,7 @@ const AIChatWidget = () => {
         messages: [...messages, userMsg],
         onDelta: upsert,
         onDone: () => setLoading(false),
+        mode: hasAI ? "full" : "basic",
       });
     } catch (e: any) {
       setLoading(false);
@@ -157,8 +163,16 @@ const AIChatWidget = () => {
                   <Bot className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">Olá! Como posso ajudar?</p>
                   <p className="text-xs text-muted-foreground/60 mt-1">
-                    Pergunte sobre mapas mentais, boards, agenda...
+                    {hasAI
+                      ? "Pergunte sobre mapas mentais, boards, agenda..."
+                      : "Tire dúvidas sobre o uso do sistema. Para IA avançada, faça upgrade."}
                   </p>
+                  {!hasAI && (
+                    <div className="mt-3 flex items-center justify-center gap-1 text-xs text-primary/70">
+                      <Lock className="w-3 h-3" />
+                      <span>Modo básico — apenas dúvidas sobre o sistema</span>
+                    </div>
+                  )}
                 </div>
               )}
               {messages.map((msg, i) => (

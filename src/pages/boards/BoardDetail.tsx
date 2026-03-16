@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const BoardDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const limits = usePlanLimits();
   const [boardTitle, setBoardTitle] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>(EMPTY_FILTERS);
@@ -548,7 +550,7 @@ const BoardDetail = () => {
         />
         <div className="ml-auto flex items-center gap-2">
           <NotificationBell />
-          <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />
+          {limits.aiSuggestions && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
           <BoardThemePicker
             currentTheme={(board as any).theme || "default"}
             onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}

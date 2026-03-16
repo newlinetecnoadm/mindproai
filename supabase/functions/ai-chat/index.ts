@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Você é o assistente de IA do Mind Pro AI, uma plataforma de produtividade visual com mapas mentais, quadros Kanban e agenda.
+const FULL_SYSTEM_PROMPT = `Você é o assistente de IA do Mind Pro AI, uma plataforma de produtividade visual com mapas mentais, quadros Kanban e agenda.
 
 Suas responsabilidades:
 - Ajudar os usuários a entender e usar as funcionalidades do sistema
@@ -27,13 +27,30 @@ Funcionalidades disponíveis no Mind Pro AI:
 
 Responda sempre de forma útil e encoraje o uso produtivo da plataforma.`;
 
+const BASIC_SYSTEM_PROMPT = `Você é o assistente de suporte do Mind Pro AI. Seu papel é APENAS responder dúvidas simples sobre como usar o sistema.
+
+Regras estritas:
+- Responda SOMENTE sobre como usar as funcionalidades do Mind Pro AI
+- Dê respostas curtas e diretas (máximo 3-4 frases)
+- NÃO gere conteúdo criativo como mapas mentais, boards, planos de projeto ou estruturas
+- NÃO faça brainstorming, análises detalhadas ou planejamento
+- Se o usuário pedir algo além de dúvidas de uso, responda: "Esta funcionalidade está disponível nos planos Pro e Business. Faça upgrade para acessar a IA completa! 🚀"
+- Responda em português brasileiro
+
+Funcionalidades que pode explicar brevemente:
+- Como criar mapas mentais e diagramas
+- Como usar boards Kanban (colunas, cards, checklists)
+- Como usar a agenda e eventos
+- Como convidar colaboradores
+- Diferenças entre os planos`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, mode } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -42,7 +59,8 @@ serve(async (req) => {
       );
     }
 
-    // Check for external AI provider settings
+    const systemPrompt = mode === "basic" ? BASIC_SYSTEM_PROMPT : FULL_SYSTEM_PROMPT;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -72,7 +90,6 @@ serve(async (req) => {
       authHeader = `Bearer ${externalKey}`;
       bodyModel = model || "gemini-2.5-flash";
     } else {
-      // Default: Lovable AI Gateway
       const lovableKey = Deno.env.get("LOVABLE_API_KEY");
       if (!lovableKey) {
         return new Response(
@@ -94,7 +111,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: bodyModel,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           ...messages,
         ],
         stream: true,
