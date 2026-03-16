@@ -263,7 +263,7 @@ const DiagramList = () => {
                 {hasActiveFilters && (
                   <p className="text-xs text-muted-foreground">{filteredCount} de {totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
                 )}
-                <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filtered.map((d) => renderDiagramCard(d, true))}
                 </StaggerContainer>
               </>
