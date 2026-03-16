@@ -186,7 +186,7 @@ const DiagramList = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition className="p-6 lg:p-8 max-w-6xl">
+      <PageTransition className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-display font-bold mb-1">Meus Diagramas</h1>
@@ -263,7 +263,7 @@ const DiagramList = () => {
                 {hasActiveFilters && (
                   <p className="text-xs text-muted-foreground">{filteredCount} de {totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
                 )}
-                <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filtered.map((d) => renderDiagramCard(d, true))}
                 </StaggerContainer>
               </>
@@ -277,7 +277,7 @@ const DiagramList = () => {
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
                   <span className="text-xs text-muted-foreground">{sharedDiagrams.length}</span>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {sharedDiagrams.map((d) => renderDiagramCard(d, false))}
                 </div>
               </div>

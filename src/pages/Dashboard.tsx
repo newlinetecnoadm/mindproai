@@ -13,7 +13,7 @@ const quickActions = [
 const Dashboard = () => {
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-6xl">
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <h1 className="text-2xl font-display font-bold mb-1">Dashboard</h1>
           <p className="text-muted-foreground mb-8">Bem-vindo ao Mind Pro AI</p>

@@ -105,7 +105,7 @@ const AssinaturasPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-5xl">
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <h1 className="text-2xl font-display font-bold mb-1">Assinaturas</h1>
         <p className="text-muted-foreground mb-8">Gerencie seu plano e cobrança</p>
 

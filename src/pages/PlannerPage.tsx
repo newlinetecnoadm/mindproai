@@ -100,7 +100,7 @@ const PlannerPage = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition className="p-4 lg:p-8 max-w-3xl">
+      <PageTransition className="p-4 lg:p-8 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <CalendarDays className="w-5 h-5 text-primary" />

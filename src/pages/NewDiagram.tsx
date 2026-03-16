@@ -90,7 +90,7 @@ const NewDiagram = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => selectedType ? setSelectedType(null) : navigate("/diagramas")}>
             <ArrowLeft className="w-4 h-4" />
