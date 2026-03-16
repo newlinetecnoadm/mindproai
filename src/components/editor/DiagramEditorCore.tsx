@@ -970,7 +970,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onApplyGenerated={handleApplyGenerated}
         onApplySuggestion={handleApplySuggestion}
       />
-      {contextMenu && (
+      {contextMenu && limits.aiSuggestions && (
         <NodeContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
