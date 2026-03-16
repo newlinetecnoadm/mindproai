@@ -271,10 +271,7 @@ const WorkspaceList = () => {
 
   const deleteWsMut = useMutation({
     mutationFn: async (wsId: string) => {
-      // First delete all boards in this workspace
-      const { error: boardsError } = await supabase.from("boards").delete().eq("workspace_id", wsId);
-      if (boardsError) throw boardsError;
-      // Then delete the workspace
+      // Cascade delete handles boards, cards, columns, etc.
       const { error } = await supabase.from("workspaces" as any).delete().eq("id", wsId);
       if (error) throw error;
     },
