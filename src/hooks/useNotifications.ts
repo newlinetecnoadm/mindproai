@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  acceptInvitation as acceptInvitationRequest,
+  fetchPendingInvitations,
+} from "@/lib/invitations";
 
 export interface AppNotification {
   id: string;
@@ -34,29 +38,15 @@ export function useNotifications() {
     },
   });
 
-  // Fetch pending invitations for the current user
   const { data: pendingInvitations = [] } = useQuery({
     queryKey: ["pending-invitations", user?.id],
     enabled: !!user,
-    queryFn: async () => {
-      const filters = [`invited_user_id.eq.${user!.id}`];
-      if (user?.email) {
-        filters.push(`invited_email.ilike.${user.email}`);
-      }
-
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("status", "pending")
-        .or(filters.join(","));
-
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: async () => fetchPendingInvitations(user!.id, user?.email),
   });
 
   useEffect(() => {
     if (!user) return;
+
     const channel = supabase
       .channel("notifications-realtime")
       .on(
@@ -68,13 +58,16 @@ export function useNotifications() {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "invitations" },
+        { event: "*", schema: "public", table: "invitations" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["pending-invitations", user.id] });
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, queryClient]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length + pendingInvitations.length;
@@ -97,42 +90,16 @@ export function useNotifications() {
     mutationFn: async (invitation: any) => {
       if (!user) throw new Error("Não autenticado");
 
-      if (invitation.resource_type === "diagram") {
-        const { error } = await supabase
-          .from("diagram_collaborators")
-          .upsert({
-            diagram_id: invitation.resource_id,
-            user_id: user.id,
-            role: invitation.role,
-          }, { onConflict: "diagram_id,user_id" });
-        if (error) throw error;
-      } else if (invitation.resource_type === "board") {
-        const { error } = await supabase
-          .from("board_members")
-          .upsert({
-            board_id: invitation.resource_id,
-            user_id: user.id,
-            role: invitation.role === "viewer" ? "viewer" : "member",
-          }, { onConflict: "board_id,user_id" });
-        if (error) throw error;
-      } else if (invitation.resource_type === "workspace") {
-        const { error } = await supabase
-          .from("workspace_members")
-          .upsert({
-            workspace_id: invitation.resource_id,
-            user_id: user.id,
-            role: invitation.role === "viewer" ? "viewer" : "member",
-          }, { onConflict: "workspace_id,user_id" });
-        if (error) throw error;
-      }
-
-      await supabase
-        .from("invitations")
-        .update({ status: "accepted", invited_user_id: user.id })
-        .eq("id", invitation.id);
+      return acceptInvitationRequest({
+        invitationId: invitation?.id,
+        token: invitation?.token,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-invitations", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["boards", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["shared-boards", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces", user?.id] });
     },
   });
 
