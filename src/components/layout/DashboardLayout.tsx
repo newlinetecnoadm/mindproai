@@ -48,11 +48,35 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return (
       <div className="min-h-screen bg-background">
         <MobileDrawer />
-        <main className="pt-14 pb-24 overflow-auto">
+        <main className="pt-14 pb-20 overflow-auto">
           <div className="animate-fade-in">
             {children}
           </div>
         </main>
+        {/* Bottom Floating Tab Bar */}
+        <nav className="fixed bottom-4 left-3 right-3 z-50 flex items-center justify-around rounded-2xl bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg py-1.5 md:hidden">
+          {navItems.slice(0, 5).map((item) => {
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 min-w-[56px]",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground"
+                )}
+              >
+                <item.icon className={cn("w-5 h-5 transition-transform duration-200", isActive && "scale-110")} />
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                {isActive && (
+                  <span className="absolute -bottom-0.5 w-5 h-0.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     );
   }
