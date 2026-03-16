@@ -18,7 +18,7 @@ const features = [
   {
     icon: "📋",
     title: "Boards Kanban",
-    description: "Organize projetos com boards completos estilo Trello: cards, checklists, labels e colaboração.",
+    description: "Organize projetos com boards completos: cards, checklists, labels e colaboração em tempo real.",
   },
   {
     icon: "📅",
