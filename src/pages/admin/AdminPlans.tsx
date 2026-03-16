@@ -78,6 +78,29 @@ const AdminPlans = () => {
     onError: () => toast.error("Erro ao atualizar plano"),
   });
 
+  const createPlanMut = useMutation({
+    mutationFn: async () => {
+      if (!newPlan.name || !newPlan.display_name) throw new Error("Preencha nome e nome exibido");
+      const { error } = await supabase
+        .from("subscription_plans")
+        .insert({
+          name: newPlan.name.toLowerCase().replace(/\s+/g, "_"),
+          display_name: newPlan.display_name,
+          price_brl: newPlan.price_brl,
+          is_active: true,
+          features: { list: [], description: "", cta_text: "", is_highlighted: false, max_diagrams: 3, max_boards: 2, max_events: 10, max_guests_per_project: 0, export_pdf: false, ai_suggestions: false },
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+      setShowCreate(false);
+      setNewPlan({ name: "", display_name: "", price_brl: 0 });
+      toast.success("Plano criado com sucesso");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao criar plano"),
+  });
+
   const startEdit = (plan: any) => {
     const f = plan.features ?? {};
     setEditingId(plan.id);
