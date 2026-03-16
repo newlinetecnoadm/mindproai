@@ -157,26 +157,9 @@ const WorkspaceList = () => {
     },
   });
 
-  // Fetch shared boards (via board_members)
-  const { data: sharedBoards = [] } = useQuery({
-    queryKey: ["shared-boards", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data: memberships } = await supabase
-        .from("board_members")
-        .select("board_id")
-        .eq("user_id", user!.id);
-      if (!memberships?.length) return [];
-      const boardIds = memberships.map((m) => m.board_id);
-      const { data } = await supabase
-        .from("boards")
-        .select("id, title, cover_color, updated_at, is_closed, is_starred, user_id")
-        .in("id", boardIds)
-        .neq("user_id", user!.id)
-        .eq("is_closed", false);
-      return data || [];
-    },
-  });
+  // Separate own boards vs shared boards from the unified query
+  const ownBoards = useMemo(() => boards.filter(b => b.user_id === user?.id), [boards, user?.id]);
+  const sharedBoards = useMemo(() => boards.filter(b => b.user_id !== user?.id), [boards, user?.id]);
 
   const toggleStarMut = useMutation({
     mutationFn: async ({ boardId, starred }: { boardId: string; starred: boolean }) => {
