@@ -78,10 +78,21 @@ export function usePlanLimits() {
   const maxGuestsPerProject = (features.max_guests_per_project as number) ?? (features.max_collaborators as number) ?? 0;
   const exportPdf = (features.export_pdf as boolean) ?? false;
   const aiSuggestions = (features.ai_suggestions as boolean) ?? false;
+  const aiGeneration = (features.ai_generation as boolean) ?? false;
 
   const canCreateDiagram = maxDiagrams === -1 || diagramCount < maxDiagrams;
   const canCreateBoard = maxBoards === -1 || boardCount < maxBoards;
   const canCreateEvent = maxEvents === -1 || eventCount < maxEvents;
+
+  // Determine AI mode based on plan features
+  let aiMode: PlanLimits["aiMode"];
+  if (aiGeneration) {
+    aiMode = "full";
+  } else if (aiSuggestions) {
+    aiMode = "instructive";
+  } else {
+    aiMode = "basic";
+  }
 
   const limits: PlanLimits = {
     maxDiagrams,
@@ -90,6 +101,8 @@ export function usePlanLimits() {
     maxGuestsPerProject,
     exportPdf,
     aiSuggestions,
+    aiGeneration,
+    aiMode,
     currentDiagrams: diagramCount,
     currentBoards: boardCount,
     currentEvents: eventCount,
