@@ -10,6 +10,7 @@ import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import logoIconFull from "@/assets/logo-icon-full.png";
+import logoVerticalBrand from "@/assets/logo-vertical-brand.png";
 import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
 
 const floatingIcons = [
