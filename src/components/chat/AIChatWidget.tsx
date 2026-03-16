@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User, Lock } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, User, Lock, Sparkles, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { useAuth } from "@/hooks/useAuth";
 
 type Msg = { role: "user" | "assistant"; content: string };
+type AiMode = "conversion" | "basic" | "instructive" | "full";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
@@ -15,12 +17,12 @@ async function streamChat({
   messages,
   onDelta,
   onDone,
-  mode = "full",
+  mode = "basic",
 }: {
   messages: Msg[];
   onDelta: (text: string) => void;
   onDone: () => void;
-  mode?: "full" | "basic";
+  mode?: AiMode;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -64,6 +66,42 @@ async function streamChat({
   onDone();
 }
 
+const MODE_LABELS: Record<AiMode, { icon: React.ReactNode; label: string; sublabel: string }> = {
+  conversion: {
+    icon: <Sparkles className="w-3 h-3" />,
+    label: "Modo visitante",
+    sublabel: "Conheça o Mind Pro AI",
+  },
+  basic: {
+    icon: <Lock className="w-3 h-3" />,
+    label: "Modo básico",
+    sublabel: "Apenas dúvidas sobre o sistema",
+  },
+  instructive: {
+    icon: <GraduationCap className="w-3 h-3" />,
+    label: "Modo instrutivo",
+    sublabel: "Orientações e dicas avançadas",
+  },
+  full: {
+    icon: <Sparkles className="w-3 h-3" />,
+    label: "IA Completa",
+    sublabel: "Geração e assistência total",
+  },
+};
+
+const useAiMode = (): AiMode => {
+  let user = null;
+  try {
+    const auth = useAuth();
+    user = auth.user;
+  } catch {
+    return "conversion";
+  }
+  const limits = usePlanLimits();
+  if (!user) return "conversion";
+  return limits.aiMode;
+};
+
 const AIChatWidget = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -71,11 +109,9 @@ const AIChatWidget = () => {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const limits = usePlanLimits();
-  const hasAI = limits.aiSuggestions;
+  const aiMode = useAiMode();
 
   useEffect(() => {
-    // Scroll to bottom on new messages
     requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (el) el.scrollTop = el.scrollHeight;
@@ -108,7 +144,7 @@ const AIChatWidget = () => {
         messages: [...messages, userMsg],
         onDelta: upsert,
         onDone: () => setLoading(false),
-        mode: hasAI ? "full" : "basic",
+        mode: aiMode,
       });
     } catch (e: any) {
       setLoading(false);
@@ -123,9 +159,10 @@ const AIChatWidget = () => {
     }
   };
 
+  const modeInfo = MODE_LABELS[aiMode];
+
   return (
     <>
-      {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
         className={cn(
@@ -137,7 +174,6 @@ const AIChatWidget = () => {
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Chat panel */}
       {open && (
         <div className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
           {/* Header */}
@@ -145,32 +181,28 @@ const AIChatWidget = () => {
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Bot className="w-4 h-4 text-primary" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-sm">Assistente IA</p>
               <p className="text-xs text-muted-foreground">Mind Pro AI</p>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+              {modeInfo.icon}
+              <span>{modeInfo.label}</span>
             </div>
           </div>
 
           {/* Messages */}
-          <div
-            ref={scrollRef}
-            className="flex-1 min-h-0 overflow-y-auto"
-            style={{ maxHeight: 360 }}
-          >
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto" style={{ maxHeight: 360 }}>
             <div className="p-4 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-8">
                   <Bot className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">Olá! Como posso ajudar?</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    {hasAI
-                      ? "Pergunte sobre mapas mentais, boards, agenda..."
-                      : "Tire dúvidas sobre o uso do sistema. Para IA avançada, faça upgrade."}
-                  </p>
-                  {!hasAI && (
+                  <p className="text-xs text-muted-foreground/60 mt-1">{modeInfo.sublabel}</p>
+                  {aiMode !== "full" && (
                     <div className="mt-3 flex items-center justify-center gap-1 text-xs text-primary/70">
-                      <Lock className="w-3 h-3" />
-                      <span>Modo básico — apenas dúvidas sobre o sistema</span>
+                      {modeInfo.icon}
+                      <span>{modeInfo.sublabel}</span>
                     </div>
                   )}
                 </div>
@@ -182,14 +214,10 @@ const AIChatWidget = () => {
                       <Bot className="w-3 h-3 text-primary" />
                     </div>
                   )}
-                  <div
-                    className={cn(
-                      "rounded-xl px-3 py-2 max-w-[85%] text-sm",
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                  >
+                  <div className={cn(
+                    "rounded-xl px-3 py-2 max-w-[85%] text-sm",
+                    msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:my-1 [&>ol]:my-1">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>

@@ -875,7 +875,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onThemeChange={setTheme}
         onReLayout={handleReLayout}
         onEdgeTypeChange={handleEdgeTypeChange}
-        onAIAssist={limits.aiSuggestions ? () => setAiDialogOpen(true) : undefined}
+        onAIAssist={limits.aiGeneration ? () => setAiDialogOpen(true) : undefined}
         currentThemeId={theme.id}
         currentEdgeType={currentEdgeType}
         canUndo={canUndo}
@@ -970,7 +970,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onApplyGenerated={handleApplyGenerated}
         onApplySuggestion={handleApplySuggestion}
       />
-      {contextMenu && limits.aiSuggestions && (
+      {contextMenu && limits.aiGeneration && (
         <NodeContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
