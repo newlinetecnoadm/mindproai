@@ -88,7 +88,7 @@ function orgTemplate(
       id: pid,
       type: "org",
       position: { x: i * 220, y: 0 },
-      data: { label: person.label, role: person.role, color: colors[i % colors.length] },
+      data: { label: person.label, role: person.role, color: colors[i % colors.length], ...(i === 0 ? { isRoot: true } : {}) },
     });
     person.children?.forEach((child, j) => {
       const cid = `org_${i}_${j}`;
