@@ -51,10 +51,8 @@ const KanbanCard = ({ card, onClick, isHighlighted, labels }: KanbanCardProps) =
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-lg transition-all duration-300 cursor-pointer group",
-        "bg-[hsl(var(--board-card-bg))] border border-[hsl(var(--board-card-border))]",
-        "hover:border-[hsl(var(--board-card-hover-border))] hover:shadow-md",
-        "shadow-[0_1px_3px_hsl(0_0%_0%/0.3)]",
+        "rounded-lg shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group",
+        "bg-card border border-border hover:border-primary/30",
         isDragging && "opacity-50 shadow-lg ring-2 ring-primary/30",
         isHighlighted && "ring-2 ring-primary/40 shadow-md animate-[pulse_1s_ease-in-out_1]"
       )}
@@ -64,6 +62,7 @@ const KanbanCard = ({ card, onClick, isHighlighted, labels }: KanbanCardProps) =
         <div className="h-2 rounded-t-lg" style={{ backgroundColor: card.cover_color }} />
       )}
       <div className="p-3">
+        {/* Labels above title */}
         {labels && labels.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-1.5">
             {labels.map((label) => (
@@ -81,25 +80,25 @@ const KanbanCard = ({ card, onClick, isHighlighted, labels }: KanbanCardProps) =
           <span
             {...attributes}
             {...listeners}
-            className="text-sm font-medium flex-1 leading-snug cursor-grab active:cursor-grabbing text-[hsl(var(--board-text))]"
+            className="text-sm font-medium flex-1 leading-snug cursor-grab active:cursor-grabbing"
           >
             {card.title}
           </span>
         </div>
 
         {(card.due_date || card.description || card.diagram_id) && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-[hsl(var(--board-text-muted))]">
+          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             {card.due_date && (
               <span className={cn(
                 "flex items-center gap-1 px-1.5 py-0.5 rounded",
-                card.is_complete ? "bg-success/20 text-success" : "bg-[hsl(0_0%_25%)]"
+                card.is_complete ? "bg-success/10 text-success" : "bg-secondary"
               )}>
                 <Calendar className="w-3 h-3" />
                 {new Date(card.due_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
               </span>
             )}
             {card.diagram_id && (
-              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/15 text-primary">
+              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                 <GitBranch className="w-3 h-3" />
               </span>
             )}

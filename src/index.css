@@ -207,28 +207,6 @@
   }
 }
 
-/* Board-scoped dark theme */
-.board-area {
-  --board-col-bg: 0 0% 15%;
-  --board-col-border: 0 0% 20%;
-  --board-card-bg: 0 0% 20%;
-  --board-card-border: 0 0% 24%;
-  --board-card-hover-border: 27 60% 40%;
-  --board-text: 0 0% 88%;
-  --board-text-muted: 0 0% 55%;
-  --board-surface: 0 0% 12%;
-  background: hsl(0 0% 12%);
-  color: hsl(0 0% 88%);
-}
-.board-area ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
-  background-clip: padding-box;
-}
-.board-area ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 35%);
-  background-clip: padding-box;
-}
-
 /* Hide ReactFlow handles by default, show on hover or when connected */
 .react-flow__node .react-flow__handle {
   opacity: 0;

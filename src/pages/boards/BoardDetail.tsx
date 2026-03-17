@@ -580,7 +580,7 @@ const BoardDetail = () => {
         </AnimatePresence>
 
         {/* Board */}
-        <div className="flex-1 overflow-hidden board-area" style={{ background: "var(--board-bg)" }}>
+        <div className="flex-1 overflow-hidden" style={{ background: "var(--board-bg, transparent)" }}>
           <KanbanBoard
             columns={columns}
             cards={filteredCards}

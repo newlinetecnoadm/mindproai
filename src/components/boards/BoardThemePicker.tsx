@@ -115,8 +115,7 @@ export const applyBoardTheme = (themeId: string) => {
   if (theme && theme.bg) {
     root.style.setProperty("--board-bg", theme.bg);
   } else {
-    // Default dark board background
-    root.style.setProperty("--board-bg", "hsl(0 0% 12%)");
+    root.style.removeProperty("--board-bg");
   }
 };
 
