@@ -581,13 +581,8 @@ const BoardDetail = () => {
 
         {/* Board */}
         <div
+          id="board-theme-container"
           className="flex-1 overflow-hidden"
-          style={{
-            background: "var(--board-bg, transparent)",
-            backgroundImage: "var(--board-bg-image, none)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
         >
           <KanbanBoard
             columns={columns}
