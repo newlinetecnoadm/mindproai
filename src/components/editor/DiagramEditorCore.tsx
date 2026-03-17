@@ -92,6 +92,8 @@ interface DiagramEditorCoreProps {
   remoteThemeId?: string;
 }
 
+const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
+
 function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
   const getInitialLayout = () => {
     const n = initialNodes || [];
@@ -120,6 +122,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const pendingChanges = useRef(false);
   const lastPersistedSnapshot = useRef<string | null>(null);
   const remoteUpdateRef = useRef(false);
+  const initialFitDone = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
