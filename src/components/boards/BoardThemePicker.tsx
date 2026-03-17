@@ -121,6 +121,35 @@ export const BOARD_THEMES: BoardTheme[] = [
     bg: bokehImg,
     type: "image",
   },
+  // ── Neutras ──
+  {
+    id: "img-concrete",
+    name: "Concreto",
+    preview: `url(${concreteImg})`,
+    bg: concreteImg,
+    type: "image",
+  },
+  {
+    id: "img-smoke",
+    name: "Fumaça",
+    preview: `url(${smokeImg})`,
+    bg: smokeImg,
+    type: "image",
+  },
+  {
+    id: "img-marble",
+    name: "Mármore",
+    preview: `url(${marbleImg})`,
+    bg: marbleImg,
+    type: "image",
+  },
+  {
+    id: "img-linen",
+    name: "Linho",
+    preview: `url(${linenImg})`,
+    bg: linenImg,
+    type: "image",
+  },
 ];
 
 interface BoardThemePickerProps {
