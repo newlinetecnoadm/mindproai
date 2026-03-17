@@ -128,7 +128,7 @@ const BoardDetail = () => {
       if (error) throw error;
       const allUserIds = [...new Set([board?.user_id, ...members.map((m: any) => m.user_id)].filter(Boolean))] as string[];
       const { data: profiles } = await supabase
-        .from("user_profiles").select("user_id, full_name, email").in("user_id", allUserIds);
+        .from("user_profiles").select("user_id, full_name, email, avatar_url").in("user_id", allUserIds);
       return profiles || [];
     },
   });
