@@ -48,6 +48,7 @@ const KanbanBoard = ({
   onDropInboxItem,
   highlightedCardIds,
   labelsMap,
+  membersMap,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
