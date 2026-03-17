@@ -173,6 +173,7 @@ const KanbanBoard = ({
               onDropInboxItem={onDropInboxItem}
               highlightedCardIds={highlightedCardIds}
               labelsMap={labelsMap}
+              membersMap={membersMap}
             />
           ))}
         </SortableContext>
