@@ -100,9 +100,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const getInitialLayout = () => {
-    const n = initialNodes || [];
+    let n = initialNodes || [];
     const e = initialEdges || [];
     if (n.length > 0) {
+      if (diagramType === "mindmap") {
+        n = assignDepthColors(n, e);
+      }
       return autoLayoutDiagram(n, e, diagramType);
     }
     return { nodes: n, edges: e };
