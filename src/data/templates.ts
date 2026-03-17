@@ -150,7 +150,7 @@ const blankOrgchart: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com o cargo principal",
   type: "orgchart",
-  nodes: [{ id: "org_0", type: "org", position: { x: 0, y: 0 }, data: { label: "CEO", role: "Chief Executive Officer", color: "blue" } }],
+  nodes: [{ id: "org_0", type: "org", position: { x: 0, y: 0 }, data: { label: "CEO", role: "Chief Executive Officer", color: "orange", isRoot: true } }],
   edges: [],
 };
 
