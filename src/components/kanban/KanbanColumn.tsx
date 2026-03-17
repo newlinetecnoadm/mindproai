@@ -166,7 +166,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       <div ref={setDropRef} className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
         <SortableContext items={sortedCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {sortedCards.map((card) => (
-            <KanbanCard key={card.id} card={card} onClick={() => onCardClick?.(card)} isHighlighted={highlightedCardIds?.has(card.id)} labels={labelsMap?.get(card.id)} />
+            <KanbanCard key={card.id} card={card} onClick={() => onCardClick?.(card)} isHighlighted={highlightedCardIds?.has(card.id)} labels={labelsMap?.get(card.id)} members={membersMap?.get(card.id)} />
           ))}
         </SortableContext>
 
