@@ -619,7 +619,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 bg-[hsl(0_0%_22%)] border-[hsl(0_0%_28%)] text-[hsl(0_0%_88%)]">
+      <DialogContent className="dark sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 bg-[hsl(0,0%,18%)] border-[hsl(0,0%,24%)] text-[hsl(0,0%,88%)] [&_*]:border-[hsl(0,0%,22%)]">
         {/* Cover */}
         {card.cover_color && (
           <div className="h-8 rounded-t-lg" style={{ backgroundColor: card.cover_color }} />
