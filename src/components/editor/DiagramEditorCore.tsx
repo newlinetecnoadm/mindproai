@@ -1008,7 +1008,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
             },
           };
         })}
-        edges={draggingNodeId ? [] : edges}
+        edges={draggingNodeId
+          ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
+          : edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
