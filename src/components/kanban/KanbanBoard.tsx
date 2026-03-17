@@ -216,9 +216,9 @@ const KanbanBoard = ({
         )}
         {activeColumn && (
           <div className="rotate-2 opacity-80 w-72">
-            <div className="bg-secondary/90 rounded-xl border border-border p-3">
-              <h3 className="text-sm font-semibold text-foreground">{activeColumn.title}</h3>
-              <p className="text-xs text-muted-foreground mt-1">{getColumnCards(activeColumn.id).length} cards</p>
+            <div className="bg-[hsl(var(--board-col-bg))] rounded-xl border border-[hsl(var(--board-col-border))] p-3">
+              <h3 className="text-sm font-semibold text-[hsl(var(--board-text))]">{activeColumn.title}</h3>
+              <p className="text-xs text-[hsl(var(--board-text-muted))] mt-1">{getColumnCards(activeColumn.id).length} cards</p>
             </div>
           </div>
         )}
