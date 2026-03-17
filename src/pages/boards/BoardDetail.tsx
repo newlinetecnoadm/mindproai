@@ -635,6 +635,7 @@ const BoardDetail = () => {
             onDropInboxItem={handleDropInboxItem}
             highlightedCardIds={realtimeHighlightedCards}
             labelsMap={labelsMap}
+            membersMap={membersMap}
           />
         </div>
       </div>
