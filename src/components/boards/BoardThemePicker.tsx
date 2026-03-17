@@ -30,52 +30,52 @@ export interface BoardTheme {
 }
 
 export const BOARD_THEMES: BoardTheme[] = [
-  // ── Cores / Gradientes ──
+  // ── Cores / Gradientes ── (more distinct, higher saturation)
   {
     id: "default",
     name: "Padrão",
-    preview: "linear-gradient(135deg, hsl(0,0%,9%), hsl(0,0%,12%))",
+    preview: "linear-gradient(135deg, hsl(0,0%,9%), hsl(0,0%,14%))",
     bg: "",
-    type: "gradient",
-    category: "color",
-  },
-  {
-    id: "charcoal",
-    name: "Carvão",
-    preview: "linear-gradient(135deg, hsl(0,0%,7%), hsl(20,8%,12%))",
-    bg: "linear-gradient(135deg, hsl(0,0%,7%), hsl(20,8%,12%))",
     type: "gradient",
     category: "color",
   },
   {
     id: "ember",
     name: "Brasa",
-    preview: "linear-gradient(135deg, hsl(15,15%,8%), hsl(25,30%,12%))",
-    bg: "linear-gradient(135deg, hsl(15,15%,8%), hsl(25,30%,12%))",
+    preview: "linear-gradient(135deg, hsl(12,30%,8%), hsl(25,50%,15%))",
+    bg: "linear-gradient(135deg, hsl(12,30%,8%), hsl(25,50%,15%))",
     type: "gradient",
     category: "color",
   },
   {
-    id: "slate",
-    name: "Ardósia",
-    preview: "linear-gradient(135deg, hsl(210,8%,8%), hsl(200,10%,13%))",
-    bg: "linear-gradient(135deg, hsl(210,8%,8%), hsl(200,10%,13%))",
+    id: "ocean",
+    name: "Oceano",
+    preview: "linear-gradient(135deg, hsl(210,30%,8%), hsl(200,45%,16%))",
+    bg: "linear-gradient(135deg, hsl(210,30%,8%), hsl(200,45%,16%))",
     type: "gradient",
     category: "color",
   },
   {
-    id: "olive",
-    name: "Oliva",
-    preview: "linear-gradient(135deg, hsl(80,8%,8%), hsl(70,12%,12%))",
-    bg: "linear-gradient(135deg, hsl(80,8%,8%), hsl(70,12%,12%))",
+    id: "emerald",
+    name: "Esmeralda",
+    preview: "linear-gradient(135deg, hsl(155,25%,7%), hsl(160,40%,14%))",
+    bg: "linear-gradient(135deg, hsl(155,25%,7%), hsl(160,40%,14%))",
     type: "gradient",
     category: "color",
   },
   {
     id: "wine",
     name: "Vinho",
-    preview: "linear-gradient(135deg, hsl(345,12%,8%), hsl(340,18%,12%))",
-    bg: "linear-gradient(135deg, hsl(345,12%,8%), hsl(340,18%,12%))",
+    preview: "linear-gradient(135deg, hsl(340,25%,8%), hsl(345,40%,15%))",
+    bg: "linear-gradient(135deg, hsl(340,25%,8%), hsl(345,40%,15%))",
+    type: "gradient",
+    category: "color",
+  },
+  {
+    id: "nebula",
+    name: "Nebulosa",
+    preview: "linear-gradient(135deg, hsl(270,25%,8%), hsl(280,40%,16%))",
+    bg: "linear-gradient(135deg, hsl(270,25%,8%), hsl(280,40%,16%))",
     type: "gradient",
     category: "color",
   },
@@ -169,19 +169,19 @@ export const BOARD_THEMES: BoardTheme[] = [
   },
 ];
 
-interface CategorySection {
+interface CategoryDef {
   key: BoardTheme["category"];
   label: string;
   icon: React.ReactNode;
-  cols: number;
+  gridClass: string;
 }
 
-const CATEGORIES: CategorySection[] = [
-  { key: "color", label: "Cores", icon: <Palette className="w-3 h-3" />, cols: 3 },
-  { key: "geometric", label: "Geométrico", icon: <Shapes className="w-3 h-3" />, cols: 3 },
-  { key: "landscape", label: "Paisagem", icon: <Mountain className="w-3 h-3" />, cols: 3 },
-  { key: "texture", label: "Textura", icon: <Layers className="w-3 h-3" />, cols: 2 },
-  { key: "abstract", label: "Abstrato", icon: <Sparkles className="w-3 h-3" />, cols: 2 },
+const CATEGORIES: CategoryDef[] = [
+  { key: "color", label: "Cores", icon: <Palette className="w-3 h-3" />, gridClass: "grid-cols-3" },
+  { key: "geometric", label: "Geométrico", icon: <Shapes className="w-3 h-3" />, gridClass: "grid-cols-3" },
+  { key: "landscape", label: "Paisagem", icon: <Mountain className="w-3 h-3" />, gridClass: "grid-cols-3" },
+  { key: "texture", label: "Textura", icon: <Layers className="w-3 h-3" />, gridClass: "grid-cols-2" },
+  { key: "abstract", label: "Abstrato", icon: <Sparkles className="w-3 h-3" />, gridClass: "grid-cols-2" },
 ];
 
 interface BoardThemePickerProps {
@@ -211,7 +211,7 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
               <p className="text-xs font-medium mb-2 flex items-center gap-1.5 text-muted-foreground">
                 {cat.icon} {cat.label}
               </p>
-              <div className={cn("grid gap-2", `grid-cols-${cat.cols}`)}>
+              <div className={cn("grid gap-2", cat.gridClass)}>
                 {themes.map((theme) => (
                   <button
                     key={theme.id}
