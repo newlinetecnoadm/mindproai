@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Palette, ImageIcon } from "lucide-react";
+import { Palette, Mountain, Shapes, Layers, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,16 +8,17 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-import cosmicImg from "@/assets/themes/cosmic.jpg";
-import geometricImg from "@/assets/themes/geometric.jpg";
-import auroraImg from "@/assets/themes/aurora.jpg";
-import deepOceanImg from "@/assets/themes/deep-ocean.jpg";
-import topographyImg from "@/assets/themes/topography.jpg";
-import bokehImg from "@/assets/themes/bokeh.jpg";
-import concreteImg from "@/assets/themes/concrete.jpg";
-import smokeImg from "@/assets/themes/smoke.jpg";
-import marbleImg from "@/assets/themes/marble.jpg";
-import linenImg from "@/assets/themes/linen.jpg";
+// ── Image imports ──
+import geoHexagonImg from "@/assets/themes/geo-hexagon.jpg";
+import geoLowpolyImg from "@/assets/themes/geo-lowpoly.jpg";
+import geoGridImg from "@/assets/themes/geo-grid.jpg";
+import landMountainsImg from "@/assets/themes/land-mountains.jpg";
+import landOceanImg from "@/assets/themes/land-ocean.jpg";
+import landForestImg from "@/assets/themes/land-forest.jpg";
+import texMarbleImg from "@/assets/themes/tex-marble.jpg";
+import texConcreteImg from "@/assets/themes/tex-concrete.jpg";
+import absSmokeImg from "@/assets/themes/abs-smoke.jpg";
+import absFluidImg from "@/assets/themes/abs-fluid.jpg";
 
 export interface BoardTheme {
   id: string;
@@ -25,131 +26,162 @@ export interface BoardTheme {
   preview: string;
   bg: string;
   type: "gradient" | "image";
+  category: "color" | "geometric" | "landscape" | "texture" | "abstract";
 }
 
 export const BOARD_THEMES: BoardTheme[] = [
-  // ── Gradientes ──
+  // ── Cores / Gradientes ──
   {
     id: "default",
     name: "Padrão",
-    preview: "linear-gradient(135deg, hsl(0, 0%, 9%), hsl(0, 0%, 12%))",
+    preview: "linear-gradient(135deg, hsl(0,0%,9%), hsl(0,0%,12%))",
     bg: "",
     type: "gradient",
+    category: "color",
   },
   {
-    id: "ocean",
-    name: "Ocean",
-    preview: "linear-gradient(135deg, hsl(200, 30%, 10%), hsl(195, 35%, 15%))",
-    bg: "linear-gradient(135deg, hsl(200, 30%, 9%), hsl(195, 35%, 14%))",
+    id: "charcoal",
+    name: "Carvão",
+    preview: "linear-gradient(135deg, hsl(0,0%,7%), hsl(20,8%,12%))",
+    bg: "linear-gradient(135deg, hsl(0,0%,7%), hsl(20,8%,12%))",
     type: "gradient",
+    category: "color",
   },
   {
-    id: "forest",
-    name: "Forest",
-    preview: "linear-gradient(135deg, hsl(150, 20%, 8%), hsl(140, 25%, 13%))",
-    bg: "linear-gradient(135deg, hsl(150, 20%, 8%), hsl(140, 25%, 13%))",
+    id: "ember",
+    name: "Brasa",
+    preview: "linear-gradient(135deg, hsl(15,15%,8%), hsl(25,30%,12%))",
+    bg: "linear-gradient(135deg, hsl(15,15%,8%), hsl(25,30%,12%))",
     type: "gradient",
+    category: "color",
   },
   {
-    id: "sunset",
-    name: "Sunset",
-    preview: "linear-gradient(135deg, hsl(15, 25%, 10%), hsl(25, 35%, 14%))",
-    bg: "linear-gradient(135deg, hsl(15, 25%, 9%), hsl(25, 35%, 13%))",
+    id: "slate",
+    name: "Ardósia",
+    preview: "linear-gradient(135deg, hsl(210,8%,8%), hsl(200,10%,13%))",
+    bg: "linear-gradient(135deg, hsl(210,8%,8%), hsl(200,10%,13%))",
     type: "gradient",
+    category: "color",
   },
   {
-    id: "purple",
-    name: "Nebula",
-    preview: "linear-gradient(135deg, hsl(270, 20%, 10%), hsl(280, 25%, 15%))",
-    bg: "linear-gradient(135deg, hsl(270, 20%, 9%), hsl(280, 25%, 14%))",
+    id: "olive",
+    name: "Oliva",
+    preview: "linear-gradient(135deg, hsl(80,8%,8%), hsl(70,12%,12%))",
+    bg: "linear-gradient(135deg, hsl(80,8%,8%), hsl(70,12%,12%))",
     type: "gradient",
+    category: "color",
   },
   {
-    id: "midnight",
-    name: "Midnight",
-    preview: "linear-gradient(135deg, hsl(230, 15%, 8%), hsl(225, 20%, 13%))",
-    bg: "linear-gradient(135deg, hsl(230, 15%, 7%), hsl(225, 20%, 12%))",
+    id: "wine",
+    name: "Vinho",
+    preview: "linear-gradient(135deg, hsl(345,12%,8%), hsl(340,18%,12%))",
+    bg: "linear-gradient(135deg, hsl(345,12%,8%), hsl(340,18%,12%))",
     type: "gradient",
+    category: "color",
   },
+
+  // ── Geométrico ──
   {
-    id: "rose",
-    name: "Rosé",
-    preview: "linear-gradient(135deg, hsl(345, 18%, 10%), hsl(340, 22%, 15%))",
-    bg: "linear-gradient(135deg, hsl(345, 18%, 9%), hsl(340, 22%, 14%))",
-    type: "gradient",
-  },
-  // ── Imagens IA ──
-  {
-    id: "img-cosmic",
-    name: "Cosmic",
-    preview: `url(${cosmicImg})`,
-    bg: cosmicImg,
+    id: "geo-hexagon",
+    name: "Hexagonal",
+    preview: `url(${geoHexagonImg})`,
+    bg: geoHexagonImg,
     type: "image",
+    category: "geometric",
   },
   {
-    id: "img-geometric",
-    name: "Geometric",
-    preview: `url(${geometricImg})`,
-    bg: geometricImg,
+    id: "geo-lowpoly",
+    name: "Low Poly",
+    preview: `url(${geoLowpolyImg})`,
+    bg: geoLowpolyImg,
     type: "image",
+    category: "geometric",
   },
   {
-    id: "img-aurora",
-    name: "Aurora",
-    preview: `url(${auroraImg})`,
-    bg: auroraImg,
+    id: "geo-grid",
+    name: "Grid",
+    preview: `url(${geoGridImg})`,
+    bg: geoGridImg,
     type: "image",
+    category: "geometric",
   },
+
+  // ── Paisagem ──
   {
-    id: "img-deep-ocean",
-    name: "Deep Ocean",
-    preview: `url(${deepOceanImg})`,
-    bg: deepOceanImg,
+    id: "land-mountains",
+    name: "Montanhas",
+    preview: `url(${landMountainsImg})`,
+    bg: landMountainsImg,
     type: "image",
+    category: "landscape",
   },
   {
-    id: "img-topography",
-    name: "Topografia",
-    preview: `url(${topographyImg})`,
-    bg: topographyImg,
+    id: "land-ocean",
+    name: "Oceano",
+    preview: `url(${landOceanImg})`,
+    bg: landOceanImg,
     type: "image",
+    category: "landscape",
   },
   {
-    id: "img-bokeh",
-    name: "Bokeh",
-    preview: `url(${bokehImg})`,
-    bg: bokehImg,
+    id: "land-forest",
+    name: "Floresta",
+    preview: `url(${landForestImg})`,
+    bg: landForestImg,
     type: "image",
+    category: "landscape",
   },
-  // ── Neutras ──
+
+  // ── Textura ──
   {
-    id: "img-concrete",
-    name: "Concreto",
-    preview: `url(${concreteImg})`,
-    bg: concreteImg,
-    type: "image",
-  },
-  {
-    id: "img-smoke",
-    name: "Fumaça",
-    preview: `url(${smokeImg})`,
-    bg: smokeImg,
-    type: "image",
-  },
-  {
-    id: "img-marble",
+    id: "tex-marble",
     name: "Mármore",
-    preview: `url(${marbleImg})`,
-    bg: marbleImg,
+    preview: `url(${texMarbleImg})`,
+    bg: texMarbleImg,
     type: "image",
+    category: "texture",
   },
   {
-    id: "img-linen",
-    name: "Linho",
-    preview: `url(${linenImg})`,
-    bg: linenImg,
+    id: "tex-concrete",
+    name: "Concreto",
+    preview: `url(${texConcreteImg})`,
+    bg: texConcreteImg,
     type: "image",
+    category: "texture",
   },
+
+  // ── Abstrato ──
+  {
+    id: "abs-smoke",
+    name: "Fumaça",
+    preview: `url(${absSmokeImg})`,
+    bg: absSmokeImg,
+    type: "image",
+    category: "abstract",
+  },
+  {
+    id: "abs-fluid",
+    name: "Fluido",
+    preview: `url(${absFluidImg})`,
+    bg: absFluidImg,
+    type: "image",
+    category: "abstract",
+  },
+];
+
+interface CategorySection {
+  key: BoardTheme["category"];
+  label: string;
+  icon: React.ReactNode;
+  cols: number;
+}
+
+const CATEGORIES: CategorySection[] = [
+  { key: "color", label: "Cores", icon: <Palette className="w-3 h-3" />, cols: 3 },
+  { key: "geometric", label: "Geométrico", icon: <Shapes className="w-3 h-3" />, cols: 3 },
+  { key: "landscape", label: "Paisagem", icon: <Mountain className="w-3 h-3" />, cols: 3 },
+  { key: "texture", label: "Textura", icon: <Layers className="w-3 h-3" />, cols: 2 },
+  { key: "abstract", label: "Abstrato", icon: <Sparkles className="w-3 h-3" />, cols: 2 },
 ];
 
 interface BoardThemePickerProps {
@@ -160,9 +192,6 @@ interface BoardThemePickerProps {
 const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps) => {
   const [open, setOpen] = useState(false);
 
-  const gradientThemes = BOARD_THEMES.filter((t) => t.type === "gradient");
-  const imageThemes = BOARD_THEMES.filter((t) => t.type === "image");
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -171,64 +200,49 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
           Tema
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="end">
-        {/* Gradientes */}
-        <p className="text-xs font-medium mb-2 flex items-center gap-1.5">
-          <Palette className="w-3 h-3" /> Gradientes
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {gradientThemes.map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => {
-                onThemeChange(theme.id);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all",
-                currentTheme === theme.id
-                  ? "border-primary ring-1 ring-primary/30 bg-muted/50"
-                  : "border-border hover:border-primary/30"
-              )}
-            >
-              <div
-                className="w-full h-8 rounded"
-                style={{ background: theme.preview }}
-              />
-              <span className="text-[10px] font-medium">{theme.name}</span>
-            </button>
-          ))}
-        </div>
+      <PopoverContent className="w-72 p-3 max-h-[420px] overflow-y-auto" align="end">
+        {CATEGORIES.map((cat, idx) => {
+          const themes = BOARD_THEMES.filter((t) => t.category === cat.key);
+          if (!themes.length) return null;
+          const isImage = cat.key !== "color";
 
-        {/* Imagens */}
-        <p className="text-xs font-medium mt-3 mb-2 flex items-center gap-1.5">
-          <ImageIcon className="w-3 h-3" /> Imagens
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {imageThemes.map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => {
-                onThemeChange(theme.id);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex flex-col items-center gap-1.5 p-1.5 rounded-lg border transition-all",
-                currentTheme === theme.id
-                  ? "border-primary ring-1 ring-primary/30 bg-muted/50"
-                  : "border-border hover:border-primary/30"
-              )}
-            >
-              <div
-                className="w-full h-10 rounded bg-cover bg-center"
-                style={{ backgroundImage: theme.preview }}
-              />
-              <span className="text-[9px] font-medium leading-tight truncate w-full text-center">
-                {theme.name}
-              </span>
-            </button>
-          ))}
-        </div>
+          return (
+            <div key={cat.key} className={cn(idx > 0 && "mt-3")}>
+              <p className="text-xs font-medium mb-2 flex items-center gap-1.5 text-muted-foreground">
+                {cat.icon} {cat.label}
+              </p>
+              <div className={cn("grid gap-2", `grid-cols-${cat.cols}`)}>
+                {themes.map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => {
+                      onThemeChange(theme.id);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all",
+                      currentTheme === theme.id
+                        ? "border-primary ring-1 ring-primary/30 bg-muted/50"
+                        : "border-border hover:border-primary/30"
+                    )}
+                  >
+                    <div
+                      className={cn("w-full rounded", isImage ? "h-12 bg-cover bg-center" : "h-8")}
+                      style={
+                        isImage
+                          ? { backgroundImage: theme.preview }
+                          : { background: theme.preview }
+                      }
+                    />
+                    <span className="text-[9px] font-medium leading-tight truncate w-full text-center">
+                      {theme.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </PopoverContent>
     </Popover>
   );
@@ -236,7 +250,6 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
 
 export default BoardThemePicker;
 
-// Apply theme: sets CSS vars for the board area background
 export const applyBoardTheme = (themeId: string) => {
   const theme = BOARD_THEMES.find((t) => t.id === themeId);
   const root = document.documentElement;
