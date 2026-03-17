@@ -317,31 +317,9 @@ const applyToEl = (themeId: string) => {
 };
 
 export const applyBoardTheme = (themeId: string) => {
-  const el = getContainer();
-  if (!el) return;
-
-  // Reset
-  el.style.background = "";
-  el.style.backgroundImage = "";
-  el.style.backgroundSize = "";
-  el.style.backgroundPosition = "";
-
-  // Check solid colors
-  const solid = SOLID_COLORS.find((c) => c.id === themeId);
-  if (solid) {
-    el.style.background = solid.bg;
-    return;
-  }
-
-  const theme = BOARD_THEMES.find((t) => t.id === themeId);
-  if (!theme || !theme.bg) return;
-
-  if (theme.type === "image") {
-    el.style.backgroundImage = `url(${theme.bg})`;
-    el.style.backgroundSize = "cover";
-    el.style.backgroundPosition = "center";
-  } else {
-    el.style.background = theme.bg;
+  if (!applyToEl(themeId)) {
+    // Element not yet in DOM — retry next frame
+    requestAnimationFrame(() => applyToEl(themeId));
   }
 };
 
