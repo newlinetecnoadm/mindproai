@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Palette, Mountain, Shapes, Layers, Sparkles } from "lucide-react";
+import { Palette, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,180 +8,173 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// ── Image imports ──
-import geoHexagonImg from "@/assets/themes/geo-hexagon.jpg";
-import geoLowpolyImg from "@/assets/themes/geo-lowpoly.jpg";
-import geoGridImg from "@/assets/themes/geo-grid.jpg";
-import landMountainsImg from "@/assets/themes/land-mountains.jpg";
-import landOceanImg from "@/assets/themes/land-ocean.jpg";
-import landForestImg from "@/assets/themes/land-forest.jpg";
-import texMarbleImg from "@/assets/themes/tex-marble.jpg";
-import texConcreteImg from "@/assets/themes/tex-concrete.jpg";
-import absSmokeImg from "@/assets/themes/abs-smoke.jpg";
-import absFluidImg from "@/assets/themes/abs-fluid.jpg";
-
 export interface BoardTheme {
   id: string;
   name: string;
-  preview: string;
-  bg: string;
+  preview: string;       // CSS for the preview swatch
+  bg: string;            // value applied to board
   type: "gradient" | "image";
-  category: "color" | "geometric" | "landscape" | "texture" | "abstract";
+  emoji?: string;
 }
 
-export const BOARD_THEMES: BoardTheme[] = [
-  // ── Cores / Gradientes ── (more distinct, higher saturation)
+// ── Unsplash photos (free, no API key needed at this size) ──
+const unsplash = (id: string) =>
+  `https://images.unsplash.com/${id}?w=1920&h=1080&fit=crop&q=80`;
+
+const PHOTO_THEMES: BoardTheme[] = [
+  {
+    id: "photo-mountains",
+    name: "Montanhas",
+    preview: unsplash("photo-1519681393784-d120267933ba"),
+    bg: unsplash("photo-1519681393784-d120267933ba"),
+    type: "image",
+  },
+  {
+    id: "photo-ocean",
+    name: "Oceano",
+    preview: unsplash("photo-1507525428034-b723cf961d3e"),
+    bg: unsplash("photo-1507525428034-b723cf961d3e"),
+    type: "image",
+  },
+  {
+    id: "photo-forest",
+    name: "Floresta",
+    preview: unsplash("photo-1448375240586-882707db888b"),
+    bg: unsplash("photo-1448375240586-882707db888b"),
+    type: "image",
+  },
+  {
+    id: "photo-stars",
+    name: "Estrelas",
+    preview: unsplash("photo-1519681393784-d120267933ba"),
+    bg: unsplash("photo-1536746803623-cef87080bfc8"),
+    type: "image",
+  },
+  {
+    id: "photo-sunset",
+    name: "Pôr do Sol",
+    preview: unsplash("photo-1495616811223-4d98c6e9c869"),
+    bg: unsplash("photo-1495616811223-4d98c6e9c869"),
+    type: "image",
+  },
+  {
+    id: "photo-lake",
+    name: "Lago",
+    preview: unsplash("photo-1439066615861-d1af74d74000"),
+    bg: unsplash("photo-1439066615861-d1af74d74000"),
+    type: "image",
+  },
+  {
+    id: "photo-desert",
+    name: "Deserto",
+    preview: unsplash("photo-1509316785289-025f5b846b35"),
+    bg: unsplash("photo-1509316785289-025f5b846b35"),
+    type: "image",
+  },
+  {
+    id: "photo-aurora",
+    name: "Aurora",
+    preview: unsplash("photo-1531366936337-7c912a4589a7"),
+    bg: unsplash("photo-1531366936337-7c912a4589a7"),
+    type: "image",
+  },
+];
+
+const GRADIENT_THEMES: BoardTheme[] = [
   {
     id: "default",
     name: "Padrão",
-    preview: "linear-gradient(135deg, hsl(0,0%,9%), hsl(0,0%,14%))",
+    preview: "linear-gradient(135deg, #1a1a2e, #16213e)",
     bg: "",
     type: "gradient",
-    category: "color",
+    emoji: "🌑",
+  },
+  {
+    id: "midnight",
+    name: "Meia-Noite",
+    preview: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+    bg: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+    type: "gradient",
+    emoji: "🔮",
+  },
+  {
+    id: "arctic",
+    name: "Ártico",
+    preview: "linear-gradient(135deg, #0083B0, #00B4DB)",
+    bg: "linear-gradient(135deg, #0a4d68, #0083B0, #00B4DB)",
+    type: "gradient",
+    emoji: "❄️",
+  },
+  {
+    id: "sapphire",
+    name: "Safira",
+    preview: "linear-gradient(135deg, #0F2027, #203A43, #2C5364)",
+    bg: "linear-gradient(135deg, #0F2027, #203A43, #2C5364)",
+    type: "gradient",
+    emoji: "💎",
+  },
+  {
+    id: "aurora",
+    name: "Aurora",
+    preview: "linear-gradient(135deg, #4a1a6b, #c94b8c, #e56aa0)",
+    bg: "linear-gradient(135deg, #2d1045, #6b2158, #c94b8c)",
+    type: "gradient",
+    emoji: "🌈",
   },
   {
     id: "ember",
     name: "Brasa",
-    preview: "linear-gradient(135deg, hsl(12,30%,8%), hsl(25,50%,15%))",
-    bg: "linear-gradient(135deg, hsl(12,30%,8%), hsl(25,50%,15%))",
+    preview: "linear-gradient(135deg, #f37335, #fdc830)",
+    bg: "linear-gradient(135deg, #7a3614, #f37335, #fdc830)",
     type: "gradient",
-    category: "color",
+    emoji: "🍑",
   },
   {
-    id: "ocean",
-    name: "Oceano",
-    preview: "linear-gradient(135deg, hsl(210,30%,8%), hsl(200,45%,16%))",
-    bg: "linear-gradient(135deg, hsl(210,30%,8%), hsl(200,45%,16%))",
+    id: "rose",
+    name: "Rosé",
+    preview: "linear-gradient(135deg, #ee5a6f, #f09ea1)",
+    bg: "linear-gradient(135deg, #6b1d2a, #ee5a6f, #f09ea1)",
     type: "gradient",
-    category: "color",
+    emoji: "🌸",
   },
   {
     id: "emerald",
     name: "Esmeralda",
-    preview: "linear-gradient(135deg, hsl(155,25%,7%), hsl(160,40%,14%))",
-    bg: "linear-gradient(135deg, hsl(155,25%,7%), hsl(160,40%,14%))",
+    preview: "linear-gradient(135deg, #0d9488, #2dd4bf)",
+    bg: "linear-gradient(135deg, #064e3b, #0d9488, #2dd4bf)",
     type: "gradient",
-    category: "color",
+    emoji: "🌍",
   },
   {
-    id: "wine",
-    name: "Vinho",
-    preview: "linear-gradient(135deg, hsl(340,25%,8%), hsl(345,40%,15%))",
-    bg: "linear-gradient(135deg, hsl(340,25%,8%), hsl(345,40%,15%))",
+    id: "cosmos",
+    name: "Cosmos",
+    preview: "linear-gradient(135deg, #0f172a, #1e293b)",
+    bg: "linear-gradient(135deg, #0f172a, #1e293b, #1a2744)",
     type: "gradient",
-    category: "color",
+    emoji: "👽",
   },
   {
-    id: "nebula",
-    name: "Nebulosa",
-    preview: "linear-gradient(135deg, hsl(270,25%,8%), hsl(280,40%,16%))",
-    bg: "linear-gradient(135deg, hsl(270,25%,8%), hsl(280,40%,16%))",
+    id: "crimson",
+    name: "Carmesim",
+    preview: "linear-gradient(135deg, #3b0a0a, #7f1d1d, #991b1b)",
+    bg: "linear-gradient(135deg, #3b0a0a, #7f1d1d, #991b1b)",
     type: "gradient",
-    category: "color",
-  },
-
-  // ── Geométrico ──
-  {
-    id: "geo-hexagon",
-    name: "Hexagonal",
-    preview: `url(${geoHexagonImg})`,
-    bg: geoHexagonImg,
-    type: "image",
-    category: "geometric",
-  },
-  {
-    id: "geo-lowpoly",
-    name: "Low Poly",
-    preview: `url(${geoLowpolyImg})`,
-    bg: geoLowpolyImg,
-    type: "image",
-    category: "geometric",
-  },
-  {
-    id: "geo-grid",
-    name: "Grid",
-    preview: `url(${geoGridImg})`,
-    bg: geoGridImg,
-    type: "image",
-    category: "geometric",
-  },
-
-  // ── Paisagem ──
-  {
-    id: "land-mountains",
-    name: "Montanhas",
-    preview: `url(${landMountainsImg})`,
-    bg: landMountainsImg,
-    type: "image",
-    category: "landscape",
-  },
-  {
-    id: "land-ocean",
-    name: "Oceano",
-    preview: `url(${landOceanImg})`,
-    bg: landOceanImg,
-    type: "image",
-    category: "landscape",
-  },
-  {
-    id: "land-forest",
-    name: "Floresta",
-    preview: `url(${landForestImg})`,
-    bg: landForestImg,
-    type: "image",
-    category: "landscape",
-  },
-
-  // ── Textura ──
-  {
-    id: "tex-marble",
-    name: "Mármore",
-    preview: `url(${texMarbleImg})`,
-    bg: texMarbleImg,
-    type: "image",
-    category: "texture",
-  },
-  {
-    id: "tex-concrete",
-    name: "Concreto",
-    preview: `url(${texConcreteImg})`,
-    bg: texConcreteImg,
-    type: "image",
-    category: "texture",
-  },
-
-  // ── Abstrato ──
-  {
-    id: "abs-smoke",
-    name: "Fumaça",
-    preview: `url(${absSmokeImg})`,
-    bg: absSmokeImg,
-    type: "image",
-    category: "abstract",
-  },
-  {
-    id: "abs-fluid",
-    name: "Fluido",
-    preview: `url(${absFluidImg})`,
-    bg: absFluidImg,
-    type: "image",
-    category: "abstract",
+    emoji: "🍄",
   },
 ];
 
-interface CategoryDef {
-  key: BoardTheme["category"];
-  label: string;
-  icon: React.ReactNode;
-  gridClass: string;
-}
+export const BOARD_THEMES: BoardTheme[] = [...GRADIENT_THEMES, ...PHOTO_THEMES];
 
-const CATEGORIES: CategoryDef[] = [
-  { key: "color", label: "Cores", icon: <Palette className="w-3 h-3" />, gridClass: "grid-cols-3" },
-  { key: "geometric", label: "Geométrico", icon: <Shapes className="w-3 h-3" />, gridClass: "grid-cols-3" },
-  { key: "landscape", label: "Paisagem", icon: <Mountain className="w-3 h-3" />, gridClass: "grid-cols-3" },
-  { key: "texture", label: "Textura", icon: <Layers className="w-3 h-3" />, gridClass: "grid-cols-2" },
-  { key: "abstract", label: "Abstrato", icon: <Sparkles className="w-3 h-3" />, gridClass: "grid-cols-2" },
+// ── Solid accent colors (quick pick row) ──
+const SOLID_COLORS = [
+  { id: "solid-blue", color: "#0078D4", bg: "#0078D4" },
+  { id: "solid-orange", color: "#F57C00", bg: "#F57C00" },
+  { id: "solid-green", color: "#00A651", bg: "#00A651" },
+  { id: "solid-red", color: "#D32F2F", bg: "#D32F2F" },
+  { id: "solid-purple", color: "#7B1FA2", bg: "#7B1FA2" },
+  { id: "solid-pink", color: "#E91E90", bg: "#E91E90" },
+  { id: "solid-teal", color: "#00897B", bg: "#00897B" },
+  { id: "solid-gray", color: "#616161", bg: "#616161" },
 ];
 
 interface BoardThemePickerProps {
@@ -192,6 +185,11 @@ interface BoardThemePickerProps {
 const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps) => {
   const [open, setOpen] = useState(false);
 
+  const pick = (themeId: string) => {
+    onThemeChange(themeId);
+    setOpen(false);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -200,49 +198,82 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
           Tema
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3 max-h-[420px] overflow-y-auto" align="end">
-        {CATEGORIES.map((cat, idx) => {
-          const themes = BOARD_THEMES.filter((t) => t.category === cat.key);
-          if (!themes.length) return null;
-          const isImage = cat.key !== "color";
+      <PopoverContent className="w-[304px] p-3 max-h-[480px] overflow-y-auto" align="end">
+        {/* ── Gradient cards ── */}
+        <p className="text-xs font-medium mb-2 flex items-center gap-1.5 text-muted-foreground">
+          <Palette className="w-3 h-3" /> Cores
+        </p>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {GRADIENT_THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => pick(t.id)}
+              className={cn(
+                "relative h-[60px] rounded-lg border transition-all overflow-hidden",
+                currentTheme === t.id
+                  ? "border-primary ring-2 ring-primary/40"
+                  : "border-border hover:border-primary/30"
+              )}
+              style={{ background: t.preview }}
+            >
+              {t.emoji && (
+                <span className="absolute bottom-1.5 left-2 text-sm drop-shadow-lg">{t.emoji}</span>
+              )}
+              {currentTheme === t.id && (
+                <span className="absolute bottom-1.5 right-2 text-sm">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
 
-          return (
-            <div key={cat.key} className={cn(idx > 0 && "mt-3")}>
-              <p className="text-xs font-medium mb-2 flex items-center gap-1.5 text-muted-foreground">
-                {cat.icon} {cat.label}
-              </p>
-              <div className={cn("grid gap-2", cat.gridClass)}>
-                {themes.map((theme) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => {
-                      onThemeChange(theme.id);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all",
-                      currentTheme === theme.id
-                        ? "border-primary ring-1 ring-primary/30 bg-muted/50"
-                        : "border-border hover:border-primary/30"
-                    )}
-                  >
-                    <div
-                      className={cn("w-full rounded", isImage ? "h-12 bg-cover bg-center" : "h-8")}
-                      style={
-                        isImage
-                          ? { backgroundImage: theme.preview }
-                          : { background: theme.preview }
-                      }
-                    />
-                    <span className="text-[9px] font-medium leading-tight truncate w-full text-center">
-                      {theme.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {/* ── Solid colors row ── */}
+        <div className="flex gap-1.5 mb-3">
+          {SOLID_COLORS.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => pick(c.id)}
+              className={cn(
+                "w-8 h-8 rounded-md border transition-all flex-shrink-0",
+                currentTheme === c.id
+                  ? "border-primary ring-2 ring-primary/40 scale-110"
+                  : "border-border hover:scale-105"
+              )}
+              style={{ backgroundColor: c.color }}
+            />
+          ))}
+        </div>
+
+        {/* ── Photos ── */}
+        <p className="text-xs font-medium mb-2 flex items-center gap-1.5 text-muted-foreground">
+          <ImageIcon className="w-3 h-3" /> Fotos
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {PHOTO_THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => pick(t.id)}
+              className={cn(
+                "relative h-[60px] rounded-lg border transition-all overflow-hidden bg-cover bg-center",
+                currentTheme === t.id
+                  ? "border-primary ring-2 ring-primary/40"
+                  : "border-border hover:border-primary/30"
+              )}
+              style={{ backgroundImage: `url(${t.preview})` }}
+            >
+              <div className="absolute inset-0 bg-black/20" />
+              <span className="absolute bottom-1 left-2 text-[9px] font-medium text-white drop-shadow-lg">
+                {t.name}
+              </span>
+              {currentTheme === t.id && (
+                <span className="absolute bottom-1 right-2 text-sm text-white">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-[8px] text-muted-foreground mt-2 text-center">
+          Fotos por Unsplash
+        </p>
       </PopoverContent>
     </Popover>
   );
@@ -250,9 +281,20 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
 
 export default BoardThemePicker;
 
+// ── Apply / remove theme ──
+
 export const applyBoardTheme = (themeId: string) => {
-  const theme = BOARD_THEMES.find((t) => t.id === themeId);
   const root = document.documentElement;
+
+  // Check solid colors
+  const solid = SOLID_COLORS.find((c) => c.id === themeId);
+  if (solid) {
+    root.style.setProperty("--board-bg", solid.bg);
+    root.style.removeProperty("--board-bg-image");
+    return;
+  }
+
+  const theme = BOARD_THEMES.find((t) => t.id === themeId);
 
   if (!theme || !theme.bg) {
     root.style.removeProperty("--board-bg");
