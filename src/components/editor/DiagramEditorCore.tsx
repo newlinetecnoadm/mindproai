@@ -256,58 +256,28 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const selectedNodes = nodes.filter((n) => n.selected);
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
-  // Auto-layout helper — respects manually pinned nodes
+  // Auto-layout helper — always enforces standardized structure
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    for (const pinnedId of [...pinnedPositions.current]) {
-      if (!nextNodes.some((node) => node.id === pinnedId)) {
-        pinnedPositions.current.delete(pinnedId);
-      }
-    }
-
     const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
-
-    if (pinnedPositions.current.size === 0) {
-      setNodes(laid.nodes);
-      setEdges(laid.edges);
-    } else {
-      const pinnedMap = new Map(
-        nextNodes
-          .filter((node) => pinnedPositions.current.has(node.id))
-          .map((node) => [node.id, node.position])
-      );
-
-      const mergedNodes = laid.nodes.map((node) => {
-        const pinnedPosition = pinnedMap.get(node.id);
-        return pinnedPosition ? { ...node, position: pinnedPosition } : node;
-      });
-
-      setNodes(mergedNodes);
-      setEdges(rerouteDiagramEdges(mergedNodes, laid.edges, diagramType));
-    }
-
+    setNodes(laid.nodes);
+    setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
-  // Re-layout all nodes (clear pinned positions)
+  // Re-layout all nodes
   const handleReLayout = useCallback(() => {
     takeSnapshot();
-    pinnedPositions.current.clear();
     const laid = autoLayoutDiagram(nodes, edges, diagramType);
     setNodes(laid.nodes);
     setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [nodes, edges, diagramType, setNodes, setEdges, fitView, takeSnapshot]);
 
-  // Mark node as pinned when user drags it + proximity reparent logic
+  // Drag stop: proximity reparent + always snap back to structured layout
   const handleNodeDragStop = useCallback((_event: any, draggedNode: Node) => {
-    pinnedPositions.current.add(draggedNode.id);
-
-    // Don't reparent the root node
+    // Don't reparent the root node — just re-layout
     if ((draggedNode.data as any).isRoot) {
-      const updatedNodes = nodes.map((n) =>
-        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
-      );
-      setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+      applyAutoLayout(nodes, edges);
       return;
     }
 
@@ -342,15 +312,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const currentParentEdge = edges.find((e) => e.target === draggedNode.id);
     const currentParentId = currentParentEdge?.source;
 
-    // Determine new parent
+    // Determine new parent via proximity
     let newParentId: string | null = null;
     if (minDist < PROXIMITY_THRESHOLD && closest) {
-      // Reparent to closest node (if it's not already the parent)
       if (closest.id !== currentParentId) {
         newParentId = closest.id;
       }
     } else {
-      // Far from all nodes → reparent to root (if not already)
+      // Far from all nodes → reparent to root
       const rootNode = nodes.find((n) => (n.data as any).isRoot);
       if (rootNode && rootNode.id !== currentParentId) {
         newParentId = rootNode.id;
@@ -359,7 +328,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     if (newParentId) {
       takeSnapshot();
-      // Remove old parent edge and create new one
       const nextEdges = edges.filter((e) => e.target !== draggedNode.id);
       nextEdges.push({
         id: `e-${newParentId}-${draggedNode.id}`,
@@ -368,24 +336,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         type: currentParentEdge?.type || "smoothstep",
       });
 
-      // Update colors for the moved subtree
-      const updatedNodes = nodes.map((n) =>
-        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
-      );
-
-      // Re-assign depth colors for the moved branch
-      const coloredNodes = assignDepthColors(updatedNodes, nextEdges);
-      setNodes(coloredNodes);
-      setEdges(rerouteDiagramEdges(coloredNodes, nextEdges, diagramType));
+      // Re-assign depth colors for the moved branch, then re-layout
+      const coloredNodes = assignDepthColors(nodes, nextEdges);
+      applyAutoLayout(coloredNodes, nextEdges);
       toast.info("Nó movido para nova ramificação");
     } else {
-      // No reparent — just update position and reroute edges
-      const updatedNodes = nodes.map((n) =>
-        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
-      );
-      setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+      // No reparent — snap back to structured layout
+      applyAutoLayout(nodes, edges);
     }
-  }, [nodes, edges, setNodes, setEdges, diagramType, takeSnapshot]);
+  }, [nodes, edges, applyAutoLayout, takeSnapshot]);
 
   // Find the branch color (depth-1 ancestor's color) for a node
   const getBranchColor = useCallback((nodeId: string): string => {
