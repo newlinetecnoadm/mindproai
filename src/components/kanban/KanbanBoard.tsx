@@ -31,6 +31,7 @@ interface KanbanBoardProps {
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
   highlightedCardIds?: Set<string>;
   labelsMap?: Map<string, CardLabel[]>;
+  membersMap?: Map<string, CardMemberProfile[]>;
 }
 
 const KanbanBoard = ({
