@@ -479,9 +479,18 @@ const BoardDetail = () => {
     mutationFn: async (theme: string) => {
       const { error } = await supabase.from("boards").update({ theme } as any).eq("id", id!);
       if (error) throw error;
-      applyBoardTheme(theme);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["board", id] }),
+    onMutate: async (theme: string) => {
+      await queryClient.cancelQueries({ queryKey: ["board", id] });
+      const previous = queryClient.getQueryData(["board", id]);
+      queryClient.setQueryData(["board", id], (old: any) => old ? { ...old, theme } : old);
+      applyBoardTheme(theme);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["board", id], context.previous);
+      toast.error("Erro ao salvar tema");
+    },
   });
 
   // Handle inbox item drop onto a column
