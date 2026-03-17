@@ -105,12 +105,11 @@ const BoardDetail = () => {
   });
 
   // Fetch label assignments for filtering
+  const cardIds = cards.map((c) => c.id);
   const { data: labelAssignments = [] } = useQuery({
-    queryKey: ["board-label-assignments", id],
-    enabled: !!id,
+    queryKey: ["board-label-assignments", id, cardIds],
+    enabled: !!id && cardIds.length > 0,
     queryFn: async () => {
-      const cardIds = cards.map((c) => c.id);
-      if (!cardIds.length) return [];
       const { data, error } = await supabase
         .from("card_label_assignments").select("card_id, label_id").in("card_id", cardIds);
       if (error) throw error;
@@ -135,11 +134,9 @@ const BoardDetail = () => {
 
   // Fetch card member assignments for filtering
   const { data: cardMembers = [] } = useQuery({
-    queryKey: ["board-card-members", id],
-    enabled: !!id,
+    queryKey: ["board-card-members", id, cardIds],
+    enabled: !!id && cardIds.length > 0,
     queryFn: async () => {
-      const cardIds = cards.map((c) => c.id);
-      if (!cardIds.length) return [];
       const { data, error } = await supabase
         .from("card_members").select("card_id, user_id").in("card_id", cardIds);
       if (error) throw error;
