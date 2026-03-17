@@ -14,6 +14,10 @@ import auroraImg from "@/assets/themes/aurora.jpg";
 import deepOceanImg from "@/assets/themes/deep-ocean.jpg";
 import topographyImg from "@/assets/themes/topography.jpg";
 import bokehImg from "@/assets/themes/bokeh.jpg";
+import concreteImg from "@/assets/themes/concrete.jpg";
+import smokeImg from "@/assets/themes/smoke.jpg";
+import marbleImg from "@/assets/themes/marble.jpg";
+import linenImg from "@/assets/themes/linen.jpg";
 
 export interface BoardTheme {
   id: string;
