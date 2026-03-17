@@ -1018,8 +1018,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onNodeContextMenu={handleNodeContextMenu}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
+        fitView={!initialFitDone.current}
+        onInit={() => {
+          if (!initialFitDone.current) {
+            initialFitDone.current = true;
+          }
+        }}
         fitViewOptions={{ padding: 0.3 }}
+        snapToGrid={true}
+        snapGrid={[20, 20]}
         defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
         proOptions={{ hideAttribution: true }}
         style={{ backgroundColor: theme.bg }}
