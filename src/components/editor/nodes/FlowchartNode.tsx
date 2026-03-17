@@ -60,7 +60,7 @@ function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNode
   return (
     <div
       className={cn(
-        "border-2 shadow-sm transition-all cursor-pointer min-w-[100px] min-h-[50px] flex items-center justify-center",
+        "border-2 shadow-sm transition-all cursor-pointer w-[160px] min-h-[50px] flex items-center justify-center",
         shapeStyles[shape], colorClass,
         isDiamond ? "w-[100px] h-[100px]" : "px-5 py-3",
         selected && "ring-2 ring-primary/50 shadow-md"

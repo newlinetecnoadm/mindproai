@@ -88,7 +88,7 @@ function orgTemplate(
       id: pid,
       type: "org",
       position: { x: i * 220, y: 0 },
-      data: { label: person.label, role: person.role, color: colors[i % colors.length] },
+      data: { label: person.label, role: person.role, color: colors[i % colors.length], ...(i === 0 ? { isRoot: true } : {}) },
     });
     person.children?.forEach((child, j) => {
       const cid = `org_${i}_${j}`;
@@ -150,7 +150,7 @@ const blankOrgchart: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com o cargo principal",
   type: "orgchart",
-  nodes: [{ id: "org_0", type: "org", position: { x: 0, y: 0 }, data: { label: "CEO", role: "Chief Executive Officer", color: "blue" } }],
+  nodes: [{ id: "org_0", type: "org", position: { x: 0, y: 0 }, data: { label: "CEO", role: "Chief Executive Officer", color: "orange", isRoot: true } }],
   edges: [],
 };
 
@@ -168,7 +168,7 @@ const blankConceptMap: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com um conceito",
   type: "concept_map",
-  nodes: [{ id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Conceito", color: "blue" } }],
+  nodes: [{ id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Conceito", color: "orange", isRoot: true } }],
   edges: [],
 };
 

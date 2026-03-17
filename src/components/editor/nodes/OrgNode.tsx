@@ -85,7 +85,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
     return (
       <div
         className={cn(
-          "rounded-xl border-2 shadow-sm transition-all cursor-pointer min-w-[120px] px-4 py-2.5 text-center",
+          "rounded-xl border-2 shadow-sm transition-all cursor-pointer w-[160px] px-4 py-2.5 text-center",
           simpleColorClass,
           selected && "ring-2 ring-primary/50 shadow-md"
         )}

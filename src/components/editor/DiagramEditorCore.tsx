@@ -103,7 +103,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     let n = initialNodes || [];
     const e = initialEdges || [];
     if (n.length > 0) {
-      if (diagramType === "mindmap") {
+      // Apply depth-based coloring for all tree-based diagram types
+      if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
         n = assignDepthColors(n, e);
       }
       return autoLayoutDiagram(n, e, diagramType);
@@ -273,7 +274,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Re-layout all nodes
   const handleReLayout = useCallback(() => {
     takeSnapshot();
-    const laid = autoLayoutDiagram(nodes, edges, diagramType);
+    let layoutNodes = nodes;
+    if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
+      layoutNodes = assignDepthColors(nodes, edges);
+    }
+    const laid = autoLayoutDiagram(layoutNodes, edges, diagramType);
     setNodes(laid.nodes);
     setEdges(laid.edges);
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
