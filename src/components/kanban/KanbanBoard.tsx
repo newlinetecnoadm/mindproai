@@ -177,7 +177,7 @@ const KanbanBoard = ({
 
         {/* Add column */}
         {addingColumn ? (
-          <div className="w-72 shrink-0 p-3 bg-secondary/80 rounded-xl border border-border space-y-2">
+          <div className="w-72 shrink-0 p-3 bg-[hsl(var(--board-col-bg))] rounded-xl border border-[hsl(var(--board-col-border))] space-y-2">
             <Input
               placeholder="Nome da coluna..."
               value={newColumnTitle}
@@ -187,13 +187,13 @@ const KanbanBoard = ({
                 if (e.key === "Escape") setAddingColumn(false);
               }}
               autoFocus
-              className="text-sm h-9"
+              className="text-sm h-9 bg-[hsl(var(--board-card-bg))] border-[hsl(var(--board-col-border))] text-[hsl(var(--board-text))] placeholder:text-[hsl(var(--board-text-muted))]"
             />
             <div className="flex gap-2">
               <Button size="sm" variant="hero" className="h-7 text-xs" onClick={handleAddColumn}>
                 Adicionar
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingColumn(false)}>
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-[hsl(var(--board-text-muted))]" onClick={() => setAddingColumn(false)}>
                 Cancelar
               </Button>
             </div>
@@ -201,7 +201,7 @@ const KanbanBoard = ({
         ) : (
           <button
             onClick={() => setAddingColumn(true)}
-            className="w-72 shrink-0 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors"
+            className="w-72 shrink-0 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[hsl(var(--board-col-border))] text-[hsl(var(--board-text-muted))] hover:border-primary/30 hover:text-[hsl(var(--board-text))] transition-colors"
           >
             <Plus className="w-4 h-4" /> Adicionar coluna
           </button>
