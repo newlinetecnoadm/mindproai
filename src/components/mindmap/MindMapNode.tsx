@@ -86,9 +86,10 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
   return (
     <div
       className={cn(
-        "px-4 py-2 rounded-xl border-2 shadow-sm transition-all cursor-pointer min-w-[80px] text-center",
+        "px-4 py-2 rounded-xl border-2 shadow-sm transition-all cursor-pointer text-center",
         colorClass,
-        isRoot && "px-6 py-3 text-lg font-bold shadow-glow border-primary bg-primary text-primary-foreground",
+        isRoot ? "min-w-[200px] px-6 py-3 text-lg font-bold shadow-glow border-primary bg-primary text-primary-foreground"
+          : "w-[180px]",
         selected && !isRoot && "ring-2 ring-primary/50 shadow-md"
       )}
       onDoubleClick={handleDoubleClick}
