@@ -283,7 +283,38 @@ export default BoardThemePicker;
 
 // ── Apply / remove theme ──
 
-const getContainer = () => document.getElementById("board-theme-container");
+const getContainer = () =>
+  document.getElementById("board-theme-container");
+
+const applyToEl = (themeId: string) => {
+  const el = getContainer();
+  if (!el) return false;
+
+  // Reset
+  el.style.background = "";
+  el.style.backgroundImage = "";
+  el.style.backgroundSize = "";
+  el.style.backgroundPosition = "";
+
+  // Check solid colors
+  const solid = SOLID_COLORS.find((c) => c.id === themeId);
+  if (solid) {
+    el.style.background = solid.bg;
+    return true;
+  }
+
+  const theme = BOARD_THEMES.find((t) => t.id === themeId);
+  if (!theme || !theme.bg) return true;
+
+  if (theme.type === "image") {
+    el.style.backgroundImage = `url(${theme.bg})`;
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+  } else {
+    el.style.background = theme.bg;
+  }
+  return true;
+};
 
 export const applyBoardTheme = (themeId: string) => {
   const el = getContainer();
