@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,8 +59,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  let smtpClient: SMTPClient | null = null;
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -127,7 +125,7 @@ Deno.serve(async (req) => {
     const { subject, html } = buildEmailHtml(type, emailData);
 
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
 
@@ -137,34 +135,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const useTls = smtpPort === 465;
-    smtpClient = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: useTls,
-        auth: { username: smtpUser, password: smtpPass },
-      },
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
     let sent = 0;
     for (const profile of notifiable) {
       try {
-        await smtpClient.send({ from: smtpUser, to: profile.email!, subject, html });
+        await transporter.sendMail({
+          from: `Mind Pro AI <${smtpUser}>`,
+          to: profile.email!,
+          subject,
+          html,
+        });
         sent++;
       } catch (e) {
         console.error(`Failed to send to ${profile.email}:`, e);
       }
     }
 
-    try { await smtpClient.close(); } catch (_) { /* ignore */ }
-
     return new Response(JSON.stringify({ success: true, notified: sent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("notify-board-event error:", error);
-    try { if (smtpClient) await smtpClient.close(); } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ error: error.message || "Erro interno" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

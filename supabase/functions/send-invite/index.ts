@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,8 +11,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  let client: SMTPClient | null = null;
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -46,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const smtpHost = Deno.env.get("SMTP_HOST")!;
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
     const smtpUser = Deno.env.get("SMTP_USER")!;
     const smtpPass = Deno.env.get("SMTP_PASS")!;
 
@@ -82,31 +80,25 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    const useTls = smtpPort === 465;
-    client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: useTls,
-        auth: { username: smtpUser, password: smtpPass },
-      },
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
-    await client.send({
-      from: smtpUser,
+    await transporter.sendMail({
+      from: `Mind Pro AI <${smtpUser}>`,
       to,
       subject: subject || `Convite para colaborar — ${resourceTitle || "Mind Pro AI"}`,
       html: htmlBody,
     });
-
-    try { await client.close(); } catch (_) { /* ignore */ }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("Send invite error:", error);
-    try { if (client) await client.close(); } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ error: error.message || "Erro ao enviar email" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
