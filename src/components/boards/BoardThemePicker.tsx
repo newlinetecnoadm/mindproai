@@ -85,7 +85,7 @@ const GRADIENT_THEMES: BoardTheme[] = [
     id: "default",
     name: "Padrão",
     preview: "linear-gradient(135deg, #1a1a2e, #16213e)",
-    bg: "",
+    bg: "linear-gradient(135deg, #1a1a2e, #16213e)",
     type: "gradient",
     emoji: "🌑",
   },

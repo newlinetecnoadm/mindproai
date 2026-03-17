@@ -192,7 +192,7 @@ const BoardDetail = () => {
     return result;
   }, [cards, filters, labelAssignments, cardMembers]);
 
-  // Realtime sync for board columns/cards
+  // Realtime sync for board columns/cards/theme
   useEffect(() => {
     if (!id) return;
 
@@ -258,6 +258,17 @@ const BoardDetail = () => {
             next[existingIndex] = nextRow;
             return next;
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "boards", filter: `id=eq.${id}` },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated?.theme) {
+            applyBoardTheme(updated.theme);
+          }
+          queryClient.setQueryData(["board", id], (old: any) => old ? { ...old, ...updated } : updated);
         }
       )
       .subscribe();
