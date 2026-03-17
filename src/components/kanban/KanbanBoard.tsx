@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import KanbanColumn, { type ColumnData } from "./KanbanColumn";
-import KanbanCard, { type CardData, type CardLabel } from "./KanbanCard";
+import KanbanCard, { type CardData, type CardLabel, type CardMemberProfile } from "./KanbanCard";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ interface KanbanBoardProps {
   onDropInboxItem?: (columnId: string, item: { id: string; title: string }) => void;
   highlightedCardIds?: Set<string>;
   labelsMap?: Map<string, CardLabel[]>;
+  membersMap?: Map<string, CardMemberProfile[]>;
 }
 
 const KanbanBoard = ({
@@ -47,6 +48,7 @@ const KanbanBoard = ({
   onDropInboxItem,
   highlightedCardIds,
   labelsMap,
+  membersMap,
 }: KanbanBoardProps) => {
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
@@ -171,6 +173,7 @@ const KanbanBoard = ({
               onDropInboxItem={onDropInboxItem}
               highlightedCardIds={highlightedCardIds}
               labelsMap={labelsMap}
+              membersMap={membersMap}
             />
           ))}
         </SortableContext>

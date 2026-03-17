@@ -128,7 +128,7 @@ const BoardDetail = () => {
       if (error) throw error;
       const allUserIds = [...new Set([board?.user_id, ...members.map((m: any) => m.user_id)].filter(Boolean))] as string[];
       const { data: profiles } = await supabase
-        .from("user_profiles").select("user_id, full_name, email").in("user_id", allUserIds);
+        .from("user_profiles").select("user_id, full_name, email, avatar_url").in("user_id", allUserIds);
       return profiles || [];
     },
   });
@@ -160,6 +160,23 @@ const BoardDetail = () => {
     }
     return map;
   }, [labelAssignments, boardLabels]);
+
+  // Build card→members map for display on cards
+  const membersMap = useMemo(() => {
+    const map = new Map<string, { user_id: string; full_name: string | null; email: string | null; avatar_url?: string | null }[]>();
+    for (const cm of cardMembers) {
+      const profile = boardMembers.find((p: any) => p.user_id === (cm as any).user_id);
+      const cardId = (cm as any).card_id;
+      if (!map.has(cardId)) map.set(cardId, []);
+      map.get(cardId)!.push({
+        user_id: (cm as any).user_id,
+        full_name: profile?.full_name ?? null,
+        email: profile?.email ?? null,
+        avatar_url: (profile as any)?.avatar_url ?? null,
+      });
+    }
+    return map;
+  }, [cardMembers, boardMembers]);
 
   // Filter cards
   const filteredCards = useMemo(() => {
@@ -618,6 +635,7 @@ const BoardDetail = () => {
             onDropInboxItem={handleDropInboxItem}
             highlightedCardIds={realtimeHighlightedCards}
             labelsMap={labelsMap}
+            membersMap={membersMap}
           />
         </div>
       </div>
