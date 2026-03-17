@@ -152,7 +152,10 @@ const ShareDiagramDialog = ({
         .limit(1)
         .single();
 
-      const inviteLink = inv ? `${window.location.origin}/convite?token=${inv.token}` : null;
+      const appOrigin = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com")
+        ? "https://mindproai.com.br"
+        : window.location.origin;
+      const inviteLink = inv ? `${appOrigin}/convite?token=${inv.token}` : null;
 
       // Send email via edge function
       if (inviteLink) {

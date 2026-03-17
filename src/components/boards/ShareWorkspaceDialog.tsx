@@ -101,7 +101,10 @@ const ShareWorkspaceDialog = ({ workspaceId, workspaceTitle, open, onOpenChange 
         .single();
 
       if (inv) {
-        const inviteLink = `${window.location.origin}/convite?token=${inv.token}`;
+        const appOrigin = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com")
+          ? "https://mindproai.com.br"
+          : window.location.origin;
+        const inviteLink = `${appOrigin}/convite?token=${inv.token}`;
         const { data: profile } = await supabase
           .from("user_profiles")
           .select("full_name")
