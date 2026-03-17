@@ -103,7 +103,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     let n = initialNodes || [];
     const e = initialEdges || [];
     if (n.length > 0) {
-      if (diagramType === "mindmap") {
+      // Apply depth-based coloring for all tree-based diagram types
+      if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
         n = assignDepthColors(n, e);
       }
       return autoLayoutDiagram(n, e, diagramType);
