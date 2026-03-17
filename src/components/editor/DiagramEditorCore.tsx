@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
-import { autoLayoutDiagram, rerouteDiagramEdges } from "@/components/mindmap/mindmapLayout";
+import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
 import { getNodeDepth, getColorForDepth, assignDepthColors } from "@/components/mindmap/depthColors";
 import {
   ReactFlow,
