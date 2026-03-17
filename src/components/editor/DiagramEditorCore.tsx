@@ -994,11 +994,26 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onVariantChange={handleVariantChange}
       />
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={nodes.map((n) => {
+          if (!draggingNodeId) return n;
+          const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
+          const isDropTarget = n.id === dropTargetId;
+          return {
+            ...n,
+            style: {
+              ...n.style,
+              opacity: isDragged ? 0.55 : 1,
+              transition: 'opacity 0.15s ease',
+              ...(isDropTarget ? { boxShadow: '0 0 0 3px hsl(var(--primary))', borderRadius: 12 } : {}),
+            },
+          };
+        })}
+        edges={draggingNodeId ? [] : edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         onNodeContextMenu={handleNodeContextMenu}
         nodeTypes={nodeTypes}
