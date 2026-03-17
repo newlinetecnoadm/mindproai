@@ -276,26 +276,61 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [nodes, edges, diagramType, setNodes, setEdges, fitView, takeSnapshot]);
 
+  // Collect descendants of a node
+  const collectDescendantIds = useCallback((nodeId: string, edgeList: Edge[]): Set<string> => {
+    const ids = new Set<string>();
+    function walk(parentId: string) {
+      for (const e of edgeList) {
+        if (e.source === parentId && !ids.has(e.target)) {
+          ids.add(e.target);
+          walk(e.target);
+        }
+      }
+    }
+    walk(nodeId);
+    return ids;
+  }, []);
+
+  // Drag start: record which node + subtree is being dragged
+  const handleNodeDragStart = useCallback((_event: any, draggedNode: Node) => {
+    if ((draggedNode.data as any).isRoot) return;
+    const descIds = collectDescendantIds(draggedNode.id, edges);
+    setDraggingNodeId(draggedNode.id);
+    setDraggingDescendantIds(descIds);
+    setDropTargetId(null);
+  }, [edges, collectDescendantIds]);
+
+  // Drag move: find closest candidate to highlight as drop target
+  const handleNodeDrag = useCallback((_event: any, draggedNode: Node) => {
+    if ((draggedNode.data as any).isRoot) return;
+    const candidates = nodes.filter(
+      (n) => n.id !== draggedNode.id && !draggingDescendantIds.has(n.id)
+    );
+    let closest: Node | null = null;
+    let minDist = Infinity;
+    for (const n of candidates) {
+      const dx = n.position.x - draggedNode.position.x;
+      const dy = n.position.y - draggedNode.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < minDist) { minDist = dist; closest = n; }
+    }
+    setDropTargetId(minDist < PROXIMITY_THRESHOLD && closest ? closest.id : null);
+  }, [nodes, draggingDescendantIds]);
+
   // Drag stop: proximity reparent + always snap back to structured layout
   const handleNodeDragStop = useCallback((_event: any, draggedNode: Node) => {
+    // Clear drag visual state
+    setDraggingNodeId(null);
+    setDraggingDescendantIds(new Set());
+    setDropTargetId(null);
+
     // Don't reparent the root node — just re-layout
     if ((draggedNode.data as any).isRoot) {
       applyAutoLayout(nodes, edges);
       return;
     }
 
-    // Find the closest node (excluding self and descendants)
-    const descendantIds = new Set<string>();
-    function collectDescendants(parentId: string) {
-      for (const e of edges) {
-        if (e.source === parentId && !descendantIds.has(e.target)) {
-          descendantIds.add(e.target);
-          collectDescendants(e.target);
-        }
-      }
-    }
-    collectDescendants(draggedNode.id);
-
+    const descendantIds = collectDescendantIds(draggedNode.id, edges);
     const candidates = nodes.filter(
       (n) => n.id !== draggedNode.id && !descendantIds.has(n.id)
     );
@@ -306,27 +341,18 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       const dx = n.position.x - draggedNode.position.x;
       const dy = n.position.y - draggedNode.position.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = n;
-      }
+      if (dist < minDist) { minDist = dist; closest = n; }
     }
 
     const currentParentEdge = edges.find((e) => e.target === draggedNode.id);
     const currentParentId = currentParentEdge?.source;
 
-    // Determine new parent via proximity
     let newParentId: string | null = null;
     if (minDist < PROXIMITY_THRESHOLD && closest) {
-      if (closest.id !== currentParentId) {
-        newParentId = closest.id;
-      }
+      if (closest.id !== currentParentId) newParentId = closest.id;
     } else {
-      // Far from all nodes → reparent to root
       const rootNode = nodes.find((n) => (n.data as any).isRoot);
-      if (rootNode && rootNode.id !== currentParentId) {
-        newParentId = rootNode.id;
-      }
+      if (rootNode && rootNode.id !== currentParentId) newParentId = rootNode.id;
     }
 
     if (newParentId) {
@@ -338,16 +364,13 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         target: draggedNode.id,
         type: currentParentEdge?.type || "smoothstep",
       });
-
-      // Re-assign depth colors for the moved branch, then re-layout
       const coloredNodes = assignDepthColors(nodes, nextEdges);
       applyAutoLayout(coloredNodes, nextEdges);
       toast.info("Nó movido para nova ramificação");
     } else {
-      // No reparent — snap back to structured layout
       applyAutoLayout(nodes, edges);
     }
-  }, [nodes, edges, applyAutoLayout, takeSnapshot]);
+  }, [nodes, edges, applyAutoLayout, takeSnapshot, collectDescendantIds]);
 
   // Find the branch color (depth-1 ancestor's color) for a node
   const getBranchColor = useCallback((nodeId: string): string => {
