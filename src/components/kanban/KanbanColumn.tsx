@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import KanbanCard, { type CardData, type CardLabel } from "./KanbanCard";
+import KanbanCard, { type CardData, type CardLabel, type CardMemberProfile } from "./KanbanCard";
 import { useState } from "react";
 
 export interface ColumnData {
