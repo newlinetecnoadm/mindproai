@@ -117,7 +117,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [currentEdgeType, setCurrentEdgeType] = useState("smoothstep");
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
-  const pinnedPositions = useRef<Set<string>>(new Set());
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChanges = useRef(false);
   const lastPersistedSnapshot = useRef<string | null>(null);
