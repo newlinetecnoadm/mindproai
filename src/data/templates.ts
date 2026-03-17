@@ -168,7 +168,7 @@ const blankConceptMap: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com um conceito",
   type: "concept_map",
-  nodes: [{ id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Conceito", color: "blue" } }],
+  nodes: [{ id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Conceito", color: "orange", isRoot: true } }],
   edges: [],
 };
 

@@ -49,7 +49,7 @@ function ConceptNode({ data, selected, id }: NodeProps & { data: ConceptNodeData
   return (
     <div
       className={cn(
-        "px-4 py-3 rounded-2xl border-2 shadow-sm transition-all cursor-pointer min-w-[100px] text-center",
+        "px-4 py-3 rounded-2xl border-2 shadow-sm transition-all cursor-pointer w-[160px] text-center",
         colorClass,
         selected && "ring-2 ring-primary/50 shadow-md"
       )}
