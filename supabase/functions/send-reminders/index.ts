@@ -1,29 +1,15 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
+import nodemailer from "npm:nodemailer@6.9.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function createSmtpClient(host: string, port: number, user: string, pass: string) {
-  const useTls = port === 465;
-  return new SMTPClient({
-    connection: {
-      hostname: host,
-      port,
-      tls: useTls,
-      auth: { username: user, password: pass },
-    },
-  });
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  let client: SMTPClient | null = null;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -52,7 +38,7 @@ Deno.serve(async (req) => {
       .limit(100);
 
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
 
@@ -65,7 +51,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    client = createSmtpClient(smtpHost, smtpPort, smtpUser, smtpPass);
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
     let sentCount = 0;
 
     if (reminders?.length) {
@@ -84,8 +76,8 @@ Deno.serve(async (req) => {
 
         if (profile?.email && card) {
           try {
-            await client.send({
-              from: smtpUser,
+            await transporter.sendMail({
+              from: `Mind Pro AI <${smtpUser}>`,
               to: profile.email,
               subject: `⏰ Lembrete: ${card.title}`,
               html: `
@@ -143,8 +135,8 @@ Deno.serve(async (req) => {
 
         for (const profile of notifiable) {
           try {
-            await client.send({
-              from: smtpUser,
+            await transporter.sendMail({
+              from: `Mind Pro AI <${smtpUser}>`,
               to: profile.email!,
               subject: `⏰ Prazo próximo: "${card.title}"`,
               html: `
@@ -183,14 +175,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    try { await client.close(); } catch (_) { /* ignore close errors */ }
-
     return new Response(JSON.stringify({ sent: sentCount }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error:", err);
-    try { if (client) await client.close(); } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

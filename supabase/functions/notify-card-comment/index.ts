@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.1";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validate caller
     const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
@@ -75,7 +74,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get card + board info
     const { data: card } = await supabase
       .from("board_cards")
       .select("title, board_id")
@@ -89,14 +87,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Determine who to notify
     let notifySet: Set<string>;
 
     if (mentioned_user_ids && Array.isArray(mentioned_user_ids) && mentioned_user_ids.length > 0) {
-      // Only notify mentioned users (exclude commenter)
       notifySet = new Set(mentioned_user_ids.filter((id: string) => id !== user.id));
     } else {
-      // Fallback: notify board owner + members + card members (exclude commenter)
       notifySet = new Set<string>();
       const { data: board } = await supabase
         .from("boards")
@@ -123,13 +118,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get emails for these users (only those with notify_comments enabled)
     const { data: profiles } = await supabase
       .from("user_profiles")
       .select("user_id, email, full_name, notify_comments")
       .in("user_id", Array.from(notifySet));
 
-    // Filter to only users who have notifications enabled
     const notifiableProfiles = (profiles || []).filter(
       (p: any) => p.email && p.notify_comments !== false
     );
@@ -140,7 +133,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get commenter name
     const { data: commenterProfile } = await supabase
       .from("user_profiles")
       .select("full_name, email")
@@ -149,9 +141,8 @@ Deno.serve(async (req) => {
 
     const commenterName = commenterProfile?.full_name || commenterProfile?.email || "Alguém";
 
-    // Send emails
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = Deno.env.get("SMTP_PORT");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
 
@@ -163,13 +154,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: parseInt(smtpPort || "465"),
-        tls: true,
-        auth: { username: smtpUser, password: smtpPass },
-      },
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
     const escapedComment = comment.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -179,8 +168,8 @@ Deno.serve(async (req) => {
     for (const profile of notifiableProfiles) {
       if (!profile.email) continue;
       try {
-        await client.send({
-          from: "agente@mindproai.com.br",
+        await transporter.sendMail({
+          from: `Mind Pro AI <${smtpUser}>`,
           to: profile.email,
           subject: `💬 Novo comentário em "${card.title}" — MindPro AI`,
           html,
@@ -190,8 +179,6 @@ Deno.serve(async (req) => {
         console.error(`Failed to send to ${profile.email}:`, e);
       }
     }
-
-    await client.close();
 
     return new Response(JSON.stringify({ success: true, notified: sent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
