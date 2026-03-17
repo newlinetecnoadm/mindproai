@@ -95,6 +95,10 @@ interface DiagramEditorCoreProps {
 const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
 
 function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
+  // Drag state: which node is being dragged + its descendants
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const getInitialLayout = () => {
     const n = initialNodes || [];
     const e = initialEdges || [];
