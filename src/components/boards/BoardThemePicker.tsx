@@ -14,6 +14,10 @@ import auroraImg from "@/assets/themes/aurora.jpg";
 import deepOceanImg from "@/assets/themes/deep-ocean.jpg";
 import topographyImg from "@/assets/themes/topography.jpg";
 import bokehImg from "@/assets/themes/bokeh.jpg";
+import concreteImg from "@/assets/themes/concrete.jpg";
+import smokeImg from "@/assets/themes/smoke.jpg";
+import marbleImg from "@/assets/themes/marble.jpg";
+import linenImg from "@/assets/themes/linen.jpg";
 
 export interface BoardTheme {
   id: string;
@@ -115,6 +119,35 @@ export const BOARD_THEMES: BoardTheme[] = [
     name: "Bokeh",
     preview: `url(${bokehImg})`,
     bg: bokehImg,
+    type: "image",
+  },
+  // ── Neutras ──
+  {
+    id: "img-concrete",
+    name: "Concreto",
+    preview: `url(${concreteImg})`,
+    bg: concreteImg,
+    type: "image",
+  },
+  {
+    id: "img-smoke",
+    name: "Fumaça",
+    preview: `url(${smokeImg})`,
+    bg: smokeImg,
+    type: "image",
+  },
+  {
+    id: "img-marble",
+    name: "Mármore",
+    preview: `url(${marbleImg})`,
+    bg: marbleImg,
+    type: "image",
+  },
+  {
+    id: "img-linen",
+    name: "Linho",
+    preview: `url(${linenImg})`,
+    bg: linenImg,
     type: "image",
   },
 ];
