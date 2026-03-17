@@ -298,14 +298,94 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [nodes, edges, diagramType, setNodes, setEdges, fitView, takeSnapshot]);
 
-  // Mark node as pinned when user drags it
-  const handleNodeDragStop = useCallback((_event: any, node: Node) => {
-    pinnedPositions.current.add(node.id);
-    const updatedNodes = nodes.map((currentNode) =>
-      currentNode.id === node.id ? { ...currentNode, position: node.position } : currentNode
+  // Mark node as pinned when user drags it + proximity reparent logic
+  const handleNodeDragStop = useCallback((_event: any, draggedNode: Node) => {
+    pinnedPositions.current.add(draggedNode.id);
+
+    // Don't reparent the root node
+    if ((draggedNode.data as any).isRoot) {
+      const updatedNodes = nodes.map((n) =>
+        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
+      );
+      setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+      return;
+    }
+
+    // Find the closest node (excluding self and descendants)
+    const descendantIds = new Set<string>();
+    function collectDescendants(parentId: string) {
+      for (const e of edges) {
+        if (e.source === parentId && !descendantIds.has(e.target)) {
+          descendantIds.add(e.target);
+          collectDescendants(e.target);
+        }
+      }
+    }
+    collectDescendants(draggedNode.id);
+
+    const candidates = nodes.filter(
+      (n) => n.id !== draggedNode.id && !descendantIds.has(n.id)
     );
-    setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
-  }, [nodes, setEdges, diagramType]);
+
+    let closest: Node | null = null;
+    let minDist = Infinity;
+    for (const n of candidates) {
+      const dx = n.position.x - draggedNode.position.x;
+      const dy = n.position.y - draggedNode.position.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = n;
+      }
+    }
+
+    const currentParentEdge = edges.find((e) => e.target === draggedNode.id);
+    const currentParentId = currentParentEdge?.source;
+
+    // Determine new parent
+    let newParentId: string | null = null;
+    if (minDist < PROXIMITY_THRESHOLD && closest) {
+      // Reparent to closest node (if it's not already the parent)
+      if (closest.id !== currentParentId) {
+        newParentId = closest.id;
+      }
+    } else {
+      // Far from all nodes → reparent to root (if not already)
+      const rootNode = nodes.find((n) => (n.data as any).isRoot);
+      if (rootNode && rootNode.id !== currentParentId) {
+        newParentId = rootNode.id;
+      }
+    }
+
+    if (newParentId) {
+      takeSnapshot();
+      // Remove old parent edge and create new one
+      const nextEdges = edges.filter((e) => e.target !== draggedNode.id);
+      nextEdges.push({
+        id: `e-${newParentId}-${draggedNode.id}`,
+        source: newParentId,
+        target: draggedNode.id,
+        type: currentParentEdge?.type || "smoothstep",
+      });
+
+      // Update colors for the moved subtree
+      const updatedNodes = nodes.map((n) =>
+        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
+      );
+
+      // Re-assign depth colors for the moved branch
+      const coloredNodes = assignDepthColors(updatedNodes, nextEdges);
+      setNodes(coloredNodes);
+      setEdges(rerouteDiagramEdges(coloredNodes, nextEdges, diagramType));
+      toast.info("Nó movido para nova ramificação");
+    } else {
+      // No reparent — just update position and reroute edges
+      const updatedNodes = nodes.map((n) =>
+        n.id === draggedNode.id ? { ...n, position: draggedNode.position } : n
+      );
+      setEdges((currentEdges) => rerouteDiagramEdges(updatedNodes, currentEdges, diagramType));
+    }
+  }, [nodes, edges, setNodes, setEdges, diagramType, takeSnapshot]);
 
   // Find the branch color (depth-1 ancestor's color) for a node
   const getBranchColor = useCallback((nodeId: string): string => {
