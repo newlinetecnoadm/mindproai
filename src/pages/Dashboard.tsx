@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const quickActions = [
   { icon: Brain, label: "Novo Diagrama", description: "Mapa mental, fluxograma e mais", path: "/diagramas/novo", color: "bg-primary/10 text-primary" },
   { icon: Kanban, label: "Novo Board", description: "Organize tarefas visualmente", path: "/boards", color: "bg-success/10 text-success" },
-  { icon: Calendar, label: "Nova Agenda", description: "Adicionar evento à agenda", path: "/agenda", color: "bg-warning/10 text-warning" },
+  { icon: Calendar, label: "Minha Agenda", description: "Veja seus próximos eventos", path: "/agenda", color: "bg-warning/10 text-warning" },
 ];
 
 function useRecentItems() {
