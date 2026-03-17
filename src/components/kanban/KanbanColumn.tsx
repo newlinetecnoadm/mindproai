@@ -109,7 +109,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       style={sortableStyle}
       className={cn(
         "flex flex-col w-72 shrink-0 rounded-xl border transition-all",
-        "bg-secondary/70 border-border/60",
+        "bg-[hsl(var(--board-col-bg))] border-[hsl(var(--board-col-border))]",
         (isOver || nativeDragOver) && "ring-2 ring-primary/30",
         isColumnDragging && "opacity-40"
       )}
@@ -118,31 +118,31 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       onDrop={handleNativeDrop}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[hsl(var(--board-col-border))]">
         {editingTitle ? (
           <Input
             value={columnTitle}
             onChange={(e) => setColumnTitle(e.target.value)}
             onBlur={handleRename}
             onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            className="h-7 text-sm font-semibold flex-1"
+            className="h-7 text-sm font-semibold flex-1 bg-[hsl(var(--board-card-bg))] border-[hsl(var(--board-col-border))] text-[hsl(var(--board-text))]"
             autoFocus
           />
         ) : (
           <h3
             {...sortableAttributes}
             {...sortableListeners}
-            className="text-sm font-semibold truncate cursor-grab active:cursor-grabbing hover:text-primary transition-colors flex-1"
+            className="text-sm font-semibold truncate cursor-grab active:cursor-grabbing hover:text-primary transition-colors flex-1 text-[hsl(var(--board-text))]"
             onDoubleClick={() => setEditingTitle(true)}
           >
             {column.title}
           </h3>
         )}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground mr-1">{cards.length}</span>
+          <span className="text-xs text-[hsl(var(--board-text-muted))] mr-1">{cards.length}</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-[hsl(var(--board-text-muted))] hover:text-[hsl(var(--board-text))] hover:bg-[hsl(var(--board-card-bg))]">
                 <MoreHorizontal className="w-3.5 h-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -180,13 +180,13 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
                 if (e.key === "Escape") setAddingCard(false);
               }}
               autoFocus
-              className="text-sm h-9"
+              className="text-sm h-9 bg-[hsl(var(--board-card-bg))] border-[hsl(var(--board-col-border))] text-[hsl(var(--board-text))] placeholder:text-[hsl(var(--board-text-muted))]"
             />
             <div className="flex gap-2">
               <Button size="sm" variant="hero" className="h-7 text-xs" onClick={handleAddCard}>
                 Adicionar
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingCard(false)}>
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-[hsl(var(--board-text-muted))]" onClick={() => setAddingCard(false)}>
                 Cancelar
               </Button>
             </div>
@@ -194,7 +194,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
         ) : (
           <button
             onClick={() => setAddingCard(true)}
-            className="w-full flex items-center gap-1 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+            className="w-full flex items-center gap-1 px-2 py-1.5 text-sm text-[hsl(var(--board-text-muted))] hover:text-[hsl(var(--board-text))] hover:bg-[hsl(var(--board-card-bg))] rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" /> Adicionar card
           </button>
