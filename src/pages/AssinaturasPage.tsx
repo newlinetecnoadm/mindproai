@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog";
 
 const PLAN_PRICE_MAP: Record<string, string> = {
-  pro: "price_1TAXMiEXDv2crum3SeNjqH89",
-  business: "price_1TAXNPEXDv2crum3gSZmhaq0",
+  pro: "price_1TCJa6RQ9lBpv8RZwXJme0yy",
+  business: "price_1TCJa4RQ9lBpv8RZ5zSu0ODk",
 };
 
 const AssinaturasPage = () => {
