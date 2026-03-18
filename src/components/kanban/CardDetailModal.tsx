@@ -224,9 +224,11 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["checklist-items", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-comments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-label-assignments", cardId] });
+    queryClient.invalidateQueries({ queryKey: ["board-label-assignments"] });
     queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
     queryClient.invalidateQueries({ queryKey: ["card-activities", cardId] });
+    queryClient.invalidateQueries({ queryKey: ["card-members"] });
     queryClient.invalidateQueries({ queryKey: ["linked-diagram"] });
     onCardUpdated();
   };
