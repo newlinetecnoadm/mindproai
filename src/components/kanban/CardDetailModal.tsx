@@ -885,11 +885,33 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             return (
               <div key={cl.id}>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{cl.title}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <CheckSquare className="w-4 h-4 text-muted-foreground shrink-0" />
+                    {editingChecklistId === cl.id ? (
+                      <Input
+                        autoFocus
+                        value={editingChecklistTitle}
+                        onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                        onBlur={() => {
+                          if (editingChecklistTitle.trim() && editingChecklistTitle !== cl.title) {
+                            updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
+                          } else { setEditingChecklistId(null); }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
+                          else if (e.key === "Escape") setEditingChecklistId(null);
+                        }}
+                        className="h-7 text-sm font-medium flex-1"
+                      />
+                    ) : (
+                      <span
+                        className="text-sm font-medium cursor-pointer hover:text-primary truncate"
+                        onClick={() => { setEditingChecklistId(cl.id); setEditingChecklistTitle(cl.title); }}
+                        title="Clique para editar"
+                      >{cl.title}</span>
+                    )}
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => deleteChecklist.mutate(cl.id)}>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive shrink-0" onClick={() => deleteChecklist.mutate(cl.id)}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
@@ -899,12 +921,41 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                 </div>
                 <div className="space-y-1 ml-6">
                   {items.map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-2">
+                    <div key={item.id} className="flex items-center gap-2 group">
                       <Checkbox
                         checked={item.is_checked}
                         onCheckedChange={(v) => toggleItem.mutate({ itemId: item.id, checked: !!v })}
                       />
-                      <span className={cn("text-sm", item.is_checked && "line-through text-muted-foreground")}>{item.text}</span>
+                      {editingItemId === item.id ? (
+                        <Input
+                          autoFocus
+                          value={editingItemText}
+                          onChange={(e) => setEditingItemText(e.target.value)}
+                          onBlur={() => {
+                            if (editingItemText.trim() && editingItemText !== item.text) updateChecklistItem.mutate({ itemId: item.id, text: editingItemText.trim() });
+                            else setEditingItemId(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editingItemText.trim()) updateChecklistItem.mutate({ itemId: item.id, text: editingItemText.trim() });
+                            else if (e.key === "Escape") setEditingItemId(null);
+                          }}
+                          className="h-7 text-xs flex-1"
+                        />
+                      ) : (
+                        <span
+                          className={cn("text-sm flex-1 cursor-pointer hover:text-primary", item.is_checked && "line-through text-muted-foreground")}
+                          onClick={() => { setEditingItemId(item.id); setEditingItemText(item.text); }}
+                          title="Clique para editar"
+                        >{item.text}</span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                        onClick={() => deleteChecklistItem.mutate(item.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                   ))}
                   <div className="flex gap-1 mt-1">
