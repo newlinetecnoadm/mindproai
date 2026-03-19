@@ -392,6 +392,33 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onSuccess: invalidateAll,
   });
 
+  // Update checklist item text
+  const updateChecklistItem = useMutation({
+    mutationFn: async ({ itemId, text }: { itemId: string; text: string }) => {
+      const { error } = await supabase.from("checklist_items").update({ text }).eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => { setEditingItemId(null); invalidateAll(); },
+  });
+
+  // Delete checklist item
+  const deleteChecklistItem = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase.from("checklist_items").delete().eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: invalidateAll,
+  });
+
+  // Update checklist title
+  const updateChecklistTitle = useMutation({
+    mutationFn: async ({ checklistId, title: newTitle }: { checklistId: string; title: string }) => {
+      const { error } = await supabase.from("card_checklists").update({ title: newTitle }).eq("id", checklistId);
+      if (error) throw error;
+    },
+    onSuccess: () => { setEditingChecklistId(null); invalidateAll(); },
+  });
+
   // Delete checklist
   const deleteChecklist = useMutation({
     mutationFn: async (checklistId: string) => {
