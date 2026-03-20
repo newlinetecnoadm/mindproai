@@ -34,28 +34,67 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
   const [role, setRole] = useState<string>("member");
   const [open, setOpen] = useState(false);
 
-  // Fetch board members
+  // Fetch board owner + members
   const { data: members } = useQuery({
     queryKey: ["board-members-share", boardId],
     enabled: open,
     queryFn: async () => {
+      // Fetch board to get owner
+      const { data: board } = await supabase
+        .from("boards")
+        .select("user_id")
+        .eq("id", boardId)
+        .single();
+
       const { data, error } = await supabase
         .from("board_members")
         .select("board_id, user_id, role, joined_at")
         .eq("board_id", boardId);
       if (error) throw error;
 
-      if (data.length === 0) return [];
-      const userIds = data.map((m) => m.user_id);
+      // Collect all user IDs (owner + members), deduplicated
+      const memberUserIds = data.map((m) => m.user_id);
+      const allUserIds = board
+        ? [...new Set([board.user_id, ...memberUserIds])]
+        : memberUserIds;
+
+      if (allUserIds.length === 0) return [];
+
       const { data: profiles } = await supabase
         .from("user_profiles")
         .select("user_id, email, full_name, avatar_url")
-        .in("user_id", userIds);
+        .in("user_id", allUserIds);
 
-      return data.map((m) => ({
-        ...m,
-        profile: profiles?.find((p) => p.user_id === m.user_id),
-      }));
+      // Build result: owner first (if not already a member row), then members
+      const result: Array<{
+        board_id: string;
+        user_id: string;
+        role: string;
+        joined_at: string | null;
+        isOwner?: boolean;
+        profile?: { user_id: string; email: string | null; full_name: string | null; avatar_url: string | null };
+      }> = [];
+
+      if (board && !memberUserIds.includes(board.user_id)) {
+        result.push({
+          board_id: boardId,
+          user_id: board.user_id,
+          role: "owner",
+          joined_at: null,
+          isOwner: true,
+          profile: profiles?.find((p) => p.user_id === board.user_id),
+        });
+      }
+
+      for (const m of data) {
+        result.push({
+          ...m,
+          isOwner: board?.user_id === m.user_id,
+          profile: profiles?.find((p) => p.user_id === m.user_id),
+        });
+      }
+
+      return result;
     },
   });
 
@@ -210,6 +249,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
   });
 
   const roleLabels: Record<string, string> = {
+    owner: "Proprietário",
     admin: "Admin",
     member: "Membro",
     viewer: "Visualizar",
@@ -296,7 +336,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
               <Badge variant="outline" className="text-[10px] shrink-0">
                 {roleLabels[m.role] || m.role}
               </Badge>
-              {m.user_id !== user?.id && (
+              {m.user_id !== user?.id && !(m as any).isOwner && (
                 <Button
                   variant="ghost"
                   size="icon"
