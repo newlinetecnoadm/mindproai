@@ -310,11 +310,12 @@ const WorkspaceList = () => {
 
   // Group own boards by workspace
   const boardsByWs = useMemo(() => {
+    const wsIds = new Set(workspaces.map((ws: any) => ws.id));
     const map = new Map<string, typeof ownBoards>();
     const unassigned: typeof ownBoards = [];
     for (const b of ownBoards) {
       const wsId = (b as any).workspace_id;
-      if (wsId) {
+      if (wsId && wsIds.has(wsId)) {
         if (!map.has(wsId)) map.set(wsId, []);
         map.get(wsId)!.push(b);
       } else {
@@ -324,7 +325,7 @@ const WorkspaceList = () => {
     // Also group shared boards that belong to a visible workspace
     for (const b of sharedBoards) {
       const wsId = (b as any).workspace_id;
-      if (wsId && workspaces.some((ws: any) => ws.id === wsId)) {
+      if (wsId && wsIds.has(wsId)) {
         if (!map.has(wsId)) map.set(wsId, []);
         map.get(wsId)!.push(b);
       }
