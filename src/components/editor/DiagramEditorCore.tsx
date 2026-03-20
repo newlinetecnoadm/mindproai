@@ -213,7 +213,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     autosaveTimer.current = setTimeout(async () => {
       if (!pendingChanges.current) return;
 
-      const snapshotBeforeSave = buildContentSnapshot(nodes, edges, theme.id);
+      const latestNodes = nodesRef.current;
+      const latestEdges = edgesRef.current;
+      const snapshotBeforeSave = buildContentSnapshot(latestNodes, latestEdges, theme.id);
       if (snapshotBeforeSave === lastPersistedSnapshot.current) {
         pendingChanges.current = false;
         return;
@@ -221,19 +223,19 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
       try {
         const thumb = await captureThumbnail();
-        await onSave(nodes, edges, theme.id, thumb);
+        await onSaveRef.current(latestNodes, latestEdges, theme.id, thumb);
         setLastSavedAt(new Date());
         lastPersistedSnapshot.current = snapshotBeforeSave;
         pendingChanges.current = false;
-      } catch {
-        // silent fail — manual save still available
+      } catch (err) {
+        console.error("Autosave failed:", err);
       }
     }, 10000);
 
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
+  }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
 
   // Apply remote updates from other users
   useEffect(() => {
