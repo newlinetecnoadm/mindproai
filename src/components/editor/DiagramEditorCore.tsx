@@ -612,10 +612,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     if (snapshot === lastPersistedSnapshot.current) return;
 
     const thumb = await captureThumbnail();
-    await onSave(nodes, edges, theme.id, thumb);
+    await onSaveRef.current(nodes, edges, theme.id, thumb);
     lastPersistedSnapshot.current = snapshot;
     setLastSavedAt(new Date());
-  }, [nodes, edges, theme.id, onSave, captureThumbnail, buildContentSnapshot]);
+  }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;
