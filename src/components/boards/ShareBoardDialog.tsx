@@ -249,6 +249,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
   });
 
   const roleLabels: Record<string, string> = {
+    owner: "Proprietário",
     admin: "Admin",
     member: "Membro",
     viewer: "Visualizar",
