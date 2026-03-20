@@ -336,7 +336,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
               <Badge variant="outline" className="text-[10px] shrink-0">
                 {roleLabels[m.role] || m.role}
               </Badge>
-              {m.user_id !== user?.id && (
+              {m.user_id !== user?.id && !(m as any).isOwner && (
                 <Button
                   variant="ghost"
                   size="icon"
