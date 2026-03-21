@@ -533,15 +533,24 @@ E-mails suprimidos (bounce, complaint).
 ### 1. Diagramas / Mapas Mentais
 - 7 tipos: mindmap, flowchart, orgchart, timeline, concept_map, swimlane, wireframe
 - Editor visual com React Flow (@xyflow/react)
+- **Estilização nativa React Flow**: toda a estética visual (border, background, borderRadius) via `node.style` — jamais via classes Tailwind no CustomNode
+- `src/lib/nodeStyles.ts`: tokens centralizados (`getNodeStyle`, `buildNodeStyle`, `inferStyleKey`)
+- Hitbox 100% alinhado ao visual (sem borda dupla), `box-sizing: border-box` no wrapper nativo
+- Seleção nativa via `outline` no `.react-flow__node.selected` (sem ring interno)
 - Temas visuais personalizáveis
 - Colaboração em tempo real (Supabase Realtime + Presence)
-- Compartilhamento público via token
+- Compartilhamento públ ico via token
 - Exportação (thumbnail automática)
-- Templates pré-definidos
+- Templates pré-definidos com `node.style` injetado
 - Undo/Redo
-- Busca de nós
+- Busca de nós (Ctrl+F)
 - Autosave a cada 10s com refs para evitar closures stale
 - Organização por diagram_workspaces
+- Layout automático ao carregar template e ao adicionar/mover nós via ELK (`useAutoLayout`)
+- Reorganização manual via botão na toolbar ou atalho `Ctrl+Shift+L`
+- **Collapse/Expand de nós**: botão sutil (+/−) posicionado sobre o conector sainte; detecta filhos considerando edges ocultas; estado `collapsed` persistido no jsonb; relayout automático após toggle
+- **Retrocompatibilidade**: nós antigos carregados do banco recebem `node.style` automático via `inferStyleKey` + `buildNodeStyle`
+- Word-wrap correto em todos os tipos de nó (texto longo não vaza para fora do nó)
 
 ### 2. Boards Kanban
 - Drag-and-drop de cartões e colunas
@@ -598,6 +607,32 @@ E-mails suprimidos (bounce, complaint).
 
 ---
 
+## Utilitários de Diagrama
+
+### `src/lib/diagramUtils.ts`
+| Função | Descrição |
+|---|---|
+| `getDescendants(nodeId, edges)` | Retorna todos os IDs descendentes via BFS |
+| `getDirectChildren(nodeId, edges)` | Retorna apenas filhos diretos |
+| `toggleNodeCollapse(nodeId, nodes, edges)` | Alterna collapse/expand; colapsar oculta todos os descendentes, expandir revela apenas filhos diretos |
+
+### `src/components/mindmap/mindmapLayout.ts`
+| Função | Descrição |
+|---|---|
+| `autoLayoutDiagram(nodes, edges, type)` | Dispatcher principal: roteia para algoritmo ELK correto por tipo |
+| `autoLayoutMindMap(nodes, edges)` | Layout balanceado bilateral para mindmaps via ELK |
+| `rerouteDiagramEdges(nodes, edges, type)` | Recalcula sourceHandle/targetHandle após layout |
+
+### `src/lib/nodeStyles.ts`
+| Função | Descrição |
+|---|---|
+| `getNodeStyle(key)` | Retorna o `CSSProperties` para uma chave de estilo (ex: `mindmap-root`) |
+| `buildNodeStyle(type, isRoot, level)` | Constrói o style para um nó dado o tipo de diagrama, se é raiz e a profundidade |
+| `inferStyleKey(node, type)` | Infere a chave de estilo de nós antigos sem `styleKey` |
+| `NODE_STYLES` | Registro central de todos os estilos visuais dos 7 tipos de nó |
+
+---
+
 ## Hooks Principais
 
 | Hook | Descrição |
@@ -620,3 +655,215 @@ E-mails suprimidos (bounce, complaint).
 - `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` — E-mail
 - `LOVABLE_API_KEY` — IA
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_DB_URL` — Infra
+
+---
+
+## ✅ PHASE X COMPLETE: Implantação Layout Dinâmico + Collapse/Expand
+| `can_access_board(board_id, user_id)` | Dono OU membro |
+| `can_access_card(card_id, user_id)` | Acesso ao cartão via board |
+| `can_access_checklist(checklist_id, user_id)` | Acesso ao checklist via board |
+| `can_access_workspace(user_id, workspace_id)` | Acesso ao workspace |
+| `is_workspace_owner(user_id, workspace_id)` | Dono do workspace |
+| `is_diagram_owner(diagram_id, user_id)` | Dono do diagrama |
+| `is_diagram_collaborator(diagram_id, user_id)` | Colaborador do diagrama |
+| `is_diagram_editor(diagram_id, user_id)` | Editor do diagrama |
+| `handle_new_user()` | Trigger: cria perfil ao registrar |
+| `handle_new_subscription()` | Trigger: cria subscription free ao registrar |
+| `update_updated_at_column()` | Trigger: atualiza updated_at |
+| `enqueue_email(payload, queue_name)` | Enfileira e-mail para envio |
+| `read_email_batch(batch_size, queue_name, vt)` | Lê batch de e-mails da fila |
+| `delete_email(message_id, queue_name)` | Remove e-mail da fila |
+| `move_to_dlq(dlq_name, message_id, payload, source_queue)` | Move e-mail para DLQ |
+
+---
+
+## Edge Functions
+
+| Função | JWT | Descrição |
+|---|---|---|
+| `stripe-checkout` | Sim | Cria sessão de checkout Stripe |
+| `stripe-webhook` | Não | Processa webhooks do Stripe |
+| `stripe-customer-portal` | Sim | Gera link do portal do cliente Stripe |
+| `send-invite` | Não | Envia e-mail de convite de colaboração |
+| `send-email` | Não | Envio genérico de e-mail (SMTP) |
+| `send-reminders` | Sim | Cron: envia lembretes de prazos |
+| `notify-board-event` | Sim | Notificação de eventos do board |
+| `notify-card-comment` | Sim | Notificação de comentários |
+| `accept-invitation` | Não | Aceitar convite de colaboração |
+| `ai-chat` | Não | Chat com IA |
+| `ai-map-assist` | Não | Assistente IA para mapas mentais |
+| `ai-board-assist` | Não | Assistente IA para boards |
+| `auth-email-hook` | Não | Hook de e-mail de autenticação |
+| `process-email-queue` | Não | Processa fila de e-mails |
+
+---
+
+## Storage Buckets
+
+| Bucket | Público | Uso |
+|---|---|---|
+| `diagram-thumbnails` | Sim | Thumbnails dos diagramas |
+| `card-attachments` | Sim | Anexos de cartões Kanban |
+
+---
+
+## Modelo de Negócio
+
+### Planos
+
+| Plano | Preço | Diagramas | Boards | Colaboradores | PDF | IA |
+|---|---|---|---|---|---|---|
+| Gratuito | R$ 0 | 3 | 2 | 0 | ❌ | ❌ |
+| Pro | R$ 29,90/mês | Ilimitado | Ilimitado | 5 | ✅ | ✅ |
+| Business | R$ 79,90/mês | Ilimitado | Ilimitado | Ilimitado | ✅ | ✅ |
+
+- **Sem trial**: plano gratuito é permanente com limitações
+- Limites enforçados via hook `usePlanLimits`
+- Modal de upgrade (`UpgradeModal`) exibido ao atingir cotas
+
+---
+
+## Funcionalidades Principais
+
+### 1. Diagramas / Mapas Mentais
+- 7 tipos: mindmap, flowchart, orgchart, timeline, concept_map, swimlane, wireframe
+- Editor visual com React Flow (@xyflow/react)
+- **Estilização nativa React Flow**: toda a estética visual (border, background, borderRadius) via `node.style` — jamais via classes Tailwind no CustomNode
+- `src/lib/nodeStyles.ts`: tokens centralizados (`getNodeStyle`, `buildNodeStyle`, `inferStyleKey`)
+- Hitbox 100% alinhado ao visual (sem borda dupla), `box-sizing: border-box` no wrapper nativo
+- Seleção nativa via `outline` no `.react-flow__node.selected` (sem ring interno)
+- Temas visuais personalizáveis
+- Colaboração em tempo real (Supabase Realtime + Presence)
+- Compartilhamento públ ico via token
+- Exportação (thumbnail automática)
+- Templates pré-definidos com `node.style` injetado
+- Undo/Redo
+- Busca de nós (Ctrl+F)
+- Autosave a cada 10s com refs para evitar closures stale
+- Organização por diagram_workspaces
+- Layout automático ao carregar template e ao adicionar/mover nós via ELK (`useAutoLayout`)
+- Reorganização manual via botão na toolbar ou atalho `Ctrl+Shift+L`
+- **Collapse/Expand de nós**: botão sutil (+/−) posicionado sobre o conector sainte; detecta filhos considerando edges ocultas; estado `collapsed` persistido no jsonb; relayout automático após toggle
+- **Retrocompatibilidade**: nós antigos carregados do banco recebem `node.style` automático via `inferStyleKey` + `buildNodeStyle`
+- Word-wrap correto em todos os tipos de nó (texto longo não vaza para fora do nó)
+
+### 2. Boards Kanban
+- Drag-and-drop de cartões e colunas
+- Cartões com: descrição, labels, membros, checklists (editáveis/excluíveis), anexos, comentários, capa, diagrama vinculado
+- Filtros por label, membro, data
+- Temas visuais por board
+- Templates de board
+- Feed de atividades por cartão
+- Lembretes de prazo (cron + e-mail + notificação in-app)
+- Compartilhamento/convites com visualização de membros e permissões
+- Organização por workspaces (boards órfãos tratados como "não atribuídos")
+
+### 3. Agenda
+- Visualizações mensal e semanal
+- CRUD de eventos
+- Integração com Kanban: due_date de cartão → evento automático
+- Eventos de cartão exibem badge do board de origem
+
+### 4. Inbox
+- Captura rápida de ideias/notas
+- Ordenação por posição (drag-and-drop)
+
+### 5. Planner
+- Painel de planejamento integrado
+
+### 6. Notificações
+- Sistema in-app com sino (NotificationBell)
+- Preferências granulares por tipo de notificação
+- Notificações via e-mail (Edge Functions)
+
+### 7. Autenticação
+- E-mail/senha com confirmação de e-mail
+- Google OAuth
+- Recuperação de senha (esqueci-senha / redefinir-senha)
+- Perfil automático via trigger
+
+### 8. Admin
+- Dashboard com KPIs (MRR, DAU, retenção, receita por plano)
+- Gestão de usuários e roles
+- Gestão de planos de assinatura
+- Atribuição manual de planos
+- Configurações de IA
+
+### 9. Assinaturas
+- Checkout via Stripe
+- Portal do cliente Stripe
+- Webhook para sincronização de status
+- Limites enforçados no frontend
+
+### 10. IA
+- Chat com IA (AIChatWidget)
+- Assistente para mapas mentais (AIMapAssistDialog)
+- Assistente para boards (AIBoardAssistDialog)
+
+---
+
+## Utilitários de Diagrama
+
+### `src/lib/diagramUtils.ts`
+| Função | Descrição |
+|---|---|
+| `getDescendants(nodeId, edges)` | Retorna todos os IDs descendentes via BFS |
+| `getDirectChildren(nodeId, edges)` | Retorna apenas filhos diretos |
+| `toggleNodeCollapse(nodeId, nodes, edges)` | Alterna collapse/expand; colapsar oculta todos os descendentes, expandir revela apenas filhos diretos |
+
+### `src/components/mindmap/mindmapLayout.ts`
+| Função | Descrição |
+|---|---|
+| `autoLayoutDiagram(nodes, edges, type)` | Dispatcher principal: roteia para algoritmo ELK correto por tipo |
+| `autoLayoutMindMap(nodes, edges)` | Layout balanceado bilateral para mindmaps via ELK |
+| `rerouteDiagramEdges(nodes, edges, type)` | Recalcula sourceHandle/targetHandle após layout |
+
+### `src/lib/nodeStyles.ts`
+| Função | Descrição |
+|---|---|
+| `getNodeStyle(key)` | Retorna o `CSSProperties` para uma chave de estilo (ex: `mindmap-root`) |
+| `buildNodeStyle(type, isRoot, level)` | Constrói o style para um nó dado o tipo de diagrama, se é raiz e a profundidade |
+| `inferStyleKey(node, type)` | Infere a chave de estilo de nós antigos sem `styleKey` |
+| `NODE_STYLES` | Registro central de todos os estilos visuais dos 7 tipos de nó |
+
+---
+
+## Hooks Principais
+
+| Hook | Descrição |
+|---|---|
+| `useAuth` | Estado de autenticação (user, session, signOut) |
+| `usePlan` | Plano atual do usuário |
+| `usePlanLimits` | Limites e contagens do plano |
+| `useIsAdmin` | Verifica se é admin |
+| `useRealtimeDiagram` | Sync realtime + presence para diagramas |
+| `useUndoRedo` | Histórico de undo/redo |
+| `useCardActivity` | Feed de atividades de cartão |
+| `useNotifications` | Notificações do usuário |
+| `useMobile` | Detecção de viewport mobile |
+
+---
+
+## Secrets Configurados
+
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — Pagamentos
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` — E-mail
+- `LOVABLE_API_KEY` — IA
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_DB_URL` — Infra
+
+---
+
+## ✅ PHASE X COMPLETE: Implantação Layout Dinâmico + Collapse/Expand
+- Lint & Type Check: ✅ Pass
+- Security: ✅ No critical issues
+- Build: ✅ Success
+- Date: 2026-03-21
+
+## ✅ PHASE XI COMPLETE: Refatoração Nativa React Flow (hitbox/seleção)
+- `src/lib/nodeStyles.ts` criado com tokens de estilo centralizados
+- 7 CustomNodes limpos de CSS Tailwind visual (bg-*, border-*, rounded-*)
+- `node.style` injetado em templates, criação dinâmica e carga do banco
+- CSS global atualizado: seleção nativa, botão `.collapse-btn` sobre o conector sainte
+- Bug do botão collapse corrigido: `hasChildren` incluindo edges ocultas + `data.isCollapsed` (não `data.collapsed`)
+- Lint & Type Check: ✅ Pass
+- Date: 2026-03-21

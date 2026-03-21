@@ -207,7 +207,27 @@
   }
 }
 
-/* Hide ReactFlow handles by default, show on hover or when connected */
+/* ─── React Flow Native Styling ─────────────────────────────────────── */
+
+/* 1. Box-sizing nativo obrigatório no wrapper externo do nó */
+.react-flow__node {
+  box-sizing: border-box;
+}
+
+/* 2. Seleção: outline aplicado no wrapper nativo do RF (sem borda dupla) */
+.react-flow__node.selected {
+  outline: 2px solid hsl(27 100% 48%);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* 3. Elemento filho direto do wrapper NÃO deve ter outline próprio */
+.react-flow__node > div {
+  outline: none !important;
+  box-shadow: none !important; /* ring-* do Tailwind */
+}
+
+/* 4. Handles: escondidos por padrão, visíveis no hover e seleção */
 .react-flow__node .react-flow__handle {
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -220,7 +240,35 @@
   opacity: 1;
 }
 
-/* Always show handles that have connections */
+/* 5. Handles conectados são sempre visíveis */
 .react-flow__handle.react-flow__handle-connected {
   opacity: 1;
 }
+
+/* 6. Botão collapse/expand — posicionado sobre o conector (aresta sainte à direita) */
+.collapse-btn {
+  position: absolute;
+  right: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #9ca3af;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.1);
+  transition: border-color 0.15s, color 0.15s;
+}
+.collapse-btn:hover {
+  border-color: #9ca3af;
+  color: #6b7280;
+}

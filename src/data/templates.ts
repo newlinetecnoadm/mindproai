@@ -1,4 +1,5 @@
 import type { Node, Edge } from "@xyflow/react";
+import { buildNodeStyle } from "@/lib/nodeStyles";
 
 export interface DiagramTemplate {
   id: string;
@@ -23,7 +24,13 @@ function mmTemplate(
 ): DiagramTemplate {
   const rootId = "root";
   const nodes: Node[] = [
-    { id: rootId, type: "mindmap", position: { x: 0, y: 0 }, data: { label: name, isRoot: true, color: "orange" } },
+    {
+      id: rootId,
+      type: "mindmap",
+      position: { x: 0, y: 0 },
+      data: { label: name, isRoot: true, color: "orange" },
+      style: buildNodeStyle("mindmap", true, 0),
+    },
   ];
   const edges: Edge[] = [];
   children.forEach((child, i) => {
@@ -31,8 +38,9 @@ function mmTemplate(
     nodes.push({
       id: cid,
       type: "mindmap",
-      position: { x: 250, y: -60 * (children.length / 2 - i) },
+      position: { x: 0, y: 0 },
       data: { label: child, color: colors[i % colors.length] },
+      style: buildNodeStyle("mindmap", false, 1),
     });
     edges.push({ id: `e-${rootId}-${cid}`, source: rootId, target: cid, type: "smoothstep" });
     if (grandchildren?.[child]) {
@@ -41,8 +49,9 @@ function mmTemplate(
         nodes.push({
           id: gcid,
           type: "mindmap",
-          position: { x: 500, y: -60 * (children.length / 2 - i) + j * 50 },
+          position: { x: 0, y: 0 },
           data: { label: gc, color: colors[i % colors.length], variant: "branch" },
+          style: buildNodeStyle("mindmap", false, 2),
         });
         edges.push({ id: `e-${cid}-${gcid}`, source: cid, target: gcid, type: "smoothstep" });
       });
@@ -61,8 +70,9 @@ function flowTemplate(
   const nodes: Node[] = steps.map((s, i) => ({
     id: `fc_${i}`,
     type: "flowchart",
-    position: { x: 0, y: i * 120 },
+    position: { x: 0, y: 0 },
     data: { label: s.label, shape: s.shape || "rectangle", color: i === 0 ? "green" : i === steps.length - 1 ? "red" : "blue" },
+    style: buildNodeStyle("flowchart", false, 1),
   }));
   const edges: Edge[] = steps.slice(0, -1).map((_, i) => ({
     id: `e-fc_${i}-fc_${i + 1}`,
@@ -89,6 +99,7 @@ function orgTemplate(
       type: "org",
       position: { x: i * 220, y: 0 },
       data: { label: person.label, role: person.role, color: colors[i % colors.length], ...(i === 0 ? { isRoot: true } : {}) },
+      style: buildNodeStyle("org", i === 0, i === 0 ? 0 : 1),
     });
     person.children?.forEach((child, j) => {
       const cid = `org_${i}_${j}`;
@@ -97,6 +108,7 @@ function orgTemplate(
         type: "org",
         position: { x: i * 220 + j * 200, y: 150 },
         data: { label: child.label, role: child.role, color: colors[(i + j) % colors.length] },
+        style: buildNodeStyle("org", false, 1),
       });
       edges.push({ id: `e-${pid}-${cid}`, source: pid, target: cid, type: "smoothstep" });
     });
@@ -116,6 +128,7 @@ function timelineTemplate(
     type: "timeline",
     position: { x: i * 240, y: 0 },
     data: { label: e.label, date: e.date, color: colors[i % colors.length], isMilestone: i === 0 || i === events.length - 1 },
+    style: buildNodeStyle("timeline", false, 1),
   }));
   const edges: Edge[] = events.slice(0, -1).map((_, i) => ({
     id: `e-tl_${i}-tl_${i + 1}`,
@@ -132,7 +145,13 @@ const blankMindmap: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com um nó central",
   type: "mindmap",
-  nodes: [{ id: "root", type: "mindmap", position: { x: 0, y: 0 }, data: { label: "Ideia Central", isRoot: true, color: "orange" } }],
+  nodes: [{
+    id: "root",
+    type: "mindmap",
+    position: { x: 0, y: 0 },
+    data: { label: "Ideia Central", isRoot: true, color: "orange" },
+    style: buildNodeStyle("mindmap", true, 0),
+  }],
   edges: [],
 };
 
@@ -141,7 +160,13 @@ const blankFlowchart: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com o nó inicial",
   type: "flowchart",
-  nodes: [{ id: "fc_0", type: "flowchart", position: { x: 0, y: 0 }, data: { label: "Início", shape: "oval", color: "green" } }],
+  nodes: [{
+    id: "fc_0",
+    type: "flowchart",
+    position: { x: 0, y: 0 },
+    data: { label: "Início", shape: "oval", color: "green" },
+    style: buildNodeStyle("flowchart", false, 1),
+  }],
   edges: [],
 };
 
@@ -150,7 +175,13 @@ const blankOrgchart: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com o cargo principal",
   type: "orgchart",
-  nodes: [{ id: "org_0", type: "org", position: { x: 0, y: 0 }, data: { label: "CEO", role: "Chief Executive Officer", color: "orange", isRoot: true } }],
+  nodes: [{
+    id: "org_0",
+    type: "org",
+    position: { x: 0, y: 0 },
+    data: { label: "CEO", role: "Chief Executive Officer", color: "orange", isRoot: true },
+    style: buildNodeStyle("org", true, 0),
+  }],
   edges: [],
 };
 
@@ -159,7 +190,13 @@ const blankTimeline: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com o primeiro marco",
   type: "timeline",
-  nodes: [{ id: "tl_0", type: "timeline", position: { x: 0, y: 0 }, data: { label: "Marco 1", date: "Hoje", color: "blue", isMilestone: true } }],
+  nodes: [{
+    id: "tl_0",
+    type: "timeline",
+    position: { x: 0, y: 0 },
+    data: { label: "Marco 1", date: "Hoje", color: "blue", isMilestone: true },
+    style: buildNodeStyle("timeline", false, 1),
+  }],
   edges: [],
 };
 
@@ -168,7 +205,13 @@ const blankConceptMap: DiagramTemplate = {
   name: "Em branco",
   description: "Comece do zero com um conceito",
   type: "concept_map",
-  nodes: [{ id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Conceito", color: "orange", isRoot: true } }],
+  nodes: [{
+    id: "c1",
+    type: "concept",
+    position: { x: 0, y: 0 },
+    data: { label: "Conceito", color: "orange", isRoot: true },
+    style: buildNodeStyle("concept", true, 0),
+  }],
   edges: [],
 };
 
@@ -406,11 +449,11 @@ const conceptTemplates: DiagramTemplate[] = [
     type: "concept_map",
     category: "negocios",
     nodes: [
-      { id: "center", type: "concept", position: { x: 200, y: 200 }, data: { label: "Produto", color: "orange" } },
-      { id: "s1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Usuários", color: "blue" } },
-      { id: "s2", type: "concept", position: { x: 400, y: 0 }, data: { label: "Parceiros", color: "green" } },
-      { id: "s3", type: "concept", position: { x: 0, y: 400 }, data: { label: "Investidores", color: "purple" } },
-      { id: "s4", type: "concept", position: { x: 400, y: 400 }, data: { label: "Concorrentes", color: "red" } },
+      { id: "center", type: "concept", position: { x: 200, y: 200 }, data: { label: "Produto", color: "orange" }, style: buildNodeStyle("concept", true, 0) },
+      { id: "s1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Usuários", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "s2", type: "concept", position: { x: 400, y: 0 }, data: { label: "Parceiros", color: "green" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "s3", type: "concept", position: { x: 0, y: 400 }, data: { label: "Investidores", color: "purple" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "s4", type: "concept", position: { x: 400, y: 400 }, data: { label: "Concorrentes", color: "red" }, style: buildNodeStyle("concept", false, 1) },
     ],
     edges: [
       { id: "e1", source: "center", target: "s1", type: "smoothstep", label: "serve" },
@@ -426,13 +469,13 @@ const conceptTemplates: DiagramTemplate[] = [
     type: "concept_map",
     category: "educacao",
     nodes: [
-      { id: "problem", type: "concept", position: { x: 300, y: 200 }, data: { label: "Problema Central", color: "red" } },
-      { id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Causa 1", color: "orange" } },
-      { id: "c2", type: "concept", position: { x: 0, y: 200 }, data: { label: "Causa 2", color: "orange" } },
-      { id: "c3", type: "concept", position: { x: 0, y: 400 }, data: { label: "Causa 3", color: "orange" } },
-      { id: "e1", type: "concept", position: { x: 600, y: 0 }, data: { label: "Efeito 1", color: "blue" } },
-      { id: "e2", type: "concept", position: { x: 600, y: 200 }, data: { label: "Efeito 2", color: "blue" } },
-      { id: "e3", type: "concept", position: { x: 600, y: 400 }, data: { label: "Efeito 3", color: "blue" } },
+      { id: "problem", type: "concept", position: { x: 300, y: 200 }, data: { label: "Problema Central", color: "red" }, style: buildNodeStyle("concept", true, 0) },
+      { id: "c1", type: "concept", position: { x: 0, y: 0 }, data: { label: "Causa 1", color: "orange" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "c2", type: "concept", position: { x: 0, y: 200 }, data: { label: "Causa 2", color: "orange" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "c3", type: "concept", position: { x: 0, y: 400 }, data: { label: "Causa 3", color: "orange" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "e1", type: "concept", position: { x: 600, y: 0 }, data: { label: "Efeito 1", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "e2", type: "concept", position: { x: 600, y: 200 }, data: { label: "Efeito 2", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "e3", type: "concept", position: { x: 600, y: 400 }, data: { label: "Efeito 3", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
     ],
     edges: [
       { id: "ec1", source: "c1", target: "problem", type: "smoothstep", label: "causa" },
@@ -450,11 +493,11 @@ const conceptTemplates: DiagramTemplate[] = [
     type: "concept_map",
     category: "negocios",
     nodes: [
-      { id: "app", type: "concept", position: { x: 250, y: 0 }, data: { label: "Aplicação", color: "orange" } },
-      { id: "frontend", type: "concept", position: { x: 0, y: 150 }, data: { label: "Frontend", color: "blue" } },
-      { id: "backend", type: "concept", position: { x: 250, y: 150 }, data: { label: "Backend", color: "green" } },
-      { id: "db", type: "concept", position: { x: 500, y: 150 }, data: { label: "Banco de Dados", color: "purple" } },
-      { id: "infra", type: "concept", position: { x: 250, y: 300 }, data: { label: "Infraestrutura", color: "red" } },
+      { id: "app", type: "concept", position: { x: 250, y: 0 }, data: { label: "Aplicação", color: "orange" }, style: buildNodeStyle("concept", true, 0) },
+      { id: "frontend", type: "concept", position: { x: 0, y: 150 }, data: { label: "Frontend", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "backend", type: "concept", position: { x: 250, y: 150 }, data: { label: "Backend", color: "green" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "db", type: "concept", position: { x: 500, y: 150 }, data: { label: "Banco de Dados", color: "purple" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "infra", type: "concept", position: { x: 250, y: 300 }, data: { label: "Infraestrutura", color: "red" }, style: buildNodeStyle("concept", false, 1) },
     ],
     edges: [
       { id: "e1", source: "app", target: "frontend", type: "smoothstep", label: "usa" },
@@ -471,11 +514,11 @@ const conceptTemplates: DiagramTemplate[] = [
     type: "concept_map",
     category: "educacao",
     nodes: [
-      { id: "goal", type: "concept", position: { x: 250, y: 0 }, data: { label: "Objetivo Final", color: "orange" } },
-      { id: "mod1", type: "concept", position: { x: 0, y: 150 }, data: { label: "Módulo 1", color: "blue" } },
-      { id: "mod2", type: "concept", position: { x: 250, y: 150 }, data: { label: "Módulo 2", color: "green" } },
-      { id: "mod3", type: "concept", position: { x: 500, y: 150 }, data: { label: "Módulo 3", color: "purple" } },
-      { id: "base", type: "concept", position: { x: 250, y: 300 }, data: { label: "Fundamentos", color: "red" } },
+      { id: "goal", type: "concept", position: { x: 250, y: 0 }, data: { label: "Objetivo Final", color: "orange" }, style: buildNodeStyle("concept", true, 0) },
+      { id: "mod1", type: "concept", position: { x: 0, y: 150 }, data: { label: "Módulo 1", color: "blue" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "mod2", type: "concept", position: { x: 250, y: 150 }, data: { label: "Módulo 2", color: "green" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "mod3", type: "concept", position: { x: 500, y: 150 }, data: { label: "Módulo 3", color: "purple" }, style: buildNodeStyle("concept", false, 1) },
+      { id: "base", type: "concept", position: { x: 250, y: 300 }, data: { label: "Fundamentos", color: "red" }, style: buildNodeStyle("concept", false, 1) },
     ],
     edges: [
       { id: "e1", source: "base", target: "mod1", type: "smoothstep", label: "pré-requisito" },

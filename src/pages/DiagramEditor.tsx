@@ -14,6 +14,7 @@ import DiagramEditorCore from "@/components/editor/DiagramEditorCore";
 import type { Node, Edge } from "@xyflow/react";
 import type { Json } from "@/integrations/supabase/types";
 import { diagramTypes } from "@/data/templates";
+import { buildNodeStyle, inferStyleKey } from "@/lib/nodeStyles";
 
 const DiagramEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +61,23 @@ const DiagramEditor = () => {
       setInitialThemeId(data.theme || undefined);
       const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
       if (diagramData?.nodes?.length) {
-        setInitialNodes(diagramData.nodes);
+        // 3C — Apply native style to legacy nodes loaded from the database
+        const migratedNodes = diagramData.nodes.map((node: Node) => {
+          // Skip if already migrated (has boxSizing in style)
+          if ((node.style as any)?.boxSizing === 'border-box') return node;
+          // Infer styleKey if not present
+          const styleKey = (node.data as any)?.styleKey ?? inferStyleKey(node, data.type);
+          return {
+            ...node,
+            data: { ...(node.data as object), styleKey },
+            style: buildNodeStyle(
+              data.type,
+              Boolean((node.data as any)?.isRoot),
+              (node.data as any)?.level ?? undefined,
+            ),
+          };
+        });
+        setInitialNodes(migratedNodes);
         setInitialEdges(diagramData.edges || []);
       }
       setLoading(false);
@@ -99,6 +116,7 @@ const DiagramEditor = () => {
           type: n.type,
           position: n.position,
           data: n.data as Record<string, unknown>,
+          ...(n.style ? { style: n.style } : {}),
         })) as unknown as Json,
         edges: edges.map((e) => ({
           id: e.id,

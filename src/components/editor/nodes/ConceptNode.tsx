@@ -8,15 +8,6 @@ export type ConceptNodeData = {
   note?: string;
 };
 
-const colorMap: Record<string, string> = {
-  blue: "border-blue-400 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  green: "border-emerald-400 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  purple: "border-purple-400 bg-purple-50 text-purple-800 dark:bg-purple-950 dark:text-purple-200",
-  red: "border-red-400 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200",
-  orange: "border-orange-400 bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
-  yellow: "border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  default: "border-border bg-card text-foreground",
-};
 
 const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
 
@@ -39,7 +30,6 @@ function ConceptNode({ data, selected, id }: NodeProps & { data: ConceptNodeData
     return () => window.removeEventListener("mindmap-edit-node", handler);
   }, [id]);
 
-  const colorClass = colorMap[data.color || "default"] || colorMap.default;
   const handleBlur = () => { setEditing(false); data.label = label; };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { setEditing(false); data.label = label; }
@@ -48,11 +38,18 @@ function ConceptNode({ data, selected, id }: NodeProps & { data: ConceptNodeData
 
   return (
     <div
-      className={cn(
-        "px-4 py-3 rounded-2xl border-2 shadow-sm transition-all cursor-pointer w-[160px] text-center",
-        colorClass,
-        selected && "ring-2 ring-primary/50 shadow-md"
-      )}
+      style={{
+        padding: '12px 16px',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        whiteSpace: 'normal',
+        textAlign: 'center',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
       onDoubleClick={() => setEditing(true)}
     >
       <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
@@ -68,7 +65,7 @@ function ConceptNode({ data, selected, id }: NodeProps & { data: ConceptNodeData
         <input ref={inputRef} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown}
           className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-medium" />
       ) : (
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium leading-snug">{label}</span>
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
 import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
 import { getNodeDepth, getColorForDepth, assignDepthColors } from "@/components/mindmap/depthColors";
+import { toggleNodeCollapse, getVisibleGraph } from "@/lib/diagramUtils";
 import {
   ReactFlow,
   addEdge,
@@ -21,6 +22,8 @@ import {
   type Edge,
   ReactFlowProvider,
 } from "@xyflow/react";
+import { useAutoLayout } from "@/hooks/useAutoLayout";
+import { buildNodeStyle, inferStyleKey, getNodeStyle } from "@/lib/nodeStyles";
 import "@xyflow/react/dist/style.css";
 import MindMapNode from "@/components/mindmap/MindMapNode";
 import FlowchartNode from "./nodes/FlowchartNode";
@@ -99,21 +102,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const { triggerLayout } = useAutoLayout(diagramType);
   const getInitialLayout = () => {
     let n = initialNodes || [];
     const e = initialEdges || [];
     if (n.length > 0) {
-      // Apply depth-based coloring for all tree-based diagram types
       if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
         n = assignDepthColors(n, e);
       }
-      return autoLayoutDiagram(n, e, diagramType);
+      // initialLayout is skipped, relying on useAutoLayout hooked to component render
+      return { nodes: n, edges: e };
     }
     return { nodes: n, edges: e };
   };
-  const initialLayout = getInitialLayout();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialLayout.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialLayout.edges);
+  const initialData = getInitialLayout();
+  const [nodes, setNodes, onNodesChangeCore] = useNodesState(initialData.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
   const [exporting, setExporting] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const limits = usePlanLimits();
@@ -137,6 +141,28 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   edgesRef.current = edges;
   const initialFitDone = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
+
+  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChangeCore>[0]) => {
+      onNodesChangeCore(changes);
+      
+      // Look for dimension changes that aren't resizing
+      const hasDimensionChange = changes.some(
+        (c) => c.type === 'dimensions' && c.resizing !== true
+      );
+      
+      if (hasDimensionChange) {
+        if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
+        layoutTimeoutRef.current = setTimeout(() => {
+          triggerLayout();
+        }, 150);
+      }
+    },
+    [onNodesChangeCore, triggerLayout]
+  );
+
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
 
   const buildContentSnapshot = useCallback((snapshotNodes: Node[], snapshotEdges: Edge[], themeId: string) => {
@@ -282,15 +308,29 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // Re-layout all nodes
   const handleReLayout = useCallback(() => {
     takeSnapshot();
-    let layoutNodes = nodes;
-    if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
-      layoutNodes = assignDepthColors(nodes, edges);
-    }
-    const laid = autoLayoutDiagram(layoutNodes, edges, diagramType);
-    setNodes(laid.nodes);
-    setEdges(laid.edges);
-    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [nodes, edges, diagramType, setNodes, setEdges, fitView, takeSnapshot]);
+    const { visibleNodes, visibleEdges } = getVisibleGraph(nodesRef.current, edgesRef.current);
+    setNodes(visibleNodes);
+    setEdges(visibleEdges);
+    triggerLayout();
+  }, [triggerLayout, takeSnapshot, setNodes, setEdges]);
+
+  // Handle collapse/expand toggle dispatched from node buttons
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail?.nodeId;
+      if (!nodeId) return;
+      takeSnapshot();
+      
+      const toggledNodes = toggleNodeCollapse(nodeId, nodesRef.current);
+      const { visibleNodes, visibleEdges } = getVisibleGraph(toggledNodes, edgesRef.current);
+      
+      setNodes(visibleNodes);
+      setEdges(visibleEdges);
+      triggerLayout();
+    };
+    window.addEventListener("mindmap-toggle-collapse", handler);
+    return () => window.removeEventListener("mindmap-toggle-collapse", handler);
+  }, [setNodes, setEdges, triggerLayout, takeSnapshot]);
 
   // Collect descendants of a node
   const collectDescendantIds = useCallback((nodeId: string, edgeList: Edge[]): Set<string> => {
@@ -443,7 +483,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const pos = { x: parent.position.x + 250, y: parent.position.y };
 
-    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
+    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
 
@@ -470,6 +510,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         color: type === "diamond" ? "default" : "default",
       },
       selected: true,
+      style: type === "diamond" ? getNodeStyle("flowchart-decision") : getNodeStyle("default"),
     };
 
     setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
@@ -514,7 +555,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const pos = { x: selected.position.x, y: selected.position.y + 80 };
 
-    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData };
+    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
 
@@ -825,6 +866,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
+      // Ctrl+Shift+L: reorganize layout
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "L") { e.preventDefault(); handleReLayout(); toast.info("Layout reorganizado"); }
       // Alt+Arrow: move node between branches
       if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); handleMoveNode("up"); return; }
       if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); handleMoveNode("down"); return; }
@@ -852,7 +895,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, searchOpen]);
+  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, handleReLayout, searchOpen]);
 
   // AI: apply generated map
   const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
@@ -1027,7 +1070,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         edges={draggingNodeId
           ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
           : edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStart={handleNodeDragStart}

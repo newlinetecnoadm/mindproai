@@ -59,7 +59,7 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
     const childIds = childrenMap.get(id) || [];
     const children = childIds.map((cid) => build(cid, depth + 1)).filter(Boolean) as TreeNode[];
 
-    const nodeH = isRoot ? ROOT_HEIGHT : NODE_HEIGHT;
+    const { h: nodeH, w: nodeW } = getNodeDimensions(node);
     const subtreeHeight =
       children.length === 0
         ? nodeH
@@ -85,14 +85,17 @@ function layoutMindmapBranch(
   direction: 1 | -1,
   positions: Map<string, { x: number; y: number }>
 ) {
-  const y = yStart + tree.subtreeHeight / 2 - NODE_HEIGHT / 2;
+  const { h: nodeH, w: nodeW } = getNodeDimensions(tree.node);
+  const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
   positions.set(tree.id, { x, y });
 
   if (tree.children.length === 0) return;
 
   let childY = yStart;
   for (const child of tree.children) {
-    const childX = direction === 1 ? x + NODE_WIDTH + H_GAP : x - NODE_WIDTH - H_GAP;
+    const { w: childW } = getNodeDimensions(child.node);
+    // x is the position of current node, childX should be offset by current node width
+    const childX = direction === 1 ? x + nodeW + H_GAP : x - childW - H_GAP;
     layoutMindmapBranch(child, childX, childY, direction, positions);
     childY += child.subtreeHeight + V_GAP;
   }
@@ -107,7 +110,8 @@ function countDescendants(tree: TreeNode): number {
 }
 
 function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
-  positions.set(tree.id, { x: -ROOT_WIDTH / 2, y: -ROOT_HEIGHT / 2 });
+  const { h: rootH, w: rootW } = getNodeDimensions(tree.node);
+  positions.set(tree.id, { x: -rootW / 2, y: -rootH / 2 });
 
   if (tree.children.length === 0) return;
 
@@ -136,13 +140,14 @@ function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: numbe
 
   let rightY = -getGroupHeight(rightChildren) / 2;
   for (const child of rightChildren) {
-    layoutMindmapBranch(child, ROOT_WIDTH / 2 + H_GAP, rightY, 1, positions);
+    layoutMindmapBranch(child, rootW / 2 + H_GAP, rightY, 1, positions);
     rightY += child.subtreeHeight + V_GAP;
   }
 
   let leftY = -getGroupHeight(leftChildren) / 2;
   for (const child of leftChildren) {
-    layoutMindmapBranch(child, -(ROOT_WIDTH / 2 + H_GAP + NODE_WIDTH), leftY, -1, positions);
+    const { w: childW } = getNodeDimensions(child.node);
+    layoutMindmapBranch(child, -(rootW / 2 + H_GAP + childW), leftY, -1, positions);
     leftY += child.subtreeHeight + V_GAP;
   }
 }
@@ -164,34 +169,38 @@ function buildOrgTree(nodes: Node[], edges: Edge[]) {
   if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
   if (!rootId) return null;
 
-  interface OrgTreeNode { id: string; children: OrgTreeNode[]; subtreeWidth: number; }
+  interface OrgTreeNode { id: string; children: OrgTreeNode[]; subtreeWidth: number; node: Node; }
 
   function build(id: string): OrgTreeNode | null {
-    if (!nodeMap.has(id)) return null;
+    const node = nodeMap.get(id);
+    if (!node) return null;
     const childIds = childrenMap.get(id) || [];
     const children = childIds.map((c) => build(c)).filter(Boolean) as OrgTreeNode[];
+    const { w: nodeW } = getNodeDimensions(node);
     const subtreeWidth = children.length === 0
-      ? ORG_NODE_WIDTH
-      : children.reduce((s, c) => s + c.subtreeWidth, 0) + (children.length - 1) * ORG_H_GAP;
-    return { id, children, subtreeWidth };
+      ? nodeW
+      : Math.max(nodeW, children.reduce((s, c) => s + c.subtreeWidth, 0) + (children.length - 1) * ORG_H_GAP);
+    return { id, children, subtreeWidth, node };
   }
   return build(rootId);
 }
 
 function layoutOrgTree(
-  tree: { id: string; children: any[]; subtreeWidth: number },
+  tree: { id: string; children: any[]; subtreeWidth: number; node: Node },
   x: number,
   y: number,
   positions: Map<string, { x: number; y: number }>
 ) {
-  positions.set(tree.id, { x: x + tree.subtreeWidth / 2 - ORG_NODE_WIDTH / 2, y });
+  const { h: nodeH, w: nodeW } = getNodeDimensions(tree.node);
+  positions.set(tree.id, { x: x + tree.subtreeWidth / 2 - nodeW / 2, y });
   if (tree.children.length === 0) return;
   let childX = x;
   for (const child of tree.children) {
-    layoutOrgTree(child, childX, y + ORG_NODE_HEIGHT + ORG_V_GAP, positions);
+    layoutOrgTree(child, childX, y + nodeH + ORG_V_GAP, positions);
     childX += child.subtreeWidth + ORG_H_GAP;
   }
 }
+
 
 // ─── Timeline layout (horizontal sequential) ───────────
 
@@ -216,8 +225,13 @@ function layoutTimeline(nodes: Node[], edges: Edge[]): Map<string, { x: number; 
   // Add any unvisited nodes
   nodes.forEach((n) => { if (!visited.has(n.id)) ordered.push(n.id); });
 
-  ordered.forEach((id, i) => {
-    positions.set(id, { x: i * (TL_NODE_WIDTH + TL_GAP), y: 0 });
+  let currentX = 0;
+  ordered.forEach((id) => {
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+    const { w: nodeW } = getNodeDimensions(node);
+    positions.set(id, { x: currentX, y: 0 });
+    currentX += nodeW + TL_GAP;
   });
   return positions;
 }
@@ -256,7 +270,14 @@ function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number
       const angle = startAngle + angleStep * (i + 0.5);
       const cx = parentX + radius * Math.cos(angle);
       const cy = parentY + radius * Math.sin(angle);
-      positions.set(cid, { x: cx - CONCEPT_NODE_WIDTH / 2, y: cy - CONCEPT_NODE_HEIGHT / 2 });
+      
+      const childNode = nodes.find(n => n.id === cid);
+      if (childNode) {
+        const { w: childW, h: childH } = getNodeDimensions(childNode);
+        positions.set(cid, { x: cx - childW / 2, y: cy - childH / 2 });
+      } else {
+        positions.set(cid, { x: cx - CONCEPT_NODE_WIDTH / 2, y: cy - CONCEPT_NODE_HEIGHT / 2 });
+      }
 
       // Recurse with a narrower sweep
       const childSweep = Math.min(sweep / childIds.length, Math.PI * 0.8);
@@ -266,7 +287,13 @@ function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number
 
   const directChildren = (childrenMap.get(rootId) || []).filter((id) => !visited.has(id));
   if (directChildren.length > 0) {
-    layoutLevel(rootId, CONCEPT_NODE_WIDTH / 2, CONCEPT_NODE_HEIGHT / 2, -Math.PI / 2, Math.PI * 2, CONCEPT_RADIUS);
+    const rootNode = nodes.find(n => n.id === rootId);
+    if (rootNode) {
+      const { w: rootW, h: rootH } = getNodeDimensions(rootNode);
+      layoutLevel(rootId, rootW / 2, rootH / 2, -Math.PI / 2, Math.PI * 2, CONCEPT_RADIUS);
+    } else {
+      layoutLevel(rootId, CONCEPT_NODE_WIDTH / 2, CONCEPT_NODE_HEIGHT / 2, -Math.PI / 2, Math.PI * 2, CONCEPT_RADIUS);
+    }
   }
 
   return positions;
@@ -376,6 +403,20 @@ export function autoLayoutDiagram(
 }
 
 function getNodeDimensions(node: Node): { w: number; h: number } {
+  const mw = (node as any).measured?.width;
+  const mh = (node as any).measured?.height;
+  
+  if (mw !== undefined && mh !== undefined) {
+    return { w: mw, h: mh };
+  }
+
+  // Fallbacks if measured is not available
+  const w = node.width;
+  const h = node.height;
+  if (w !== undefined && h !== undefined) {
+    return { w, h };
+  }
+
   const d = node.data as any;
   if (d?.isRoot) return { w: ROOT_WIDTH, h: ROOT_HEIGHT };
   const type = node.type;

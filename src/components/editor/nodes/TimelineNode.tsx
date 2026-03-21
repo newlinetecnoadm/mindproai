@@ -10,15 +10,6 @@ export type TimelineNodeData = {
   isMilestone?: boolean;
 };
 
-const colorMap: Record<string, string> = {
-  blue: "border-blue-500 bg-blue-50 dark:bg-blue-950",
-  green: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950",
-  purple: "border-purple-500 bg-purple-50 dark:bg-purple-950",
-  red: "border-red-500 bg-red-50 dark:bg-red-950",
-  orange: "border-orange-500 bg-orange-50 dark:bg-orange-950",
-  yellow: "border-amber-500 bg-amber-50 dark:bg-amber-950",
-  default: "border-border bg-card",
-};
 
 const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
 
@@ -41,7 +32,6 @@ function TimelineNode({ data, selected, id }: NodeProps & { data: TimelineNodeDa
     return () => window.removeEventListener("mindmap-edit-node", handler);
   }, [id]);
 
-  const colorClass = colorMap[data.color || "default"] || colorMap.default;
   const handleBlur = () => { setEditing(false); data.label = label; };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { setEditing(false); data.label = label; }
@@ -50,12 +40,19 @@ function TimelineNode({ data, selected, id }: NodeProps & { data: TimelineNodeDa
 
   return (
     <div
-      className={cn(
-        "border-2 rounded-xl shadow-sm transition-all cursor-pointer w-[180px]",
-        colorClass,
-        data.isMilestone && "border-primary shadow-glow",
-        selected && "ring-2 ring-primary/50 shadow-md"
-      )}
+      style={{
+        padding: '8px 16px',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        whiteSpace: 'normal',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+      }}
       onDoubleClick={() => setEditing(true)}
     >
       <Handle type="source" position={Position.Top} id="top" className={handleStyle} />

@@ -16,15 +16,6 @@ const shapeStyles: Record<string, string> = {
   cylinder: "rounded-t-[50%] rounded-b-[50%]",
 };
 
-const colorMap: Record<string, string> = {
-  blue: "border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
-  green: "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  red: "border-red-500 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200",
-  yellow: "border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  purple: "border-purple-500 bg-purple-50 text-purple-800 dark:bg-purple-950 dark:text-purple-200",
-  orange: "border-orange-500 bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
-  default: "border-border bg-card text-foreground",
-};
 
 const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
 
@@ -48,7 +39,6 @@ function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNode
   }, [id]);
 
   const shape = data.shape || "rectangle";
-  const colorClass = colorMap[data.color || "default"] || colorMap.default;
   const isDiamond = shape === "diamond";
 
   const handleBlur = () => { setEditing(false); data.label = label; };
@@ -59,12 +49,18 @@ function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNode
 
   return (
     <div
-      className={cn(
-        "border-2 shadow-sm transition-all cursor-pointer w-[160px] min-h-[50px] flex items-center justify-center",
-        shapeStyles[shape], colorClass,
-        isDiamond ? "w-[100px] h-[100px]" : "px-5 py-3",
-        selected && "ring-2 ring-primary/50 shadow-md"
-      )}
+      style={{
+        padding: isDiamond ? '20px' : '12px 20px',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        whiteSpace: 'normal',
+        textAlign: 'center',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
       onDoubleClick={() => setEditing(true)}
     >
       <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
@@ -81,7 +77,7 @@ function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNode
           <input ref={inputRef} value={label} onChange={(e) => setLabel(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown}
             className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-medium" />
         ) : (
-          <span className="text-sm font-medium text-center block">{label}</span>
+          <span className="text-sm font-medium text-center block leading-snug">{label}</span>
         )}
       </div>
     </div>

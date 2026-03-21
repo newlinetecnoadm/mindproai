@@ -12,25 +12,6 @@ export type OrgNodeData = {
   variant?: "full" | "simple";
 };
 
-const deptColors: Record<string, string> = {
-  blue: "border-l-blue-500",
-  green: "border-l-emerald-500",
-  purple: "border-l-purple-500",
-  red: "border-l-red-500",
-  orange: "border-l-orange-500",
-  yellow: "border-l-amber-500",
-  default: "border-l-primary",
-};
-
-const simpleBgColors: Record<string, string> = {
-  blue: "bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300",
-  green: "bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300",
-  purple: "bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-300",
-  red: "bg-red-500/15 border-red-500 text-red-700 dark:text-red-300",
-  orange: "bg-primary/15 border-primary text-primary",
-  yellow: "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-300",
-  default: "bg-muted border-border text-foreground",
-};
 
 const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
 
@@ -61,9 +42,6 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   // Keep data in sync
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setRole(data.role || ""); }, [data.role]);
-
-  const colorClass = deptColors[data.color || "default"] || deptColors.default;
-  const simpleColorClass = simpleBgColors[data.color || "default"] || simpleBgColors.default;
   
   const commitLabel = () => { setEditingLabel(false); data.label = label; };
   const commitRole = () => { setEditingRole(false); data.role = role; };
@@ -84,11 +62,17 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   if (isSimple) {
     return (
       <div
-        className={cn(
-          "rounded-xl border-2 shadow-sm transition-all cursor-pointer w-[160px] px-4 py-2.5 text-center",
-          simpleColorClass,
-          selected && "ring-2 ring-primary/50 shadow-md"
-        )}
+        style={{
+          padding: '10px 16px',
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          textAlign: 'center',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
         onDoubleClick={() => setEditingLabel(true)}
       >
         {handles}
@@ -102,7 +86,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
             className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-semibold"
           />
         ) : (
-          <span className="text-sm font-semibold">{label}</span>
+          <span className="text-sm font-semibold leading-snug">{label}</span>
         )}
       </div>
     );
@@ -110,11 +94,16 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
 
   return (
     <div
-      className={cn(
-        "bg-card border border-border border-l-4 rounded-lg shadow-sm transition-all cursor-pointer w-[200px]",
-        colorClass,
-        selected && "ring-2 ring-primary/50 shadow-md"
-      )}
+      style={{
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+        whiteSpace: 'normal',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '8px',
+      }}
     >
       {handles}
 
@@ -142,7 +131,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
             />
           ) : (
             <p
-              className="text-sm font-semibold truncate cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5"
+              className="text-sm font-semibold break-words cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5"
               onDoubleClick={() => setEditingLabel(true)}
               onClick={() => setEditingLabel(true)}
             >

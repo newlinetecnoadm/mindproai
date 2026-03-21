@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, useStore } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 
 export type MindMapNodeData = {
@@ -80,18 +80,41 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     ? (branchColorMap[data.color || "default"] || branchColorMap.default)
     : (colorMap[data.color || "default"] || colorMap.default);
   const isRoot = data.isRoot;
+  const isCollapsed = !!(data as any).isCollapsed;
 
   const handleStyle = "!w-2 !h-2 !bg-muted-foreground/40 !border-none";
+
+  // Detect children including those hidden by collapse
+  const hasChildren = useStore((s) => s.edges.some((e) => e.source === id));
+
+  // Detect which side the children connect from (left or right handle)
+  const childSide = useStore((s) => {
+    const outEdge = s.edges.find((e) => e.source === id);
+    return outEdge?.sourceHandle === 'left' ? 'left' : 'right';
+  });
+
+  const handleToggleCollapse = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: id } }));
+  };
 
   return (
     <div
       className={cn(
-        "px-4 py-2 rounded-xl border-2 shadow-sm transition-all cursor-pointer text-center",
-        colorClass,
-        isRoot ? "min-w-[200px] px-6 py-3 text-lg font-bold shadow-glow border-primary bg-primary text-primary-foreground"
-          : "w-[180px]",
-        selected && !isRoot && "ring-2 ring-primary/50 shadow-md"
+        "px-4 py-2 min-w-[120px] max-w-[200px] text-center relative",
+        isRoot && "px-6 py-3 min-w-[200px] max-w-[240px]"
       )}
+      style={{
+        wordBreak: "break-word",
+        overflowWrap: "break-word",
+        whiteSpace: "normal",
+        boxSizing: "border-box",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
       onDoubleClick={handleDoubleClick}
     >
       <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
@@ -115,9 +138,28 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
           style={{ fontSize: isRoot ? "1.125rem" : "0.875rem" }}
         />
       ) : (
-        <span className={cn("font-medium", isRoot ? "text-lg" : "text-sm")}>
+        <span className={cn("font-medium leading-snug", isRoot ? "text-lg" : "text-sm")}>
           {label}
         </span>
+      )}
+
+      {/* Collapse/Expand button — positioned on whichever side the children connect */}
+      {hasChildren && !isRoot && !editing && (
+        <button
+          className="collapse-btn"
+          style={childSide === 'left'
+            ? { right: 'auto', left: '-9px' }
+            : { left: 'auto', right: '-9px' }
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleCollapse(e as any);
+          }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          title={isCollapsed ? "Expandir" : "Colapsar"}
+        >
+          {isCollapsed ? "+" : "−"}
+        </button>
       )}
     </div>
   );
