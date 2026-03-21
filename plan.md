@@ -31,6 +31,8 @@ Plataforma de produtividade visual com mapas mentais, diagramas, boards Kanban e
 | `/` | Index | Landing page |
 | `/login` | Login | Autenticação (email/senha + Google OAuth) |
 | `/cadastro` | Cadastro | Registro de novo usuário |
+| `/esqueci-senha` | ForgotPassword | Recuperação de senha |
+| `/redefinir-senha` | ResetPassword | Redefinir senha |
 | `/convite` | AcceptInvite | Aceitar convite de colaboração |
 
 ### Protegidas (autenticado)
@@ -40,7 +42,7 @@ Plataforma de produtividade visual com mapas mentais, diagramas, boards Kanban e
 | `/diagramas` | DiagramList | Lista de diagramas |
 | `/diagramas/novo` | NewDiagram | Criar novo diagrama |
 | `/diagramas/:id` | DiagramEditor | Editor de diagrama |
-| `/boards` | WorkspaceList | Lista de boards Kanban |
+| `/boards` | WorkspaceList | Lista de boards Kanban (agrupados por workspace) |
 | `/boards/:id` | BoardDetail | Board Kanban individual |
 | `/agenda` | AgendaPage | Calendário/agenda |
 | `/inbox` | InboxPage | Caixa de entrada rápida |
@@ -60,7 +62,9 @@ Plataforma de produtividade visual com mapas mentais, diagramas, boards Kanban e
 
 ## Schema do Banco de Dados
 
-### `user_profiles`
+### Usuários e Autenticação
+
+#### `user_profiles`
 Perfil do usuário (criado automaticamente via trigger `handle_new_user`).
 
 | Coluna | Tipo | Descrição |
@@ -69,6 +73,7 @@ Perfil do usuário (criado automaticamente via trigger `handle_new_user`).
 | full_name | text | Nome completo |
 | email | text | E-mail |
 | avatar_url | text | URL do avatar |
+| birth_date | date | Data de nascimento |
 | onboarding_done | boolean | Onboarding concluído |
 | notify_comments | boolean | Notificar comentários |
 | notify_card_moved | boolean | Notificar movimentação de cartão |
@@ -82,7 +87,7 @@ Perfil do usuário (criado automaticamente via trigger `handle_new_user`).
 | notify_agenda_reminders | boolean | Notificar lembretes da agenda |
 | notify_agenda_event_updated | boolean | Notificar evento atualizado |
 
-### `user_roles`
+#### `user_roles`
 Roles de usuário (separado de profiles por segurança).
 
 | Coluna | Tipo | Descrição |
@@ -91,7 +96,7 @@ Roles de usuário (separado de profiles por segurança).
 | user_id | uuid | Referência ao auth.users |
 | role | enum (admin, moderator, user) | Papel do usuário |
 
-### `admin_whitelist`
+#### `admin_whitelist`
 Lista de e-mails com acesso admin automático.
 
 | Coluna | Tipo |
@@ -101,6 +106,17 @@ Lista de e-mails com acesso admin automático.
 ---
 
 ### Diagramas
+
+#### `diagram_workspaces`
+Workspaces para organizar diagramas.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid (PK) | |
+| user_id | uuid | Dono do workspace |
+| title | text | Título |
+| position | integer | Ordem |
+| is_default | boolean | Workspace padrão |
 
 #### `diagrams`
 | Coluna | Tipo | Descrição |
@@ -116,6 +132,7 @@ Lista de e-mails com acesso admin automático.
 | is_public | boolean | Diagrama público |
 | public_token | text | Token de acesso público |
 | version | integer | Versão do diagrama |
+| diagram_workspace_id | uuid (nullable) | FK → diagram_workspaces |
 
 #### `diagram_collaborators`
 | Coluna | Tipo | Descrição |
@@ -129,11 +146,30 @@ Lista de e-mails com acesso admin automático.
 
 ### Boards (Kanban)
 
+#### `workspaces`
+Workspaces para organizar boards.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid (PK) | |
+| user_id | uuid | Dono do workspace |
+| title | text | Título |
+| position | integer | Ordem |
+| is_default | boolean | Workspace padrão |
+
+#### `workspace_members`
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| workspace_id | uuid | FK → workspaces |
+| user_id | uuid | Membro |
+| role | text | Papel no workspace |
+
 #### `boards`
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | id | uuid (PK) | |
 | user_id | uuid | Dono do board |
+| workspace_id | uuid (nullable) | FK → workspaces |
 | title | text | Título |
 | description | text | Descrição |
 | cover_color | text | Cor de capa |
@@ -163,6 +199,7 @@ Lista de e-mails com acesso admin automático.
 | is_complete | boolean | Concluído |
 | cover_color | text | Cor de capa |
 | cover_image | text | Imagem de capa |
+| diagram_id | uuid (nullable) | FK → diagrams (diagrama vinculado) |
 
 #### `board_members`
 | Coluna | Tipo | Descrição |
@@ -293,7 +330,7 @@ Lista de e-mails com acesso admin automático.
 
 ---
 
-### Convites
+### Convites e Solicitações de Acesso
 
 #### `invitations`
 | Coluna | Tipo | Descrição |
@@ -308,6 +345,20 @@ Lista de e-mails com acesso admin automático.
 | token | text | Token do convite |
 | status | text | pending, accepted, declined |
 | expires_at | timestamptz | Expiração (7 dias) |
+
+#### `access_requests`
+Solicitações de acesso a recursos compartilhados.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid (PK) | |
+| requester_id | uuid | Quem solicitou |
+| owner_id | uuid | Dono do recurso |
+| resource_type | text | Tipo do recurso |
+| resource_id | uuid | ID do recurso |
+| requested_role | text | Papel solicitado |
+| status | text | pending, approved, denied |
+| resolved_at | timestamptz | Data de resolução |
 
 ---
 
@@ -341,6 +392,70 @@ Lista de e-mails com acesso admin automático.
 
 ---
 
+### IA e Configurações
+
+#### `ai_settings`
+Configurações de provedores de IA.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid (PK) | |
+| provider | text | Provedor (ex: openai) |
+| model | text | Modelo |
+| api_key_encrypted | text | Chave encriptada |
+| is_active | boolean | Ativo |
+
+---
+
+### E-mail
+
+#### `email_send_log`
+Log de e-mails enviados.
+
+| Coluna | Tipo |
+|---|---|
+| id | uuid (PK) |
+| recipient_email | text |
+| template_name | text |
+| status | text |
+| message_id | text |
+| error_message | text |
+| metadata | jsonb |
+
+#### `email_send_state`
+Estado de envio de e-mail (rate limiting).
+
+| Coluna | Tipo |
+|---|---|
+| id | integer (PK) |
+| batch_size | integer |
+| send_delay_ms | integer |
+| auth_email_ttl_minutes | integer |
+| transactional_email_ttl_minutes | integer |
+| retry_after_until | timestamptz |
+
+#### `email_unsubscribe_tokens`
+Tokens de descadastramento de e-mail.
+
+| Coluna | Tipo |
+|---|---|
+| id | uuid (PK) |
+| email | text |
+| token | text |
+| used_at | timestamptz |
+
+#### `suppressed_emails`
+E-mails suprimidos (bounce, complaint).
+
+| Coluna | Tipo |
+|---|---|
+| id | uuid (PK) |
+| email | text |
+| reason | text |
+| metadata | jsonb |
+
+---
+
 ## Funções SQL (Security Definer)
 
 | Função | Descrição |
@@ -352,12 +467,18 @@ Lista de e-mails com acesso admin automático.
 | `can_access_board(board_id, user_id)` | Dono OU membro |
 | `can_access_card(card_id, user_id)` | Acesso ao cartão via board |
 | `can_access_checklist(checklist_id, user_id)` | Acesso ao checklist via board |
+| `can_access_workspace(user_id, workspace_id)` | Acesso ao workspace |
+| `is_workspace_owner(user_id, workspace_id)` | Dono do workspace |
 | `is_diagram_owner(diagram_id, user_id)` | Dono do diagrama |
 | `is_diagram_collaborator(diagram_id, user_id)` | Colaborador do diagrama |
 | `is_diagram_editor(diagram_id, user_id)` | Editor do diagrama |
 | `handle_new_user()` | Trigger: cria perfil ao registrar |
 | `handle_new_subscription()` | Trigger: cria subscription free ao registrar |
 | `update_updated_at_column()` | Trigger: atualiza updated_at |
+| `enqueue_email(payload, queue_name)` | Enfileira e-mail para envio |
+| `read_email_batch(batch_size, queue_name, vt)` | Lê batch de e-mails da fila |
+| `delete_email(message_id, queue_name)` | Remove e-mail da fila |
+| `move_to_dlq(dlq_name, message_id, payload, source_queue)` | Move e-mail para DLQ |
 
 ---
 
@@ -373,6 +494,12 @@ Lista de e-mails com acesso admin automático.
 | `send-reminders` | Sim | Cron: envia lembretes de prazos |
 | `notify-board-event` | Sim | Notificação de eventos do board |
 | `notify-card-comment` | Sim | Notificação de comentários |
+| `accept-invitation` | Não | Aceitar convite de colaboração |
+| `ai-chat` | Não | Chat com IA |
+| `ai-map-assist` | Não | Assistente IA para mapas mentais |
+| `ai-board-assist` | Não | Assistente IA para boards |
+| `auth-email-hook` | Não | Hook de e-mail de autenticação |
+| `process-email-queue` | Não | Processa fila de e-mails |
 
 ---
 
@@ -413,16 +540,19 @@ Lista de e-mails com acesso admin automático.
 - Templates pré-definidos
 - Undo/Redo
 - Busca de nós
+- Autosave a cada 10s com refs para evitar closures stale
+- Organização por diagram_workspaces
 
 ### 2. Boards Kanban
 - Drag-and-drop de cartões e colunas
-- Cartões com: descrição, labels, membros, checklists, anexos, comentários, capa
+- Cartões com: descrição, labels, membros, checklists (editáveis/excluíveis), anexos, comentários, capa, diagrama vinculado
 - Filtros por label, membro, data
 - Temas visuais por board
 - Templates de board
 - Feed de atividades por cartão
 - Lembretes de prazo (cron + e-mail + notificação in-app)
-- Compartilhamento/convites
+- Compartilhamento/convites com visualização de membros e permissões
+- Organização por workspaces (boards órfãos tratados como "não atribuídos")
 
 ### 3. Agenda
 - Visualizações mensal e semanal
@@ -445,6 +575,7 @@ Lista de e-mails com acesso admin automático.
 ### 7. Autenticação
 - E-mail/senha com confirmação de e-mail
 - Google OAuth
+- Recuperação de senha (esqueci-senha / redefinir-senha)
 - Perfil automático via trigger
 
 ### 8. Admin
@@ -452,12 +583,18 @@ Lista de e-mails com acesso admin automático.
 - Gestão de usuários e roles
 - Gestão de planos de assinatura
 - Atribuição manual de planos
+- Configurações de IA
 
 ### 9. Assinaturas
 - Checkout via Stripe
 - Portal do cliente Stripe
 - Webhook para sincronização de status
 - Limites enforçados no frontend
+
+### 10. IA
+- Chat com IA (AIChatWidget)
+- Assistente para mapas mentais (AIMapAssistDialog)
+- Assistente para boards (AIBoardAssistDialog)
 
 ---
 
