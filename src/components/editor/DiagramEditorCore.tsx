@@ -177,7 +177,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       );
       const hasRemoval = changes.some((c) => c.type === 'remove');
 
-      if (hasDimensionChange || (hasRemoval && diagramType === 'mindmap')) {
+      if (hasDimensionChange || (hasRemoval && isMindmapLike(diagramType))) {
         if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
         layoutTimeoutRef.current = setTimeout(() => {
           triggerLayout();
