@@ -56,7 +56,7 @@ export function useAutoLayout(
     // Restore original nodes with updated positions only (don't pass explicit width/height)
     const positioned = applyPositions(nodes, laid.nodes);
 
-    if (diagramType === 'mindmap') {
+    if (diagramType === 'mindmap' || diagramType === 'orgchart') {
       const opts = themeRef.current;
       const coloredNodes = assignDepthColors(positioned, laid.edges, opts);
       const coloredEdges = assignEdgeColors(coloredNodes, laid.edges, opts);
