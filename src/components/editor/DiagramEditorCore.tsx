@@ -639,8 +639,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: defaultStructuredEdgeType }];
-    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase) : nextNodes;
-    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase) : nextEdgeBase;
+    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
+    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
 
     applyAutoLayout(coloredNextNodes, nextEdges);
 
@@ -1005,7 +1005,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       id: `e-${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
-      type: "smoothstep",
+      type: defaultStructuredEdgeType,
     }));
 
     const newNodes: Node[] = genNodes.map((n) => {
@@ -1078,7 +1078,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       id: `e-${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
-      type: "smoothstep",
+      type: defaultStructuredEdgeType,
     }));
 
     const allNodes = [...nodes, ...addedNodes];
