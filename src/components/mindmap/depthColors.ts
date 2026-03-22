@@ -146,7 +146,7 @@ export function buildDepthMap(nodes: Node[], edges: Edge[]): Map<string, number>
 export function assignDepthColors(
   nodes: Node[],
   edges: Edge[],
-  themeOptions?: { edgeColor?: string; isDefault?: boolean }
+  themeOptions?: { edgeColor?: string; isDefault?: boolean; isDark?: boolean }
 ): Node[] {
   const depthMap = buildDepthMap(nodes, edges);
 
