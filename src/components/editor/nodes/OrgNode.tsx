@@ -23,6 +23,10 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   const labelRef = useRef<HTMLInputElement>(null);
   const roleRef = useRef<HTMLInputElement>(null);
   const isSimple = data.variant === "simple";
+  const depth = (data as any).depth ?? 0;
+  const isDepth1 = !(data as any).isRoot && depth === 1;
+  const fillColor = isDepth1 ? ((data as any).branchHex as string | undefined) : undefined;
+
 
   useEffect(() => { if (editingLabel && labelRef.current) { labelRef.current.focus(); labelRef.current.select(); } }, [editingLabel]);
   useEffect(() => { if (editingRole && roleRef.current) { roleRef.current.focus(); roleRef.current.select(); } }, [editingRole]);
@@ -72,6 +76,9 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          borderRadius: 12,
+          backgroundColor: fillColor,
+          color: fillColor ? '#ffffff' : undefined,
         }}
         onDoubleClick={() => setEditingLabel(true)}
       >
@@ -83,10 +90,10 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
             onChange={(e) => setLabel(e.target.value)}
             onBlur={commitLabel}
             onKeyDown={(e) => { if (e.key === "Enter") commitLabel(); }}
-            className="bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-semibold"
+            className={cn("bg-transparent outline-none text-center w-full min-w-[60px] text-sm font-semibold", fillColor && "text-white placeholder:text-white/70")}
           />
         ) : (
-          <span className="text-sm font-semibold leading-snug">{label}</span>
+          <span className={cn("text-sm font-semibold leading-snug", fillColor && "text-white")}>{label}</span>
         )}
       </div>
     );
@@ -107,12 +114,12 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
     >
       {handles}
 
-      <div className="p-3 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+      <div className="p-3 flex items-center gap-3 rounded-xl w-full" style={{ backgroundColor: fillColor }}>
+        <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0", fillColor ? "bg-white/15" : "bg-muted")}>
           {data.avatarUrl ? (
             <img src={data.avatarUrl} className="w-9 h-9 rounded-full object-cover" alt="" />
           ) : (
-            <User className="w-4 h-4 text-muted-foreground" />
+            <User className={cn("w-4 h-4", fillColor ? "text-white/80" : "text-muted-foreground")} />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -126,12 +133,12 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
                 if (e.key === "Enter") { commitLabel(); }
                 if (e.key === "Tab") { e.preventDefault(); commitLabel(); setEditingRole(true); }
               }}
-              className="bg-transparent outline-none w-full text-sm font-semibold"
+              className={cn("bg-transparent outline-none w-full text-sm font-semibold", fillColor && "text-white placeholder:text-white/70")}
               placeholder="Nome"
             />
           ) : (
             <p
-              className="text-sm font-semibold break-words cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5"
+              className={cn("text-sm font-semibold break-words cursor-text rounded px-0.5 -mx-0.5", fillColor ? "text-white hover:bg-white/10" : "hover:bg-muted/50")}
               onDoubleClick={() => setEditingLabel(true)}
               onClick={() => setEditingLabel(true)}
             >
@@ -145,12 +152,12 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
               onChange={(e) => setRole(e.target.value)}
               onBlur={commitRole}
               onKeyDown={(e) => { if (e.key === "Enter") commitRole(); }}
-              className="bg-transparent outline-none w-full text-xs text-muted-foreground mt-0.5"
+              className={cn("bg-transparent outline-none w-full text-xs mt-0.5", fillColor ? "text-white/85 placeholder:text-white/70" : "text-muted-foreground")}
               placeholder="Cargo"
             />
           ) : (
             <p
-              className="text-xs text-muted-foreground truncate cursor-text hover:bg-muted/50 rounded px-0.5 -mx-0.5 mt-0.5"
+              className={cn("text-xs truncate cursor-text rounded px-0.5 -mx-0.5 mt-0.5", fillColor ? "text-white/85 hover:bg-white/10" : "text-muted-foreground hover:bg-muted/50")}
               onDoubleClick={() => setEditingRole(true)}
               onClick={() => setEditingRole(true)}
             >
