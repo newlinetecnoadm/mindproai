@@ -43,8 +43,8 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setRole(data.role || ""); }, [data.role]);
   
-  const commitLabel = () => { setEditingLabel(false); data.label = label; };
-  const commitRole = () => { setEditingRole(false); data.role = role; };
+  const commitLabel = () => { setEditingLabel(false); data.label = label; window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } })); };
+  const commitRole = () => { setEditingRole(false); data.role = role; window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "role", value: role } })); };
 
   const handles = (
     <>
