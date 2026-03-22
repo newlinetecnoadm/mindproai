@@ -1,37 +1,18 @@
 import { memo, useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps, useStore } from "@xyflow/react";
-import { cn } from "@/lib/utils";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 export type MindMapNodeData = {
   label: string;
   color?: string;
-  variant?: string; // "branch" = white bg, colored text/border
+  branchHex?: string;
+  depth?: number;
   isRoot?: boolean;
 };
 
-// Full color style (depth 1 nodes)
-const colorMap: Record<string, string> = {
-  orange: "border-primary bg-primary/10 text-primary",
-  blue: "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  green: "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  purple: "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
-  red: "border-red-500 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
-  yellow: "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  default: "border-border bg-card text-foreground",
-};
+// Brand identity dark gray — used for non-filled node text
+const BRAND_GRAY = "#3d3d3d";
 
-// Branch variant: white/default bg, colored text & border only
-const branchColorMap: Record<string, string> = {
-  orange: "border-primary bg-card text-primary",
-  blue: "border-blue-500 bg-card text-blue-600 dark:text-blue-400",
-  green: "border-emerald-500 bg-card text-emerald-600 dark:text-emerald-400",
-  purple: "border-purple-500 bg-card text-purple-600 dark:text-purple-400",
-  red: "border-red-500 bg-card text-red-600 dark:text-red-400",
-  yellow: "border-amber-500 bg-card text-amber-600 dark:text-amber-400",
-  default: "border-border bg-card text-foreground",
-};
-
-function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData }) {
+function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,9 +28,7 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId === id) {
-        if (detail?.replaceText) {
-          setLabel("");
-        }
+        if (detail?.replaceText) setLabel("");
         setEditing(true);
       }
     };
@@ -65,67 +44,56 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      setEditing(false);
-      data.label = label;
-    }
-    if (e.key === "Escape") {
-      setLabel(data.label);
-      setEditing(false);
-    }
+    if (e.key === "Enter") { setEditing(false); data.label = label; }
+    if (e.key === "Escape") { setLabel(data.label); setEditing(false); }
   };
 
-  const isBranch = data.variant === "branch";
-  const colorClass = isBranch
-    ? (branchColorMap[data.color || "default"] || branchColorMap.default)
-    : (colorMap[data.color || "default"] || colorMap.default);
   const isRoot = data.isRoot;
-  const isCollapsed = !!(data as any).isCollapsed;
+  const depth = data.depth ?? 0;
 
-  const handleStyle = "!w-2 !h-2 !bg-muted-foreground/40 !border-none";
+  // Depth-1 nodes: filled pill with branch color + white text
+  // All others: transparent background, brand gray text
+  const isDepth1 = !isRoot && depth === 1;
+  const fillColor = isDepth1 ? (data.branchHex ?? undefined) : undefined;
+  const isDark = !!(data as any).isDark;
+  // Filled nodes (depth-1) always white text; others adapt to theme darkness
+  const textColor = fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY;
 
-  // Detect children including those hidden by collapse
-  const hasChildren = useStore((s) => s.edges.some((e) => e.source === id));
+  const fontSize = isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem";
+  const fontWeight = isRoot ? "700" : "400";
 
-  // Detect which side the children connect from (left or right handle)
-  const childSide = useStore((s) => {
-    const outEdge = s.edges.find((e) => e.source === id);
-    return outEdge?.sourceHandle === 'left' ? 'left' : 'right';
-  });
 
-  const handleToggleCollapse = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    window.dispatchEvent(new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: id } }));
-  };
+  // Handles invisible — React Flow needs them for edge routing
+  const handleStyle = "!w-2 !h-2 !bg-transparent !border-none !opacity-0";
 
   return (
     <div
-      className={cn(
-        "px-4 py-2 min-w-[120px] max-w-[200px] text-center relative",
-        isRoot && "px-6 py-3 min-w-[200px] max-w-[240px]"
-      )}
       style={{
-        wordBreak: "break-word",
-        overflowWrap: "break-word",
-        whiteSpace: "normal",
-        boxSizing: "border-box",
-        width: "100%",
-        height: "100%",
-        display: "flex",
+        position: "relative",
+        display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
+        whiteSpace: "nowrap",
+        // Depth-1: filled pill shape; others: plain
+        ...(fillColor ? {
+          backgroundColor: fillColor,
+          borderRadius: "8px",
+          padding: "6px 14px",
+        } : {
+          padding: "2px 6px",
+          minWidth: 40,
+        }),
       }}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle type="source" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="source" position={Position.Top}    id="top"    className={handleStyle} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
-      <Handle type="source" position={Position.Left} id="left" className={handleStyle} />
-      <Handle type="source" position={Position.Right} id="right" className={handleStyle} />
-
-      <Handle type="target" position={Position.Top} id="top" className={handleStyle} />
+      <Handle type="source" position={Position.Left}   id="left"   className={handleStyle} />
+      <Handle type="source" position={Position.Right}  id="right"  className={handleStyle} />
+      <Handle type="target" position={Position.Top}    id="top"    className={handleStyle} />
       <Handle type="target" position={Position.Bottom} id="bottom" className={handleStyle} />
-      <Handle type="target" position={Position.Left} id="left" className={handleStyle} />
-      <Handle type="target" position={Position.Right} id="right" className={handleStyle} />
+      <Handle type="target" position={Position.Left}   id="left"   className={handleStyle} />
+      <Handle type="target" position={Position.Right}  id="right"  className={handleStyle} />
 
       {editing ? (
         <input
@@ -134,32 +102,34 @@ function MindMapNode({ data, selected, id }: NodeProps & { data: MindMapNodeData
           onChange={(e) => setLabel(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="bg-transparent outline-none text-center w-full min-w-[60px] font-medium"
-          style={{ fontSize: isRoot ? "1.125rem" : "0.875rem" }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "transparent",
+            outline: "none",
+            border: "none",
+            color: textColor,
+            fontSize,
+            fontWeight,
+            fontFamily: "inherit",
+            minWidth: "60px",
+            width: `${Math.max(60, label.length * 9)}px`,
+            padding: 0,
+            lineHeight: "1.4",
+          }}
         />
       ) : (
-        <span className={cn("font-medium leading-snug", isRoot ? "text-lg" : "text-sm")}>
+        <span
+          style={{
+            color: textColor,
+            fontSize,
+            fontWeight,
+            lineHeight: "1.4",
+            letterSpacing: "-0.01em",
+            userSelect: "none",
+          }}
+        >
           {label}
         </span>
-      )}
-
-      {/* Collapse/Expand button — positioned on whichever side the children connect */}
-      {hasChildren && !isRoot && !editing && (
-        <button
-          className="collapse-btn"
-          style={childSide === 'left'
-            ? { right: 'auto', left: '-9px' }
-            : { left: 'auto', right: '-9px' }
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            handleToggleCollapse(e as any);
-          }}
-          onDoubleClick={(e) => e.stopPropagation()}
-          title={isCollapsed ? "Expandir" : "Colapsar"}
-        >
-          {isCollapsed ? "+" : "−"}
-        </button>
       )}
     </div>
   );

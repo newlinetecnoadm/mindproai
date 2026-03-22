@@ -1,20 +1,104 @@
 import type { Node, Edge } from "@xyflow/react";
 
 /**
- * Color palette for depth-1 branches.
- * Each direct child of root gets a unique color.
- * All descendants inherit that branch color.
+ * Default branch color palette (used for the "default" / neutral theme).
+ * Each direct child of root gets a unique color; descendants inherit it.
  */
-const BRANCH_COLORS = ["blue", "green", "purple", "red", "yellow", "orange"];
+const BRANCH_COLORS = ["blue", "green", "indigo", "red", "yellow", "orange"];
+
+/** Hex values used for edge strokes in the default theme */
+export const BRANCH_HEX: Record<string, string> = {
+  blue:    "#4472C4",
+  green:   "#70AD47",
+  indigo:  "#7B5EA7",
+  red:     "#C0392B",
+  yellow:  "#D4AC0D",
+  orange:  "#E9853A",
+  purple:  "#7B5EA7",
+  default: "#6B7280",
+};
+
+export function getBranchHex(color: string | undefined): string {
+  return BRANCH_HEX[color ?? "default"] ?? BRANCH_HEX.default;
+}
 
 export function getColorForDepth(depth: number): string {
   if (depth <= 0) return "orange";
   return BRANCH_COLORS[(depth - 1) % BRANCH_COLORS.length];
 }
 
+// ─── HSL helpers for theme-derived palettes ──────────────────────────────────
+
+function hexToHsl(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let hue = 0, sat = 0;
+  const lum = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    sat = lum > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: hue = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: hue = ((b - r) / d + 2) / 6; break;
+      case b: hue = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [hue * 360, sat * 100, lum * 100];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const hNorm = ((h % 360) + 360) % 360;
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+  const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
+  const x = c * (1 - Math.abs((hNorm / 60) % 2 - 1));
+  const m = lNorm - c / 2;
+  let r = 0, g = 0, b = 0;
+
+  if (hNorm < 60)       { r = c; g = x; b = 0; }
+  else if (hNorm < 120) { r = x; g = c; b = 0; }
+  else if (hNorm < 180) { r = 0; g = c; b = x; }
+  else if (hNorm < 240) { r = 0; g = x; b = c; }
+  else if (hNorm < 300) { r = x; g = 0; b = c; }
+  else                  { r = c; g = 0; b = x; }
+
+  const toHex = (v: number) =>
+    Math.round(Math.max(0, Math.min(255, (v + m) * 255))).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 /**
- * Compute the depth of a node in the tree defined by edges.
+ * Generate N distinct but harmonious branch colors from a theme base color.
+ * Returns an array of hex strings. Colors vary in hue (±25° steps) and
+ * lightness/saturation to keep them visually distinct within the same family.
  */
+export function generateThemeBranchColors(baseHex: string, n: number): string[] {
+  const [h, s, l] = hexToHsl(baseHex);
+  const colors: string[] = [];
+
+  // Hue offsets ±25 around the base, spread evenly up to ±90°
+  const hueOffsets = [0, 25, -25, 50, -50, 75, -75, 100, -100];
+  // Lightness modifier alternates: slightly darker, slightly lighter
+  const lightMods  = [0, -10, +10, -5, +5, -15, +15, -8, +8];
+
+  for (let i = 0; i < n; i++) {
+    const hOff = hueOffsets[i % hueOffsets.length];
+    const lMod = lightMods[i % lightMods.length];
+    const newH = h + hOff;
+    const newS = Math.max(30, Math.min(90, s + (i % 2 === 0 ? 5 : -5)));
+    const newL = Math.max(30, Math.min(70, l + lMod));
+    colors.push(hslToHex(newH, newS, newL));
+  }
+  return colors;
+}
+
+// ─── Tree helpers ─────────────────────────────────────────────────────────────
+
 export function getNodeDepth(nodeId: string, edges: Edge[]): number {
   let depth = 0;
   let current = nodeId;
@@ -30,10 +114,6 @@ export function getNodeDepth(nodeId: string, edges: Edge[]): number {
   return depth;
 }
 
-/**
- * Find the depth-1 ancestor of a node (the direct child of root).
- * Returns the node's own id if it IS the depth-1 node.
- */
 function findBranchAncestorId(nodeId: string, edges: Edge[]): string | null {
   const chain: string[] = [];
   let current = nodeId;
@@ -46,14 +126,10 @@ function findBranchAncestorId(nodeId: string, edges: Edge[]): string | null {
     if (!parentEdge) break;
     current = parentEdge.source;
   }
-  // chain[0] = root, chain[1] = depth-1 branch ancestor
   if (chain.length >= 2) return chain[1];
   return null;
 }
 
-/**
- * Build a depth map for all nodes.
- */
 export function buildDepthMap(nodes: Node[], edges: Edge[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const node of nodes) {
@@ -63,19 +139,31 @@ export function buildDepthMap(nodes: Node[], edges: Edge[]): Map<string, number>
 }
 
 /**
- * Assign colors to all nodes based on their branch (depth-1 ancestor).
- * - Root: orange, full style
- * - Depth 1: full color (bg + text + border in that color)
- * - Depth 2+: "branch" variant — white/default bg, but text & border inherit branch color
+ * Assign branch colors to all nodes.
+ * When themeOptions is provided and not the default theme, branch colors
+ * are derived as harmonious variants of the theme's base edgeColor.
  */
-export function assignDepthColors(nodes: Node[], edges: Edge[]): Node[] {
+export function assignDepthColors(
+  nodes: Node[],
+  edges: Edge[],
+  themeOptions?: { edgeColor?: string; isDefault?: boolean }
+): Node[] {
   const depthMap = buildDepthMap(nodes, edges);
 
-  // Find all depth-1 nodes and assign them rotating colors
   const depth1Nodes = nodes.filter((n) => depthMap.get(n.id) === 1);
-  const depth1ColorMap = new Map<string, string>();
+
+  // Palette: default theme uses BRANCH_HEX keys, others use theme-derived hex values
+  const useThemePalette = themeOptions?.edgeColor && !themeOptions?.isDefault;
+  const themeHexPalette: string[] = useThemePalette
+    ? generateThemeBranchColors(themeOptions!.edgeColor!, Math.max(depth1Nodes.length, 6))
+    : [];
+
+  const depth1HexMap = new Map<string, string>();
   depth1Nodes.forEach((n, i) => {
-    depth1ColorMap.set(n.id, BRANCH_COLORS[i % BRANCH_COLORS.length]);
+    const hex = useThemePalette
+      ? themeHexPalette[i % themeHexPalette.length]
+      : BRANCH_HEX[BRANCH_COLORS[i % BRANCH_COLORS.length]];
+    depth1HexMap.set(n.id, hex);
   });
 
   return nodes.map((node) => {
@@ -83,20 +171,111 @@ export function assignDepthColors(nodes: Node[], edges: Edge[]): Node[] {
     const isRoot = (node.data as any)?.isRoot;
 
     if (isRoot || depth === 0) {
-      return { ...node, data: { ...node.data, color: "orange" } };
+      return {
+        ...node,
+        hidden: node.hidden,
+        data: { ...node.data, branchHex: undefined, color: "root", depth: 0, isDark: themeOptions?.isDark },
+      };
     }
 
-    // Find branch ancestor (depth-1) to get the branch color
     const branchAncestorId = findBranchAncestorId(node.id, edges);
-    const branchColor = branchAncestorId ? depth1ColorMap.get(branchAncestorId) : undefined;
-    const color = branchColor || getColorForDepth(depth);
+    const branchHex = branchAncestorId ? depth1HexMap.get(branchAncestorId) : undefined;
 
-    if (depth === 1) {
-      // Full colored node
-      return { ...node, data: { ...node.data, color } };
-    }
+    const color = branchHex ? "branch" : getColorForDepth(depth);
+    return {
+      ...node,
+      // CRITICAL: preserve node.hidden so collapsed subtrees stay hidden after theme/layout changes
+      hidden: node.hidden,
+      data: { ...node.data, color, branchHex: branchHex ?? getBranchHex(color), depth, isDark: themeOptions?.isDark },
+    };
+  });
+}
 
-    // Depth 2+: branch variant (white bg, colored text/border)
-    return { ...node, data: { ...node.data, color, variant: "branch" } };
+// ─── Theme options type ───────────────────────────────────────────────────────
+
+export type EdgeThemeOptions = {
+  edgeColor?: string;
+  edgeAnimation?: string;
+  edgeDashArray?: string;
+  isDefault?: boolean;
+  isDark?: boolean;
+};
+
+/**
+ * Assign edge colors, types, and animation styles based on branch colors and active theme.
+ * Must be called after assignDepthColors.
+ *
+ * @param nodes      Nodes already processed by assignDepthColors
+ * @param edges      Raw edges
+ * @param theme      Active theme options (color, animation, dashArray)
+ */
+export function assignEdgeColors(
+  nodes: Node[],
+  edges: Edge[],
+  theme?: EdgeThemeOptions
+): Edge[] {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const depthMap = buildDepthMap(nodes, edges);
+
+  // Child count per source node
+  const childCount = new Map<string, number>();
+  for (const e of edges) {
+    childCount.set(e.source, (childCount.get(e.source) ?? 0) + 1);
+  }
+
+  // Mark ONE collapse edge per parent — ONLY for depth >= 1 sources
+  // (i.e., the circle is not shown on edges coming from the root node)
+  const collapseEdgeIds = new Set<string>();
+  const parentIds = [...new Set(edges.map((e) => e.source))];
+  for (const parentId of parentIds) {
+    const sourceDepth = depthMap.get(parentId) ?? 0;
+    if (sourceDepth < 1) continue; // ← skip root edges
+
+    const childEdges = edges.filter((e) => e.source === parentId);
+    if (childEdges.length === 0) continue;
+    const midIdx = Math.floor((childEdges.length - 1) / 2);
+    collapseEdgeIds.add(childEdges[midIdx].id);
+  }
+
+  // Build animation style suffix for this theme
+  const animStyle: Record<string, unknown> = {};
+  if (theme?.edgeAnimation && theme.edgeAnimation !== "none") {
+    animStyle._animation = theme.edgeAnimation;
+    if (theme.edgeDashArray) animStyle._dashArray = theme.edgeDashArray;
+  }
+
+  return edges.map((edge) => {
+    const sourceNode = nodeMap.get(edge.source);
+    const sourceDepth = depthMap.get(edge.source) ?? 0;
+    const isCollapsed = !!(sourceNode?.data as any)?.isCollapsed;
+    const isCollapseEdge = collapseEdgeIds.has(edge.id);
+
+    // For edges FROM root (depth 0), the color comes from the TARGET (depth-1 child).
+    // For all other edges, the source node carries the branch color.
+    const targetNode = nodeMap.get(edge.target);
+    const branchHex: string = sourceDepth === 0
+      ? ((targetNode?.data as any)?.branchHex ?? BRANCH_HEX.default)
+      : ((sourceNode?.data as any)?.branchHex ?? getBranchHex((sourceNode?.data as any)?.color));
+
+    const strokeWidth = sourceDepth === 0 ? 2 : 1.5;
+
+    return {
+      ...edge,
+      // CRITICAL: preserve edge.hidden so collapsed edges stay hidden after re-coloring
+      hidden: edge.hidden,
+      type: "mindmap",
+      style: {
+        stroke: branchHex,
+        strokeWidth,
+        ...animStyle,
+      } as React.CSSProperties,
+      data: {
+        ...(edge.data ?? {}),
+        branchColor: branchHex,
+        isCollapseEdge,
+        isCollapsed,
+        sourceNodeId: edge.source,
+      },
+    };
   });
 }

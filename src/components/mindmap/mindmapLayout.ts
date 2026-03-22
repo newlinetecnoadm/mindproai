@@ -1,11 +1,11 @@
 import type { Node, Edge } from "@xyflow/react";
 
-const ROOT_WIDTH = 200;
-const ROOT_HEIGHT = 60;
-const NODE_WIDTH = 180;
-const NODE_HEIGHT = 48;
-const H_GAP = 80;
-const V_GAP = 24;
+const ROOT_WIDTH = 180;
+const ROOT_HEIGHT = 40;
+const NODE_WIDTH = 120;
+const NODE_HEIGHT = 28;
+const H_GAP = 72;
+const V_GAP = 32;
 
 // Org chart constants
 const ORG_NODE_WIDTH = 200;
@@ -423,6 +423,8 @@ function getNodeDimensions(node: Node): { w: number; h: number } {
   if (type === "org") return { w: ORG_NODE_WIDTH, h: ORG_NODE_HEIGHT };
   if (type === "timeline") return { w: TL_NODE_WIDTH, h: TL_NODE_HEIGHT };
   if (type === "concept") return { w: CONCEPT_NODE_WIDTH, h: CONCEPT_NODE_HEIGHT };
+  // mindmap nodes are text-only; use compact fallback when measured is not yet available
+  if (type === "mindmap") return { w: NODE_WIDTH, h: NODE_HEIGHT };
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
 }
 

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Plus, ZoomIn, ZoomOut, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, LayoutGrid, Diamond, StickyNote, Spline, ArrowRight as ArrowIcon, MoveRight, GitBranch, Bot, Paintbrush } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { editorThemes, createCustomTheme, type EditorTheme } from "./editorThemes";
+import { editorThemes, type EditorTheme } from "./editorThemes";
 import { cn } from "@/lib/utils";
 
 const nodeColors = [
@@ -116,7 +115,6 @@ interface EditorToolbarProps {
   onEdgeTypeChange?: (type: string) => void;
   onAIAssist?: () => void;
   currentThemeId: string;
-  currentEdgeType?: string;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
@@ -126,13 +124,7 @@ interface EditorToolbarProps {
   canExportPdf?: boolean;
 }
 
-const edgeTypeOptions = [
-  { value: "smoothstep", label: "Padrão", icon: MoveRight },
-  { value: "curved", label: "Curva", icon: Spline },
-  { value: "straight", label: "Reta", icon: ArrowIcon },
-  { value: "orthogonal", label: "Ortogonal", icon: GitBranch },
-  { value: "hierarchy", label: "Hierarquia", icon: GitBranch },
-];
+
 
 const TipButton = ({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.ComponentProps<typeof Button>) => (
   <TooltipProvider delayDuration={200}>
@@ -148,16 +140,9 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
 const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, onReLayout, onEdgeTypeChange, onAIAssist, currentThemeId, currentEdgeType = "smoothstep",
+  onThemeChange, onReLayout, onAIAssist, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
-  const [customBg, setCustomBg] = useState("#ffffff");
-  const [customEdge, setCustomEdge] = useState("#6366f1");
-
-  const handleApplyCustom = () => {
-    onThemeChange(createCustomTheme(customBg, customEdge));
-  };
-
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md flex-wrap max-w-[calc(100vw-2rem)]">
       <TipButton label="Desfazer (Ctrl+Z)" variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo}>
@@ -220,32 +205,6 @@ const EditorToolbar = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edge type picker */}
-      {onEdgeTypeChange && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <span>
-              <TipButton label="Tipo de conector" variant="ghost" size="icon" className="h-8 w-8">
-                <Spline className="w-4 h-4" />
-              </TipButton>
-            </span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[140px]">
-            {edgeTypeOptions.map((opt) => (
-              <DropdownMenuItem
-                key={opt.value}
-                onClick={() => onEdgeTypeChange(opt.value)}
-                className={currentEdgeType === opt.value ? "bg-accent" : ""}
-              >
-                <opt.icon className="w-3.5 h-3.5 mr-2" />
-                {opt.label}
-                {currentEdgeType === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
       <div className="w-px h-5 bg-border mx-1" />
 
       <TipButton label="Mais zoom (+)" variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomIn}>
@@ -257,19 +216,6 @@ const EditorToolbar = ({
       <TipButton label="Ajustar à tela" variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView}>
         <Maximize className="w-4 h-4" />
       </TipButton>
-
-      {/* Reorganize layout with visible label */}
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs px-2.5 text-primary hover:bg-primary/10" onClick={onReLayout}>
-              <LayoutGrid className="w-4 h-4" />
-              <span className="hidden sm:inline">Reorganizar</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs font-medium">Reorganizar layout automaticamente</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
 
       <div className="w-px h-5 bg-border mx-1" />
 
@@ -298,44 +244,6 @@ const EditorToolbar = ({
                 </div>
               </button>
             ))}
-          </div>
-
-          {/* Custom color section */}
-          <DropdownMenuSeparator className="my-3" />
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Paintbrush className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-semibold">Personalizar</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="space-y-1">
-                <span className="text-[10px] text-muted-foreground font-medium">Cor de fundo</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={customBg}
-                    onChange={(e) => setCustomBg(e.target.value)}
-                    className="w-7 h-7 rounded border border-border cursor-pointer"
-                  />
-                  <span className="text-[10px] text-muted-foreground font-mono">{customBg}</span>
-                </div>
-              </label>
-              <label className="space-y-1">
-                <span className="text-[10px] text-muted-foreground font-medium">Cor dos conectores</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={customEdge}
-                    onChange={(e) => setCustomEdge(e.target.value)}
-                    className="w-7 h-7 rounded border border-border cursor-pointer"
-                  />
-                  <span className="text-[10px] text-muted-foreground font-mono">{customEdge}</span>
-                </div>
-              </label>
-            </div>
-            <Button variant="outline" size="sm" className="w-full h-7 text-xs mt-1" onClick={handleApplyCustom}>
-              Aplicar cores personalizadas
-            </Button>
           </div>
         </PopoverContent>
       </Popover>

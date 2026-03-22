@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
 import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
-import { getNodeDepth, getColorForDepth, assignDepthColors } from "@/components/mindmap/depthColors";
+import { getNodeDepth, getColorForDepth, assignDepthColors, assignEdgeColors, type EdgeThemeOptions } from "@/components/mindmap/depthColors";
 import { toggleNodeCollapse, getVisibleGraph } from "@/lib/diagramUtils";
 import {
   ReactFlow,
@@ -32,7 +32,8 @@ import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import DiamondNode from "./nodes/DiamondNode";
 import StickyNoteNode from "./nodes/StickyNoteNode";
-import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge } from "./edges/CustomEdges";
+import GhostNode from "@/components/mindmap/GhostNode";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
@@ -40,6 +41,7 @@ import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
+
 
 /** Derive UI chrome colors from a theme (bg + edge only) */
 function themeUI(t: EditorTheme) {
@@ -53,8 +55,10 @@ function themeUI(t: EditorTheme) {
   };
 }
 
+
 const nodeTypes = {
   mindmap: MindMapNode as any,
+  ghost: GhostNode as any,
   flowchart: FlowchartNode as any,
   org: OrgNode as any,
   timeline: TimelineNode as any,
@@ -64,6 +68,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
+  mindmap: MindMapEdge as any,
   smoothstep: AnimatedSmoothStepEdge as any,
   curved: CurvedEdge as any,
   orthogonal: OrthogonalEdge as any,
@@ -102,28 +107,44 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const { triggerLayout } = useAutoLayout(diagramType);
+  // Ghost node shown at original drag position
+  const [ghostNode, setGhostNode] = useState<Node | null>(null);
+  const [theme, setTheme] = useState<EditorTheme>(
+    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
+  );
+  // Derived theme options — used by assignDepthColors / assignEdgeColors for all mindmap paths
+  const themeOptions = {
+    edgeColor: theme.edgeColor,
+    edgeAnimation: theme.edgeAnimation,
+    edgeDashArray: theme.edgeDashArray,
+    isDefault: theme.id === "default",
+    isDark: isColorDark(theme.bg),
+
+  };
+  const themeOptionsRef = useRef(themeOptions);
+  themeOptionsRef.current = themeOptions;
   const getInitialLayout = () => {
     let n = initialNodes || [];
     const e = initialEdges || [];
     if (n.length > 0) {
       if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
-        n = assignDepthColors(n, e);
+        const opts = themeOptionsRef.current;
+        n = assignDepthColors(n, e, opts);
       }
-      // initialLayout is skipped, relying on useAutoLayout hooked to component render
-      return { nodes: n, edges: e };
+      const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(n, e, themeOptionsRef.current) : e;
+      return { nodes: n, edges: coloredEdges };
     }
     return { nodes: n, edges: e };
   };
   const initialData = getInitialLayout();
   const [nodes, setNodes, onNodesChangeCore] = useNodesState(initialData.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
+  // useAutoLayout MUST be after setNodes/setEdges so component-level setters can be passed
+  const { triggerLayout } = useAutoLayout(diagramType, themeOptions, setNodes, setEdges);
   const [exporting, setExporting] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const limits = usePlanLimits();
-  const [theme, setTheme] = useState<EditorTheme>(
-    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
-  );
+  // theme state is now declared above near themeOptions
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentEdgeType, setCurrentEdgeType] = useState("smoothstep");
@@ -147,20 +168,20 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChangeCore>[0]) => {
       onNodesChangeCore(changes);
-      
-      // Look for dimension changes that aren't resizing
+
       const hasDimensionChange = changes.some(
         (c) => c.type === 'dimensions' && c.resizing !== true
       );
-      
-      if (hasDimensionChange) {
+      const hasRemoval = changes.some((c) => c.type === 'remove');
+
+      if (hasDimensionChange || (hasRemoval && diagramType === 'mindmap')) {
         if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
         layoutTimeoutRef.current = setTimeout(() => {
           triggerLayout();
-        }, 150);
+        }, 200);
       }
     },
-    [onNodesChangeCore, triggerLayout]
+    [onNodesChangeCore, triggerLayout, diagramType]
   );
 
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
@@ -263,6 +284,25 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
   }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
 
+  // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
+  const handleThemeChange = useCallback((newTheme: EditorTheme) => {
+    setTheme(newTheme);
+    if (diagramType === "mindmap") {
+      const opts: EdgeThemeOptions = {
+        edgeColor: newTheme.edgeColor,
+        edgeAnimation: newTheme.edgeAnimation,
+        edgeDashArray: newTheme.edgeDashArray,
+        isDefault: newTheme.id === "default",
+      };
+      const currentNodes = nodesRef.current;
+      const currentEdges = edgesRef.current;
+      const cn = assignDepthColors(currentNodes, currentEdges, opts);
+      const ce = assignEdgeColors(cn, currentEdges, opts);
+      setNodes(cn);
+      setEdges(ce);
+    }
+  }, [diagramType, setNodes, setEdges]);
+
   // Apply remote updates from other users
   useEffect(() => {
     if (remoteNodes && remoteNodes.length > 0) {
@@ -298,10 +338,30 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const nodeType = typeToNodeType[diagramType] || "mindmap";
 
   // Auto-layout helper — always enforces standardized structure
+  // applyAutoLayout: always re-applies colors for mindmap
+  // Uses applyPositions to avoid dimension-change loops (preserves measured/width/height)
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    const laid = autoLayoutDiagram(nextNodes, nextEdges, diagramType);
-    setNodes(laid.nodes);
-    setEdges(laid.edges);
+    const nodesWithMeasured = nextNodes.map((n) => ({
+      ...n,
+      width: n.measured?.width ?? (n.data as any)?.isRoot ? 180 : 120,
+      height: n.measured?.height ?? (n.data as any)?.isRoot ? 40 : 28,
+    }));
+    const laid = autoLayoutDiagram(nodesWithMeasured, nextEdges, diagramType);
+    // Apply positions back to ORIGINAL nodes — preserves measured so no dimension events
+    const positioned = nextNodes.map((n) => {
+      const laidNode = laid.nodes.find((l) => l.id === n.id);
+      return laidNode ? { ...n, position: laidNode.position } : n;
+    });
+    if (diagramType === "mindmap") {
+      const opts = themeOptionsRef.current;
+      const cn = assignDepthColors(positioned, laid.edges, opts);
+      const ce = assignEdgeColors(cn, laid.edges, opts);
+      setNodes(cn);
+      setEdges(ce);
+    } else {
+      setNodes(positioned);
+      setEdges(laid.edges);
+    }
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView]);
 
@@ -309,28 +369,39 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const handleReLayout = useCallback(() => {
     takeSnapshot();
     const { visibleNodes, visibleEdges } = getVisibleGraph(nodesRef.current, edgesRef.current);
-    setNodes(visibleNodes);
-    setEdges(visibleEdges);
-    triggerLayout();
-  }, [triggerLayout, takeSnapshot, setNodes, setEdges]);
+    if (diagramType === "mindmap") {
+      const opts = themeOptionsRef.current;
+      const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
+      const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
+      applyAutoLayout(coloredNodes, coloredEdges);
+    } else {
+      applyAutoLayout(visibleNodes, visibleEdges);
+    }
+  }, [diagramType, applyAutoLayout, takeSnapshot]);
 
-  // Handle collapse/expand toggle dispatched from node buttons
+  // Handle collapse/expand toggle dispatched from SVG edge circles
   useEffect(() => {
     const handler = (e: Event) => {
       const nodeId = (e as CustomEvent).detail?.nodeId;
       if (!nodeId) return;
       takeSnapshot();
-      
+
       const toggledNodes = toggleNodeCollapse(nodeId, nodesRef.current);
       const { visibleNodes, visibleEdges } = getVisibleGraph(toggledNodes, edgesRef.current);
-      
-      setNodes(visibleNodes);
-      setEdges(visibleEdges);
-      triggerLayout();
+
+      if (diagramType === "mindmap") {
+        const opts = themeOptionsRef.current;
+        const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
+        const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
+        // Apply layout+setNodes atomically to avoid race condition with triggerLayout
+        applyAutoLayout(coloredNodes, coloredEdges);
+      } else {
+        applyAutoLayout(visibleNodes, visibleEdges);
+      }
     };
     window.addEventListener("mindmap-toggle-collapse", handler);
     return () => window.removeEventListener("mindmap-toggle-collapse", handler);
-  }, [setNodes, setEdges, triggerLayout, takeSnapshot]);
+  }, [diagramType, applyAutoLayout, takeSnapshot]);
 
   // Collect descendants of a node
   const collectDescendantIds = useCallback((nodeId: string, edgeList: Edge[]): Set<string> => {
@@ -347,14 +418,16 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     return ids;
   }, []);
 
-  // Drag start: record which node + subtree is being dragged
+  // Drag start: record which node + subtree is being dragged, show ghost at original position
   const handleNodeDragStart = useCallback((_event: any, draggedNode: Node) => {
     if ((draggedNode.data as any).isRoot) return;
     const descIds = collectDescendantIds(draggedNode.id, edges);
     setDraggingNodeId(draggedNode.id);
     setDraggingDescendantIds(descIds);
     setDropTargetId(null);
-  }, [edges, collectDescendantIds]);
+    // No ghost node during drag — replaced by preview edge
+    setGhostNode(null);
+  }, [edges, collectDescendantIds, diagramType]);
 
   // Drag move: find closest candidate to highlight as drop target
   const handleNodeDrag = useCallback((_event: any, draggedNode: Node) => {
@@ -375,10 +448,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   // Drag stop: proximity reparent + always snap back to structured layout
   const handleNodeDragStop = useCallback((_event: any, draggedNode: Node) => {
-    // Clear drag visual state
+    // Clear drag visual state + ghost placeholder
     setDraggingNodeId(null);
     setDraggingDescendantIds(new Set());
     setDropTargetId(null);
+    setGhostNode(null);
 
     // Don't reparent the root node — just re-layout
     if ((draggedNode.data as any).isRoot) {
@@ -420,8 +494,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         target: draggedNode.id,
         type: currentParentEdge?.type || "smoothstep",
       });
-      const coloredNodes = assignDepthColors(nodes, nextEdges);
-      applyAutoLayout(coloredNodes, nextEdges);
+      const coloredNodes = assignDepthColors(nodes, nextEdges, themeOptionsRef.current);
+      const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNodes, nextEdges, themeOptionsRef.current) : nextEdges;
+      applyAutoLayout(coloredNodes, coloredEdges);
       toast.info("Nó movido para nova ramificação");
     } else {
       applyAutoLayout(nodes, edges);
@@ -485,9 +560,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdges = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
+    const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
+    const coloredNextNodes = diagramType === "mindmap" ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
+    const nextEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
 
-    applyAutoLayout(nextNodes, nextEdges);
+    applyAutoLayout(coloredNextNodes, nextEdges);
 
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
@@ -557,9 +634,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdges = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
+    const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
+    const coloredNextNodes = diagramType === "mindmap" ? assignDepthColors(nextNodes, nextEdgeBase) : nextNodes;
+    const nextEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNextNodes, nextEdgeBase) : nextEdgeBase;
 
-    applyAutoLayout(nextNodes, nextEdges);
+    applyAutoLayout(coloredNextNodes, nextEdges);
 
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
@@ -918,12 +997,14 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         data: {
           label: n.label,
           color: n.isRoot ? "orange" : getColorForDepth(depth),
+          depth,
           ...(n.isRoot ? { isRoot: true } : {}),
         },
       };
     });
 
-    applyAutoLayout(newNodes, tempEdges);
+    const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(newNodes, tempEdges) : tempEdges;
+    applyAutoLayout(newNodes, coloredEdges);
   }, [nodeType, takeSnapshot, applyAutoLayout]);
 
   // AI: apply suggestion
@@ -969,7 +1050,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         id: n.id,
         type: nodeType,
         position: { x: 0, y: 0 },
-        data: { label: n.label, color: getColorForDepth(depth) },
+        data: { label: n.label, color: getColorForDepth(depth), depth },
       };
     });
 
@@ -980,7 +1061,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       type: "smoothstep",
     }));
 
-    applyAutoLayout([...nodes, ...addedNodes], [...edges, ...addedEdges]);
+    const allNodes = [...nodes, ...addedNodes];
+    const allEdgesFinal = [...edges, ...addedEdges];
+    const coloredEdgesFinal = diagramType === "mindmap" ? assignEdgeColors(allNodes, allEdgesFinal) : allEdgesFinal;
+    applyAutoLayout(allNodes, coloredEdgesFinal);
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
 
   return (
@@ -999,12 +1083,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onExportPng={handleExportPng}
         onExportPdf={handleExportPdf}
         canExportPdf={limits.exportPdf}
-        onThemeChange={setTheme}
+        onThemeChange={handleThemeChange}
         onReLayout={handleReLayout}
-        onEdgeTypeChange={handleEdgeTypeChange}
         onAIAssist={limits.aiGeneration ? () => setAiDialogOpen(true) : undefined}
         currentThemeId={theme.id}
-        currentEdgeType={currentEdgeType}
         canUndo={canUndo}
         canRedo={canRedo}
         saving={saving}
@@ -1050,26 +1132,66 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
         onAddChild={handleAddChild}
+        onAddSibling={handleAddSibling}
         onVariantChange={handleVariantChange}
       />
+      {/* Keyboard shortcut legend — bottom-left, mindmap only */}
+      {diagramType === "mindmap" && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
+        <div
+          className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg px-3 py-2 text-xs backdrop-blur-sm shadow-md"
+          style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.cardBorder}`, color: ui.cardText }}
+        >
+          <div className="flex items-center gap-2">
+            <kbd style={{ background: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}`, borderRadius: 4, padding: '1px 6px', fontFamily: 'inherit', fontSize: 10, fontWeight: 600 }}>Tab</kbd>
+            <span style={{ opacity: 0.75 }}>para criar tópico filho</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd style={{ background: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}`, borderRadius: 4, padding: '1px 6px', fontFamily: 'inherit', fontSize: 10, fontWeight: 600 }}>Enter</kbd>
+            <span style={{ opacity: 0.75 }}>para criar tópico irmão</span>
+          </div>
+        </div>
+      ); })()}
       <ReactFlow
-        nodes={nodes.map((n) => {
-          if (!draggingNodeId) return n;
-          const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
-          const isDropTarget = n.id === dropTargetId;
-          return {
-            ...n,
-            style: {
-              ...n.style,
-              opacity: isDragged ? 0.55 : 1,
-              transition: 'opacity 0.15s ease',
-              ...(isDropTarget ? { boxShadow: '0 0 0 3px hsl(var(--primary))', borderRadius: 12 } : {}),
-            },
-          };
-        })}
-        edges={draggingNodeId
-          ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
-          : edges}
+        nodes={[
+          ...nodes.map((n) => {
+            if (!draggingNodeId) return n;
+            const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
+            const isDropTarget = n.id === dropTargetId;
+            return {
+              ...n,
+              style: {
+                ...n.style,
+                opacity: isDragged ? 0.45 : 1,
+                transition: 'opacity 0.15s ease',
+                ...(isDropTarget ? { outline: '2px dashed #E9853A', outlineOffset: '4px', borderRadius: 8 } : {}),
+              },
+            };
+          }),
+          ...(ghostNode ? [] : []), // ghost disabled — using preview edge instead
+        ]}
+        edges={(() => {
+          const baseEdges = draggingNodeId
+            ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
+            : edges;
+          // Preview edge: shows dashed orange connection to the potential new parent
+          if (draggingNodeId && dropTargetId) {
+            baseEdges.push({
+              id: "__preview__",
+              source: dropTargetId,
+              target: draggingNodeId,
+              type: "smoothstep",
+              style: {
+                stroke: "#E9853A",
+                strokeWidth: 1.5,
+                strokeDasharray: "6 3",
+                opacity: 0.75,
+              } as React.CSSProperties,
+              animated: false,
+              data: { isCollapseEdge: false, isPreview: true },
+            } as any);
+          }
+          return baseEdges;
+        })()}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

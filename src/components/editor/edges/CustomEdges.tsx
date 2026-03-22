@@ -67,6 +67,82 @@ function getAnimationStyle(style: React.CSSProperties | undefined): React.CSSPro
   }
 }
 
+// ── Mind Map Edge (Bezier + interactive collapse circle) ─────────────
+
+const CIRCLE_R = 6; // radius of the collapse circle in px
+
+function MindMapEdgeComponent(props: EdgeProps) {
+  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
+
+  const [edgePath] = getBezierPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+    curvature: 0.12,
+  });
+
+  const branchColor = (data as any)?.branchColor as string | undefined;
+  const isCollapseEdge = (data as any)?.isCollapseEdge as boolean | undefined;
+  const isCollapsed = (data as any)?.isCollapsed as boolean | undefined;
+  const sourceNodeId = (data as any)?.sourceNodeId as string | undefined;
+  const edgeStyle = getAnimationStyle(style);
+  const strokeColor = branchColor ?? "#6B7280";
+
+  const handleCollapseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // Stop native event propagation to prevent React Flow's capture-phase handlers
+    e.nativeEvent.stopImmediatePropagation();
+    if (sourceNodeId) {
+      window.dispatchEvent(
+        new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: sourceNodeId } })
+      );
+    }
+  };
+
+  return (
+    <g>
+      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={props.markerEnd} />
+
+      {/* Collapse/expand circle at the edge branching point — fully in SVG space */}
+      {isCollapseEdge && (
+        <>
+          {/* Transparent hit area for easier clicking — explicit pointerEvents so React Flow SVG layer doesn't swallow the click */}
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R + 6}
+            fill="transparent"
+            style={{ cursor: "pointer", pointerEvents: "all" }}
+            onClick={handleCollapseClick}
+          />
+          {/* Visual circle */}
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R}
+            fill={isCollapsed ? strokeColor : "white"}
+            stroke={strokeColor}
+            strokeWidth={1.5}
+            style={{ cursor: "pointer", pointerEvents: "none" }}
+          />
+          {/* Collapsed: small dot in center; Expanded: empty */}
+          {!isCollapsed && (
+            <circle
+              cx={sourceX}
+              cy={sourceY}
+              r={2}
+              fill={strokeColor}
+              style={{ pointerEvents: "none" }}
+            />
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+export const MindMapEdge = memo(MindMapEdgeComponent);
+
+
 // ── Curved (Bezier) Edge ──────────────────────────────────
 
 function CurvedEdgeComponent(props: EdgeProps) {

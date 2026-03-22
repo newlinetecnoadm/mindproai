@@ -6,27 +6,24 @@ const BASE: CSSProperties = {
 }
 
 export const NODE_STYLES: Record<string, CSSProperties> = {
-  // ── Mind map ──────────────────────────────────────────────
+  // ── Mind map — transparent, text-only, no borders ─────────
   'mindmap-root': {
     ...BASE,
-    background: '#4472C4',
-    border: '2px solid #2952A3',
-    borderRadius: '22px',
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: '15px',
+    background: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
   },
   'mindmap-l1': {
-    ...BASE, // The user plan specifies ...BASE for all here
-    background: '#EBF5FB',
-    border: '1.5px solid #4472C4',
-    borderRadius: '8px',
+    ...BASE,
+    background: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
   },
   'mindmap-l2': {
     ...BASE,
-    background: '#F4F9FF',
-    border: '1px solid #A4CAEB',
-    borderRadius: '8px',
+    background: 'transparent',
+    border: 'none',
+    boxShadow: 'none',
   },
 
   // ── Flowchart ─────────────────────────────────────────────
@@ -125,11 +122,11 @@ export function buildNodeStyle(
     return getNodeStyle('mindmap-l2')
   }
   if (diagramType === 'flowchart') return getNodeStyle('flowchart-process')
-  if (diagramType === 'org') { // Fixed orgchart to org as the type is 'org' internally
+  if (diagramType === 'org') {
     return isRoot ? getNodeStyle('orgchart-root') : getNodeStyle('orgchart-child')
   }
   if (diagramType === 'timeline') return getNodeStyle('timeline-event')
-  if (diagramType === 'concept' || diagramType === 'concept_map') { // Handle both type identifiers just in case
+  if (diagramType === 'concept' || diagramType === 'concept_map') {
     return isRoot ? getNodeStyle('concept-root') : getNodeStyle('concept-child')
   }
   return getNodeStyle('default')

@@ -214,23 +214,25 @@
   box-sizing: border-box;
 }
 
-/* 2. Seleção: outline aplicado no wrapper nativo do RF (sem borda dupla) */
+/* 2. Seleção: outline único externo — laranja da identidade visual da marca */
 .react-flow__node.selected {
-  outline: 2px solid hsl(27 100% 48%);
-  outline-offset: 2px;
-  border-radius: 8px;
+  outline: 2px solid #E9853A;
+  outline-offset: 3px;
+  border-radius: 4px;
+  /* Cancel any box-shadow that React Flow's stylesheet may add */
+  box-shadow: none !important;
 }
 
 /* 3. Elemento filho direto do wrapper NÃO deve ter outline próprio */
 .react-flow__node > div {
   outline: none !important;
-  box-shadow: none !important; /* ring-* do Tailwind */
 }
 
 /* 4. Handles: escondidos por padrão, visíveis no hover e seleção */
 .react-flow__node .react-flow__handle {
   opacity: 0;
-  transition: opacity 0.2s ease;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
 .react-flow__node:hover .react-flow__handle,
@@ -238,37 +240,80 @@
 .react-flow__handle.connectingto,
 .react-flow__handle.connectingfrom {
   opacity: 1;
+  pointer-events: all;
 }
 
-/* 5. Handles conectados são sempre visíveis */
+/* 5. Handles conectados são sempre visíveis (mas muito discretos) */
 .react-flow__handle.react-flow__handle-connected {
-  opacity: 1;
+  opacity: 0;
 }
 
-/* 6. Botão collapse/expand — posicionado sobre o conector (aresta sainte à direita) */
-.collapse-btn {
+/* 6. Collapse/expand: agora renderizado como círculo SVG na edge (CustomEdges.tsx) */
+
+
+/* 7. Tooltip de atalhos do botão + da toolbar flutuante */
+.node-add-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.node-add-tooltip {
   position: absolute;
-  right: -9px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #9ca3af;
-  border: 1px solid #d1d5db;
-  cursor: pointer;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(0 0% 14%);
+  color: hsl(0 0% 92%);
+  border-radius: 8px;
+  padding: 6px 10px;
+  white-space: nowrap;
   font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  box-shadow: 0 4px 12px hsl(0 0% 0% / 0.25);
+  z-index: 50;
+}
+
+.node-add-btn-wrapper:hover .node-add-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.node-add-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: hsl(0 0% 14%);
+}
+
+.node-add-tooltip-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 10;
-  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.1);
-  transition: border-color 0.15s, color 0.15s;
+  gap: 6px;
 }
-.collapse-btn:hover {
-  border-color: #9ca3af;
-  color: #6b7280;
+
+.node-add-tooltip kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(0 0% 24%);
+  color: hsl(0 0% 88%);
+  border: 1px solid hsl(0 0% 35%);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  min-width: 38px;
+  text-align: center;
+  line-height: 1.4;
 }

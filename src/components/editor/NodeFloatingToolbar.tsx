@@ -35,6 +35,7 @@ interface NodeFloatingToolbarProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onAddChild: () => void;
+  onAddSibling?: () => void;
   onVariantChange?: (variant: string) => void;
 }
 
@@ -46,6 +47,7 @@ const NodeFloatingToolbar = ({
   onDuplicate,
   onDelete,
   onAddChild,
+  onAddSibling,
   onVariantChange,
 }: NodeFloatingToolbarProps) => {
   const { getNodesBounds, flowToScreenPosition } = useReactFlow();
@@ -74,9 +76,24 @@ const NodeFloatingToolbar = ({
       className="absolute z-20 flex items-center gap-0.5 bg-card border border-border rounded-lg px-1 py-1 shadow-lg -translate-x-1/2 pointer-events-auto"
       style={{ left: position.x, top: position.y }}
     >
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddChild} title="Adicionar filho (Tab)">
-        <Plus className="w-3.5 h-3.5" />
-      </Button>
+      {/* + button with tooltip showing Tab/Enter shortcuts */}
+      <div className="node-add-btn-wrapper">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddChild} title="Adicionar filho (Tab)">
+          <Plus className="w-3.5 h-3.5" />
+        </Button>
+        <div className="node-add-tooltip" role="tooltip">
+          <div className="node-add-tooltip-row">
+            <kbd>Tab</kbd>
+            <span>para criar tópico filho</span>
+          </div>
+          {onAddSibling && (
+            <div className="node-add-tooltip-row">
+              <kbd>Enter</kbd>
+              <span>para criar tópico irmão</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDuplicate} title="Duplicar">
         <Copy className="w-3.5 h-3.5" />
