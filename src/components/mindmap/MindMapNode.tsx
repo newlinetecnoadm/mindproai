@@ -45,7 +45,7 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { setEditing(false); data.label = label; }
+    if (e.key === "Enter") { setEditing(false); data.label = label; window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } })); }
     if (e.key === "Escape") { setLabel(data.label); setEditing(false); }
   };
 

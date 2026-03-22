@@ -926,6 +926,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 250 }), 10);
   }, [setNodes, fitView]);
 
+  // Listen for node data changes from inline editing (nodes mutate data directly)
+  // This forces a new nodes reference so autosave detects the change
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { nodeId, field, value } = (e as CustomEvent).detail ?? {};
+      if (!nodeId) return;
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n
+        )
+      );
+    };
+    window.addEventListener("node-data-changed", handler);
+    return () => window.removeEventListener("node-data-changed", handler);
+  }, [setNodes]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
