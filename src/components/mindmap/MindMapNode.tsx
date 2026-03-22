@@ -41,6 +41,7 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
   const handleBlur = () => {
     setEditing(false);
     data.label = label;
+    window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } }));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
