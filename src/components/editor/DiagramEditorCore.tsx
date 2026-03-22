@@ -120,6 +120,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     edgeColor: theme.edgeColor,
     edgeAnimation: theme.edgeAnimation,
     edgeDashArray: theme.edgeDashArray,
+    edgeType: diagramType === "orgchart" ? "orthogonal" : "mindmap",
     isDefault: theme.id === "default",
     isDark: isColorDark(theme.bg),
 
@@ -150,23 +151,29 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // theme state is now declared above near themeOptions
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [currentEdgeType, setCurrentEdgeType] = useState("smoothstep");
+  const defaultStructuredEdgeType = diagramType === "orgchart" ? "orthogonal" : "smoothstep";
+  const [currentEdgeType, setCurrentEdgeType] = useState(defaultStructuredEdgeType);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
-  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingChanges = useRef(false);
   const lastPersistedSnapshot = useRef<string | null>(null);
   const remoteUpdateRef = useRef(false);
+  const autosaveInFlightRef = useRef(false);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
+  const latestThemeIdRef = useRef(theme.id);
+  latestThemeIdRef.current = theme.id;
   const initialFitDone = useRef(false);
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    setCurrentEdgeType(defaultStructuredEdgeType);
+  }, [defaultStructuredEdgeType]);
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChangeCore>[0]) => {
@@ -209,7 +216,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: edge.type || "smoothstep",
+        type: edge.type || defaultStructuredEdgeType,
         sourceHandle: edge.sourceHandle || null,
         targetHandle: edge.targetHandle || null,
         label: edge.label || null,
@@ -235,57 +242,49 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave: only when content actually changed
+  // Autosave loop: resilient even when node components mutate data in-place
   useEffect(() => {
-    const currentSnapshot = buildContentSnapshot(nodes, edges, theme.id);
-
-    if (lastPersistedSnapshot.current === null) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      return;
-    }
-
-    if (remoteUpdateRef.current) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      pendingChanges.current = false;
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-      return;
-    }
-
-    if (currentSnapshot === lastPersistedSnapshot.current) {
-      pendingChanges.current = false;
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-      return;
-    }
-
-    pendingChanges.current = true;
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-
-    autosaveTimer.current = setTimeout(async () => {
-      if (!pendingChanges.current) return;
+    const saveIfChanged = async () => {
+      if (autosaveInFlightRef.current) return;
 
       const latestNodes = nodesRef.current;
       const latestEdges = edgesRef.current;
-      const snapshotBeforeSave = buildContentSnapshot(latestNodes, latestEdges, theme.id);
-      if (snapshotBeforeSave === lastPersistedSnapshot.current) {
-        pendingChanges.current = false;
+      const latestThemeId = latestThemeIdRef.current;
+      const currentSnapshot = buildContentSnapshot(latestNodes, latestEdges, latestThemeId);
+
+      if (lastPersistedSnapshot.current === null) {
+        lastPersistedSnapshot.current = currentSnapshot;
         return;
       }
 
+      if (remoteUpdateRef.current) {
+        lastPersistedSnapshot.current = currentSnapshot;
+        return;
+      }
+
+      if (currentSnapshot === lastPersistedSnapshot.current) {
+        return;
+      }
+
+      autosaveInFlightRef.current = true;
       try {
         const thumb = await captureThumbnail();
-        await onSaveRef.current(latestNodes, latestEdges, theme.id, thumb);
+        await onSaveRef.current(latestNodes, latestEdges, latestThemeId, thumb);
         setLastSavedAt(new Date());
-        lastPersistedSnapshot.current = snapshotBeforeSave;
-        pendingChanges.current = false;
+        lastPersistedSnapshot.current = currentSnapshot;
       } catch (err) {
         console.error("Autosave failed:", err);
+      } finally {
+        autosaveInFlightRef.current = false;
       }
+    };
+
+    const intervalId = setInterval(() => {
+      void saveIfChanged();
     }, 10000);
 
-    return () => {
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    };
-  }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
+    return () => clearInterval(intervalId);
+  }, [buildContentSnapshot, captureThumbnail]);
 
   // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
   const handleThemeChange = useCallback((newTheme: EditorTheme) => {
@@ -295,7 +294,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         edgeColor: newTheme.edgeColor,
         edgeAnimation: newTheme.edgeAnimation,
         edgeDashArray: newTheme.edgeDashArray,
+        edgeType: diagramType === "orgchart" ? "orthogonal" : "mindmap",
         isDefault: newTheme.id === "default",
+        isDark: isColorDark(newTheme.bg),
       };
       const currentNodes = nodesRef.current;
       const currentEdges = edgesRef.current;
@@ -495,7 +496,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         id: `e-${newParentId}-${draggedNode.id}`,
         source: newParentId,
         target: draggedNode.id,
-        type: currentParentEdge?.type || "smoothstep",
+        type: currentParentEdge?.type || defaultStructuredEdgeType,
       });
       const coloredNodes = assignDepthColors(nodes, nextEdges, themeOptionsRef.current);
       const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNodes, nextEdges, themeOptionsRef.current) : nextEdges;
@@ -563,7 +564,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
+    const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: defaultStructuredEdgeType }];
     const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
     const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
 
@@ -637,7 +638,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
+    const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: defaultStructuredEdgeType }];
     const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase) : nextNodes;
     const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase) : nextEdgeBase;
 
@@ -721,7 +722,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           id: `e-${parentEdge.source}-${newId}`,
           source: parentEdge.source,
           target: newId,
-          type: parentEdge.type || "smoothstep",
+          type: parentEdge.type || defaultStructuredEdgeType,
         });
       }
     }
@@ -1039,7 +1040,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         data: { label: suggestion.label, color: childColors[colorIdx] },
       };
       const nextNodes = [...nodes, newNode];
-      const nextEdges = [...edges, { id: `e-${suggestion.parentId}-${newId}`, source: suggestion.parentId, target: newId, type: "smoothstep" }];
+      const nextEdges = [...edges, { id: `e-${suggestion.parentId}-${newId}`, source: suggestion.parentId, target: newId, type: defaultStructuredEdgeType }];
       applyAutoLayout(nextNodes, nextEdges);
     } else if (suggestion.type === "rename" && suggestion.nodeId && suggestion.newLabel) {
       setNodes((nds) => nds.map((n) => n.id === suggestion.nodeId ? { ...n, data: { ...n.data, label: suggestion.newLabel } } : n));
@@ -1060,7 +1061,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       id: `e-${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
-      type: "smoothstep" as const,
+      type: defaultStructuredEdgeType as any,
     }))];
 
     const addedNodes: Node[] = newNodes.map((n) => {
@@ -1229,7 +1230,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         fitViewOptions={{ padding: 0.3 }}
         snapToGrid={true}
         snapGrid={[20, 20]}
-        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
+        defaultEdgeOptions={{ type: defaultStructuredEdgeType, style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
         proOptions={{ hideAttribution: true }}
         style={{ backgroundColor: theme.bg }}
       >
