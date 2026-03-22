@@ -134,7 +134,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         const opts = themeOptionsRef.current;
         n = assignDepthColors(n, e, opts);
       }
-      const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(n, e, themeOptionsRef.current) : e;
+      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(n, e, themeOptionsRef.current) : e;
       return { nodes: n, edges: coloredEdges };
     }
     return { nodes: n, edges: e };
@@ -290,7 +290,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
   const handleThemeChange = useCallback((newTheme: EditorTheme) => {
     setTheme(newTheme);
-    if (diagramType === "mindmap") {
+    if (isMindmapLike(diagramType)) {
       const opts: EdgeThemeOptions = {
         edgeColor: newTheme.edgeColor,
         edgeAnimation: newTheme.edgeAnimation,
@@ -355,7 +355,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       const laidNode = laid.nodes.find((l) => l.id === n.id);
       return laidNode ? { ...n, position: laidNode.position } : n;
     });
-    if (diagramType === "mindmap") {
+    if (isMindmapLike(diagramType)) {
       const opts = themeOptionsRef.current;
       const cn = assignDepthColors(positioned, laid.edges, opts);
       const ce = assignEdgeColors(cn, laid.edges, opts);
@@ -372,7 +372,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const handleReLayout = useCallback(() => {
     takeSnapshot();
     const { visibleNodes, visibleEdges } = getVisibleGraph(nodesRef.current, edgesRef.current);
-    if (diagramType === "mindmap") {
+    if (isMindmapLike(diagramType)) {
       const opts = themeOptionsRef.current;
       const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
       const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
@@ -392,7 +392,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       const toggledNodes = toggleNodeCollapse(nodeId, nodesRef.current);
       const { visibleNodes, visibleEdges } = getVisibleGraph(toggledNodes, edgesRef.current);
 
-      if (diagramType === "mindmap") {
+      if (isMindmapLike(diagramType)) {
         const opts = themeOptionsRef.current;
         const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
         const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
@@ -498,7 +498,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         type: currentParentEdge?.type || "smoothstep",
       });
       const coloredNodes = assignDepthColors(nodes, nextEdges, themeOptionsRef.current);
-      const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNodes, nextEdges, themeOptionsRef.current) : nextEdges;
+      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNodes, nextEdges, themeOptionsRef.current) : nextEdges;
       applyAutoLayout(coloredNodes, coloredEdges);
       toast.info("Nó movido para nova ramificação");
     } else {
@@ -564,8 +564,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: "smoothstep" }];
-    const coloredNextNodes = diagramType === "mindmap" ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
-    const nextEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
+    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
+    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
 
     applyAutoLayout(coloredNextNodes, nextEdges);
 
@@ -638,8 +638,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
     const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: "smoothstep" }];
-    const coloredNextNodes = diagramType === "mindmap" ? assignDepthColors(nextNodes, nextEdgeBase) : nextNodes;
-    const nextEdges = diagramType === "mindmap" ? assignEdgeColors(coloredNextNodes, nextEdgeBase) : nextEdgeBase;
+    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase) : nextNodes;
+    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase) : nextEdgeBase;
 
     applyAutoLayout(coloredNextNodes, nextEdges);
 
@@ -1006,7 +1006,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       };
     });
 
-    const coloredEdges = diagramType === "mindmap" ? assignEdgeColors(newNodes, tempEdges) : tempEdges;
+    const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(newNodes, tempEdges) : tempEdges;
     applyAutoLayout(newNodes, coloredEdges);
   }, [nodeType, takeSnapshot, applyAutoLayout]);
 
@@ -1066,7 +1066,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const allNodes = [...nodes, ...addedNodes];
     const allEdgesFinal = [...edges, ...addedEdges];
-    const coloredEdgesFinal = diagramType === "mindmap" ? assignEdgeColors(allNodes, allEdgesFinal) : allEdgesFinal;
+    const coloredEdgesFinal = isMindmapLike(diagramType) ? assignEdgeColors(allNodes, allEdgesFinal) : allEdgesFinal;
     applyAutoLayout(allNodes, coloredEdgesFinal);
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
 
@@ -1139,7 +1139,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onVariantChange={handleVariantChange}
       />
       {/* Keyboard shortcut legend — bottom-left, mindmap only */}
-      {diagramType === "mindmap" && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
+      {isMindmapLike(diagramType) && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
         <div
           className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg px-3 py-2 text-xs backdrop-blur-sm shadow-md"
           style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.cardBorder}`, color: ui.cardText }}
