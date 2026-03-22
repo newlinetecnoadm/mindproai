@@ -82,7 +82,7 @@ export function useAutoLayout(
     const laid = autoLayoutDiagram(withMeasured(nodes), edges, diagramType);
     const positioned = applyPositions(nodes, laid.nodes);
 
-    if (diagramType === 'mindmap') {
+    if (diagramType === 'mindmap' || diagramType === 'orgchart') {
       const opts = themeRef.current;
       const coloredNodes = assignDepthColors(positioned, laid.edges, opts);
       const coloredEdges = assignEdgeColors(coloredNodes, laid.edges, opts);
