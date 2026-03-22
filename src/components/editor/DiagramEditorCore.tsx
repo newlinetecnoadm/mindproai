@@ -102,6 +102,9 @@ interface DiagramEditorCoreProps {
 
 const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
 
+/** Diagram types that share the mindmap color/edge/theme system */
+const isMindmapLike = (type: string) => type === "mindmap" || type === "orgchart";
+
 function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
   // Drag state: which node is being dragged + its descendants
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
