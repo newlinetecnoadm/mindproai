@@ -1023,7 +1023,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       };
     });
 
-    const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(newNodes, tempEdges) : tempEdges;
+    const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(newNodes, tempEdges, themeOptionsRef.current) : tempEdges;
     applyAutoLayout(newNodes, coloredEdges);
   }, [nodeType, takeSnapshot, applyAutoLayout]);
 
@@ -1083,7 +1083,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     const allNodes = [...nodes, ...addedNodes];
     const allEdgesFinal = [...edges, ...addedEdges];
-    const coloredEdgesFinal = isMindmapLike(diagramType) ? assignEdgeColors(allNodes, allEdgesFinal) : allEdgesFinal;
+    const coloredEdgesFinal = isMindmapLike(diagramType) ? assignEdgeColors(allNodes, allEdgesFinal, themeOptionsRef.current) : allEdgesFinal;
     applyAutoLayout(allNodes, coloredEdgesFinal);
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
 
@@ -1199,7 +1199,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
               id: "__preview__",
               source: dropTargetId,
               target: draggingNodeId,
-              type: "smoothstep",
+              type: defaultStructuredEdgeType,
               style: {
                 stroke: "#E9853A",
                 strokeWidth: 1.5,
