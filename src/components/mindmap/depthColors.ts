@@ -197,6 +197,7 @@ export type EdgeThemeOptions = {
   edgeColor?: string;
   edgeAnimation?: string;
   edgeDashArray?: string;
+  edgeType?: string;
   isDefault?: boolean;
   isDark?: boolean;
 };
@@ -263,7 +264,7 @@ export function assignEdgeColors(
       ...edge,
       // CRITICAL: preserve edge.hidden so collapsed edges stay hidden after re-coloring
       hidden: edge.hidden,
-      type: "mindmap",
+      type: theme?.edgeType ?? "mindmap",
       style: {
         stroke: branchHex,
         strokeWidth,
