@@ -16,6 +16,10 @@ import type { Json } from "@/integrations/supabase/types";
 import { diagramTypes } from "@/data/templates";
 import { buildNodeStyle, inferStyleKey } from "@/lib/nodeStyles";
 
+type SaveOptions = {
+  silent?: boolean;
+};
+
 const DiagramEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -106,9 +110,13 @@ const DiagramEditor = () => {
   });
 
   const handleSave = useCallback(
-    async (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string) => {
+    async (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string, options?: SaveOptions) => {
       if (!user) return;
-      setSaving(true);
+      const isSilent = Boolean(options?.silent);
+
+      if (!isSilent) {
+        setSaving(true);
+      }
 
       const diagramData: Json = {
         nodes: nodes.map((n) => ({
@@ -162,13 +170,21 @@ const DiagramEditor = () => {
           .eq("id", id!);
 
         if (error) throw error;
-        setSavedRecently(true);
-        if (savedTimer.current) clearTimeout(savedTimer.current);
-        savedTimer.current = setTimeout(() => setSavedRecently(false), 2000);
+        if (!isSilent) {
+          setSavedRecently(true);
+          if (savedTimer.current) clearTimeout(savedTimer.current);
+          savedTimer.current = setTimeout(() => setSavedRecently(false), 2000);
+        }
       } catch (err: any) {
-        toast.error("Erro ao salvar: " + (err.message || "desconhecido"));
+        if (!isSilent) {
+          toast.error("Erro ao salvar: " + (err.message || "desconhecido"));
+        } else {
+          console.error("Autosave falhou", err);
+        }
       } finally {
-        setSaving(false);
+        if (!isSilent) {
+          setSaving(false);
+        }
       }
     },
     [user, title, id]
