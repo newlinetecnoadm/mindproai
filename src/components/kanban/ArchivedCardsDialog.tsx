@@ -34,7 +34,7 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
     queryFn: async () => {
       const { data, error } = await supabase
         .from("board_cards")
-        .select("id, title, column_id, archived_at, position")
+        .select("id, title, column_id, archived_at, position, is_archived")
         .eq("board_id", boardId) as any;
       if (error) throw error;
       const all = (data || []) as ArchivedCard[];
