@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive,
 } from "lucide-react";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
@@ -303,6 +303,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       onCardUpdated();
       onOpenChange(false);
       toast.success("Card excluído");
+    },
+  });
+
+  // Archive card
+  const archiveCardMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("board_cards").update({ is_archived: true, archived_at: new Date().toISOString() } as any).eq("id", cardId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      onCardUpdated();
+      onOpenChange(false);
+      toast.success("Card arquivado");
     },
   });
 
@@ -1183,9 +1196,14 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               </Popover>
             </div>
 
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
-              <Trash2 className="w-3.5 h-3.5" /> Excluir card
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => archiveCardMut.mutate()}>
+                <Archive className="w-3.5 h-3.5" /> Arquivar
+              </Button>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
+                <Trash2 className="w-3.5 h-3.5" /> Excluir card
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

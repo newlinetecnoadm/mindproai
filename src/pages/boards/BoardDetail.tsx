@@ -7,7 +7,7 @@ import { useCardActivity } from "@/hooks/useCardActivity";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
@@ -20,6 +20,7 @@ import FloatingNavBar from "@/components/layout/FloatingNavBar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import BoardThemePicker, { applyBoardTheme, removeBoardTheme } from "@/components/boards/BoardThemePicker";
 import AIBoardAssistDialog from "@/components/boards/AIBoardAssistDialog";
+import ArchivedCardsDialog from "@/components/kanban/ArchivedCardsDialog";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
@@ -87,9 +88,9 @@ const BoardDetail = () => {
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("board_cards").select("*").eq("board_id", id!).order("position");
+        .from("board_cards").select("*").eq("board_id", id!).order("position") as any;
       if (error) throw error;
-      return data as CardData[];
+      return ((data || []) as CardData[]).filter((c: any) => !c.is_archived);
     },
   });
 
@@ -595,6 +596,11 @@ const BoardDetail = () => {
             onChange={setFilters}
             labels={boardLabels}
             members={boardMembers}
+          />
+          <ArchivedCardsDialog
+            boardId={id!}
+            columns={columns}
+            onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
           />
         </div>
       </div>

@@ -97,6 +97,7 @@ export type Database = {
       }
       board_cards: {
         Row: {
+          archived_at: string | null
           board_id: string
           column_id: string
           cover_color: string | null
@@ -106,12 +107,14 @@ export type Database = {
           diagram_id: string | null
           due_date: string | null
           id: string
+          is_archived: boolean
           is_complete: boolean | null
           position: number
           title: string
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           board_id: string
           column_id: string
           cover_color?: string | null
@@ -121,12 +124,14 @@ export type Database = {
           diagram_id?: string | null
           due_date?: string | null
           id?: string
+          is_archived?: boolean
           is_complete?: boolean | null
           position?: number
           title: string
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           board_id?: string
           column_id?: string
           cover_color?: string | null
@@ -136,6 +141,7 @@ export type Database = {
           diagram_id?: string | null
           due_date?: string | null
           id?: string
+          is_archived?: boolean
           is_complete?: boolean | null
           position?: number
           title?: string
