@@ -83,16 +83,18 @@ const BoardDetail = () => {
   });
 
   // Fetch cards
-  const { data: cards = [] } = useQuery({
+  const { data: allCards = [] } = useQuery({
     queryKey: ["board-cards", id],
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("board_cards").select("*").eq("board_id", id!).order("position") as any;
       if (error) throw error;
-      return ((data || []) as CardData[]).filter((c: any) => !c.is_archived);
+      return (data || []) as CardData[];
     },
   });
+
+  const cards = useMemo(() => allCards.filter((c: any) => !c.is_archived), [allCards]);
 
   // Fetch labels for filter UI
   const { data: boardLabels = [] } = useQuery({

@@ -8,8 +8,23 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive,
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive, Pencil, GripVertical, Check
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useCardActivity } from "@/hooks/useCardActivity";
 import CardActivityFeed from "./CardActivityFeed";
 import MentionInput, { extractMentionedUserIds, type MentionUser } from "./MentionInput";
@@ -44,6 +59,83 @@ const LABEL_COLORS = [
   { color: "#ec4899", name: "Rosa" },
   { color: "#14b8a6", name: "Teal" },
 ];
+
+const SortableChecklistItem = ({ 
+  item, 
+  onToggle, 
+  onEdit, 
+  onDelete, 
+  isEditing, 
+  editingText, 
+  onEditingTextChange, 
+  onSave, 
+  onCancel 
+}: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 group"
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+        <GripVertical className="w-3.5 h-3.5" />
+      </div>
+      <Checkbox
+        checked={item.is_checked}
+        onCheckedChange={(v) => onToggle(item.id, !!v)}
+      />
+      {isEditing ? (
+        <div className="flex-1 flex gap-1">
+          <Input
+            autoFocus
+            value={editingText}
+            onChange={(e) => onEditingTextChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSave(item.id);
+              else if (e.key === "Escape") onCancel();
+            }}
+            className="h-7 text-xs flex-1"
+          />
+          <Button size="sm" variant="hero" className="h-7 w-7 p-0" onClick={() => onSave(item.id)}>
+            <Check className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <span
+          className={cn("text-sm flex-1 cursor-pointer hover:text-primary py-1", item.is_checked && "line-through text-muted-foreground")}
+          onClick={() => onEdit(item.id, item.text)}
+          title="Clique para editar"
+        >{item.text}</span>
+      )}
+      {!isEditing && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+          onClick={() => onDelete(item.id)}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      )}
+    </div>
+  );
+};
 
 const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }: CardDetailModalProps) => {
   const { user } = useAuth();
@@ -178,6 +270,9 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   const [editingItemText, setEditingItemText] = useState("");
   const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
   const [editingChecklistTitle, setEditingChecklistTitle] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentContent, setEditingCommentContent] = useState("");
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0].color);
@@ -369,6 +464,54 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       invalidateAll();
     },
   });
+
+  // Update comment
+  const updateComment = useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
+      const { error } = await supabase.from("card_comments").update({ content, updated_at: new Date().toISOString() }).eq("id", commentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditingCommentId(null);
+      invalidateAll();
+      toast.success("Comentário atualizado");
+    },
+  });
+
+  // Delete comment
+  const deleteComment = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase.from("card_comments").delete().eq("id", commentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Comentário excluído");
+    },
+  });
+
+  // Reorder checklist items
+  const reorderChecklistItems = useMutation({
+    mutationFn: async ({ checklistId, itemIds }: { checklistId: string; itemIds: string[] }) => {
+      await Promise.all(itemIds.map((id, i) => supabase.from("checklist_items").update({ position: i }).eq("id", id)));
+    },
+    onSuccess: invalidateAll,
+  });
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleChecklistDragEnd = (event: DragEndEvent, checklistId: string) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const items = checklistItems.filter((i: any) => i.checklist_id === checklistId).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+      const oldIndex = items.findIndex((i: any) => i.id === active.id);
+      const newIndex = items.findIndex((i: any) => i.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        reorderChecklistItems.mutate({ checklistId, itemIds: reordered.map((i: any) => i.id) });
+      }
+    }
+  };
 
   // Add checklist
   const addChecklist = useMutation({
@@ -871,19 +1014,46 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
             </Popover>
           </div>
 
-          {/* Description */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <AlignLeft className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Descrição</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <AlignLeft className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Descrição</span>
+              </div>
+              {isEditingDescription && (
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="hero" 
+                    className="h-7 text-xs" 
+                    onClick={() => {
+                      updateCard.mutate({ description: description || null });
+                      setIsEditingDescription(false);
+                    }}
+                  >
+                    Salvar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-7 text-xs" 
+                    onClick={() => {
+                      setDescription(card.description || "");
+                      setIsEditingDescription(false);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
             </div>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => { if (description !== (card.description || "")) updateCard.mutate({ description: description || null }); }}
+              onFocus={() => setIsEditingDescription(true)}
               placeholder="Adicione uma descrição..."
               rows={3}
-              className="resize-none text-sm"
+              className="resize-none text-sm transition-all focus-visible:ring-1"
             />
           </div>
 
@@ -901,21 +1071,21 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <CheckSquare className="w-4 h-4 text-muted-foreground shrink-0" />
                     {editingChecklistId === cl.id ? (
-                      <Input
-                        autoFocus
-                        value={editingChecklistTitle}
-                        onChange={(e) => setEditingChecklistTitle(e.target.value)}
-                        onBlur={() => {
-                          if (editingChecklistTitle.trim() && editingChecklistTitle !== cl.title) {
-                            updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
-                          } else { setEditingChecklistId(null); }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
-                          else if (e.key === "Escape") setEditingChecklistId(null);
-                        }}
-                        className="h-7 text-sm font-medium flex-1"
-                      />
+                      <div className="flex flex-1 gap-1">
+                        <Input
+                          autoFocus
+                          value={editingChecklistTitle}
+                          onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
+                            else if (e.key === "Escape") setEditingChecklistId(null);
+                          }}
+                          className="h-7 text-sm font-medium flex-1"
+                        />
+                        <Button size="sm" variant="hero" className="h-7 w-7 p-0" onClick={() => { if (editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() }); }}>
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     ) : (
                       <span
                         className="text-sm font-medium cursor-pointer hover:text-primary truncate"
@@ -925,53 +1095,33 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                     )}
                   </div>
                   <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive shrink-0" onClick={() => deleteChecklist.mutate(cl.id)}>
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[11px] text-muted-foreground w-8">{Math.round(progress)}%</span>
                   <Progress value={progress} className="h-1.5 flex-1" />
                 </div>
-                <div className="space-y-1 ml-6">
-                  {items.map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-2 group">
-                      <Checkbox
-                        checked={item.is_checked}
-                        onCheckedChange={(v) => toggleItem.mutate({ itemId: item.id, checked: !!v })}
-                      />
-                      {editingItemId === item.id ? (
-                        <Input
-                          autoFocus
-                          value={editingItemText}
-                          onChange={(e) => setEditingItemText(e.target.value)}
-                          onBlur={() => {
-                            if (editingItemText.trim() && editingItemText !== item.text) updateChecklistItem.mutate({ itemId: item.id, text: editingItemText.trim() });
-                            else setEditingItemId(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && editingItemText.trim()) updateChecklistItem.mutate({ itemId: item.id, text: editingItemText.trim() });
-                            else if (e.key === "Escape") setEditingItemId(null);
-                          }}
-                          className="h-7 text-xs flex-1"
+                <div className="space-y-1 ml-1">
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleChecklistDragEnd(e, cl.id)}>
+                    <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+                      {items.sort((a: any, b: any) => (a.position || 0) - (b.position || 0)).map((item: any) => (
+                        <SortableChecklistItem
+                          key={item.id}
+                          item={item}
+                          onToggle={(itemId: string, checked: boolean) => toggleItem.mutate({ itemId, checked })}
+                          onEdit={(itemId: string, text: string) => { setEditingItemId(itemId); setEditingItemText(text); }}
+                          onDelete={(itemId: string) => deleteChecklistItem.mutate(itemId)}
+                          isEditing={editingItemId === item.id}
+                          editingText={editingItemText}
+                          onEditingTextChange={setEditingItemText}
+                          onSave={(itemId: string) => { if (editingItemText.trim()) updateChecklistItem.mutate({ itemId, text: editingItemText.trim() }); }}
+                          onCancel={() => setEditingItemId(null)}
                         />
-                      ) : (
-                        <span
-                          className={cn("text-sm flex-1 cursor-pointer hover:text-primary", item.is_checked && "line-through text-muted-foreground")}
-                          onClick={() => { setEditingItemId(item.id); setEditingItemText(item.text); }}
-                          title="Clique para editar"
-                        >{item.text}</span>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
-                        onClick={() => deleteChecklistItem.mutate(item.id)}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-1 mt-1">
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                  <div className="flex gap-1 mt-2 ml-6">
                     <Input
                       value={newItemTexts[cl.id] || ""}
                       onChange={(e) => setNewItemTexts({ ...newItemTexts, [cl.id]: e.target.value })}
@@ -1076,18 +1226,84 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Comentários</span>
             </div>
-            <div className="space-y-3 mb-3">
+            <div className="space-y-3 mb-4">
               {comments.map((c: any) => (
-                <div key={c.id} className="bg-muted/50 rounded-lg p-3">
+                <div key={c.id} className="bg-muted/50 rounded-lg p-3 group/comment">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium">Você</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {format(new Date(c.created_at), "dd MMM, HH:mm", { locale: ptBR })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">Você</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(c.created_at), "dd MMM, HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                    {c.user_id === user?.id && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            setEditingCommentId(c.id);
+                            setEditingCommentContent(c.content);
+                          }}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive"
+                          onClick={() => {
+                            if (confirm("Excluir comentário?")) deleteComment.mutate(c.id);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">
-                    {renderCommentWithMentions(c.content)}
-                  </p>
+                  {editingCommentId === c.id ? (
+                    <div className="space-y-2 mt-2">
+                      <MentionInput
+                        value={editingCommentContent}
+                        onChange={setEditingCommentContent}
+                        users={mentionUsers}
+                        placeholder="Editar comentário..."
+                        autoFocus
+                        onSubmit={() => {
+                          if (editingCommentContent.trim()) {
+                            updateComment.mutate({ commentId: c.id, content: editingCommentContent.trim() });
+                          }
+                        }}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="hero"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            if (editingCommentContent.trim()) {
+                              updateComment.mutate({ commentId: c.id, content: editingCommentContent.trim() });
+                            }
+                          }}
+                        >
+                          Salvar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => setEditingCommentId(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {renderCommentWithMentions(c.content)}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

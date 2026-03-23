@@ -58,6 +58,7 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
   const sortableStyle = {
     transform: CSS.Transform.toString(transform),
     transition: sortableTransition,
+    touchAction: "none",
   };
 
   // Droppable for cards
@@ -119,7 +120,11 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       onDrop={handleNativeDrop}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40">
+      <div
+        className="flex items-center justify-between px-3 py-2.5 border-b border-border/40 group/header"
+        {...sortableAttributes}
+        {...sortableListeners}
+      >
         {editingTitle ? (
           <Input
             value={columnTitle}
@@ -128,13 +133,15 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
             onKeyDown={(e) => e.key === "Enter" && handleRename()}
             className="h-7 text-sm font-semibold flex-1"
             autoFocus
+            onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <h3
-            {...sortableAttributes}
-            {...sortableListeners}
             className="text-sm font-semibold truncate cursor-grab active:cursor-grabbing hover:text-primary transition-colors flex-1"
-            onDoubleClick={() => setEditingTitle(true)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditingTitle(true);
+            }}
           >
             {column.title}
           </h3>

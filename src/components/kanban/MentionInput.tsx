@@ -10,13 +10,14 @@ export interface MentionUser {
 interface MentionInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   users: MentionUser[];
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
-const MentionInput = ({ value, onChange, onSubmit, users, placeholder, className }: MentionInputProps) => {
+const MentionInput = ({ value, onChange, onSubmit, users, placeholder, className, autoFocus }: MentionInputProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStart, setMentionStart] = useState(-1);
