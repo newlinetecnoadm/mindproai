@@ -87,7 +87,7 @@ const BoardDetail = () => {
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("board_cards").select("*").eq("board_id", id!).order("position");
+        .from("board_cards").select("*").eq("board_id", id!).eq("is_archived" as any, false).order("position");
       if (error) throw error;
       return data as CardData[];
     },
