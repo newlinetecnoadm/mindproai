@@ -306,6 +306,19 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
+  // Archive card
+  const archiveCardMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("board_cards").update({ is_archived: true, archived_at: new Date().toISOString() } as any).eq("id", cardId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      onCardUpdated();
+      onOpenChange(false);
+      toast.success("Card arquivado");
+    },
+  });
+
   // Add comment
   const addComment = useMutation({
     mutationFn: async (content: string) => {

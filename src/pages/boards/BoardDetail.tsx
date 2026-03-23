@@ -597,6 +597,11 @@ const BoardDetail = () => {
             labels={boardLabels}
             members={boardMembers}
           />
+          <ArchivedCardsDialog
+            boardId={id!}
+            columns={columns}
+            onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+          />
         </div>
       </div>
 
