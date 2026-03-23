@@ -67,6 +67,7 @@ const KanbanCard = ({ card, onClick, isHighlighted, labels, members }: KanbanCar
     <div
       ref={setNodeRef}
       style={style}
+      data-type="card"
       className={cn(
         "rounded-lg shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group",
         "bg-card border border-border hover:border-primary/30",

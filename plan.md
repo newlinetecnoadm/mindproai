@@ -680,3 +680,12 @@ E-mails suprimidos (bounce, complaint).
 - **Estabilidade de Layout**: Corrigido o bug que causava "pulos" visuais ao editar o texto de um nó. O `autoLayout` agora é aplicado de forma mais atômica e preserva a organização.
 - Lint & Type Check: ✅ Pass
 - Date: 2026-03-22
+
+## ✅ PHASE XIII COMPLETE: Kanban Board Enhancements & Member Management
+- **Reordenamento de Colunas**: Correção definitiva da lógica de drag-and-drop para colunas, incluindo suporte a colunas de templates e sistema de colisão customizado que ignora cartões durante o arrasto ("ghost preview").
+- **Horário de Entrega**: Adição de seletor de tempo (HH:mm) no popover de data de entrega. Sincronização automática com a Agenda (eventos deixam de ser "dia inteiro").
+- **Segurança e Visibilidade (RLS)**: Resolução de erro de recursão infinita via função `check_board_access` (Security Definer). Membros agora visualizam uns aos outros corretamente.
+- **Gestão de Membros**: Restrição de exclusão de membros e cancelamento de convites apenas para o proprietário do board.
+- **UI Refinada**: Implementação do componente `Avatar` no diálogo de compartilhamento e ícone de Coroa para identificar o dono do recurso.
+- Lint & Type Check: ✅ Pass
+- Date: 2026-03-23

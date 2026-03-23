@@ -76,7 +76,7 @@ const BoardDetail = () => {
     enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("board_columns").select("*").eq("board_id", id!).order("position");
+        .from("board_columns").select("*").eq("board_id", id!).order("position").order("created_at");
       if (error) throw error;
       return data as ColumnData[];
     },
@@ -462,25 +462,41 @@ const BoardDetail = () => {
 
   const reorderColumnsMut = useMutation({
     mutationFn: async (columnIds: string[]) => {
-      await Promise.all(columnIds.map((cid, i) => supabase.from("board_columns").update({ position: i }).eq("id", cid)));
+      console.log("Reordering columns:", columnIds);
+      const updates = columnIds.map((cid, i) => 
+        supabase.from("board_columns").update({ position: i }).eq("id", cid)
+      );
+      
+      const results = await Promise.all(updates);
+      const errors = results.filter(r => r.error);
+      
+      if (errors.length > 0) {
+        console.error("Errors reordering columns:", errors);
+        throw new Error("Algumas colunas não puderam ser reordenadas");
+      }
     },
     onMutate: async (columnIds) => {
       await queryClient.cancelQueries({ queryKey: ["board-columns", id] });
       const previous = queryClient.getQueryData<ColumnData[]>(["board-columns", id]);
       const orderMap = new Map(columnIds.map((columnId, index) => [columnId, index]));
 
-      queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) =>
-        old.map((column) => {
+      queryClient.setQueryData<ColumnData[]>(["board-columns", id], (old = []) => {
+        // Log to identify if any column is missing from the update list
+        const updated = old.map((column) => {
           const index = orderMap.get(column.id);
           return index === undefined ? column : { ...column, position: index };
-        })
-      );
+        });
+        return updated.sort((a, b) => a.position - b.position);
+      });
 
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["board-columns", id] });
+    },
+    onError: (err: any, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["board-columns", id], context.previous);
-      toast.error("Erro ao reordenar colunas");
+      toast.error(err?.message || "Erro ao reordenar colunas");
     },
   });
 

@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Share2, Mail, Trash2, Copy, UserPlus, Users } from "lucide-react";
+import { Share2, Mail, Trash2, Copy, UserPlus, Users, Crown } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ShareBoardDialogProps {
   boardId: string;
@@ -50,10 +51,11 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
         .from("board_members")
         .select("board_id, user_id, role, joined_at")
         .eq("board_id", boardId);
+      
       if (error) throw error;
 
       // Collect all user IDs (owner + members), deduplicated
-      const memberUserIds = data.map((m) => m.user_id);
+      const memberUserIds = data?.map((m) => m.user_id) || [];
       const allUserIds = board
         ? [...new Set([board.user_id, ...memberUserIds])]
         : memberUserIds;
@@ -66,14 +68,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
         .in("user_id", allUserIds);
 
       // Build result: owner first (if not already a member row), then members
-      const result: Array<{
-        board_id: string;
-        user_id: string;
-        role: string;
-        joined_at: string | null;
-        isOwner?: boolean;
-        profile?: { user_id: string; email: string | null; full_name: string | null; avatar_url: string | null };
-      }> = [];
+      const result: any[] = [];
 
       if (board && !memberUserIds.includes(board.user_id)) {
         result.push({
@@ -86,7 +81,7 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
         });
       }
 
-      for (const m of data) {
+      for (const m of (data || [])) {
         result.push({
           ...m,
           isOwner: board?.user_id === m.user_id,
@@ -248,6 +243,8 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
     },
   });
 
+  const isCurrentUserOwner = members?.find(m => m.user_id === user?.id)?.isOwner;
+
   const roleLabels: Record<string, string> = {
     owner: "Proprietário",
     admin: "Admin",
@@ -305,29 +302,22 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
           {members?.map((m) => (
             <div
               key={m.user_id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50"
+              className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors"
             >
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                {m.profile?.avatar_url ? (
-                  <img
-                    src={m.profile.avatar_url}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  (
-                    m.profile?.full_name ||
-                    m.profile?.email ||
-                    "?"
-                  )
-                    .charAt(0)
-                    .toUpperCase()
-                )}
-              </div>
+              <Avatar className="h-8 w-8 ring-1 ring-border shrink-0">
+                <AvatarImage src={m.profile?.avatar_url || ""} alt={m.profile?.full_name || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                  {(m.profile?.full_name || m.profile?.email || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">
-                  {m.profile?.full_name || m.profile?.email}
-                </p>
-                {m.profile?.full_name && (
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-semibold truncate">
+                    {m.profile?.full_name || m.profile?.email || "Usuário"}
+                  </p>
+                  {m.isOwner && <Crown className="w-3 h-3 text-yellow-500 shrink-0" />}
+                </div>
+                {(m.profile?.full_name || !m.profile?.email) && m.profile?.email && (
                   <p className="text-[10px] text-muted-foreground truncate">
                     {m.profile.email}
                   </p>
@@ -336,7 +326,8 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
               <Badge variant="outline" className="text-[10px] shrink-0">
                 {roleLabels[m.role] || m.role}
               </Badge>
-              {m.user_id !== user?.id && !(m as any).isOwner && (
+              {/* Only owner can remove others, and cannot remove themselves or other owners */}
+              {isCurrentUserOwner && m.user_id !== user?.id && !m.isOwner && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -366,14 +357,16 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
               <Badge variant="secondary" className="text-[10px] shrink-0">
                 Pendente
               </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={() => cancelInviteMutation.mutate(inv.id)}
-              >
-                <Trash2 className="w-3 h-3 text-destructive" />
-              </Button>
+              {isCurrentUserOwner && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => cancelInviteMutation.mutate(inv.id)}
+                >
+                  <Trash2 className="w-3 h-3 text-destructive" />
+                </Button>
+              )}
             </div>
           ))}
 

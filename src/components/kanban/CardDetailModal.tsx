@@ -337,17 +337,22 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     if (!user || !cardId) return;
     // Remove existing event for this card
     await supabase.from("events").delete().eq("card_id", cardId).eq("user_id", user.id);
+    
     // Create new event if due_date is set
     if (dueDate) {
       const cardTitle = title || card?.title || "Card";
       const d = new Date(dueDate);
+      
+      // Determine if it's an all-day event (default to 00:00:00 local time)
+      const isAllDay = d.getHours() === 0 && d.getMinutes() === 0;
+      
       await supabase.from("events").insert({
         user_id: user.id,
         card_id: cardId,
         title: `📋 ${cardTitle}`,
         start_at: d.toISOString(),
         end_at: d.toISOString(),
-        all_day: true,
+        all_day: isAllDay,
         color: "#f97316",
       });
     }
@@ -894,14 +899,37 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  {card.due_date ? format(new Date(card.due_date), "dd MMM yyyy", { locale: ptBR }) : "Data de entrega"}
+                  {card.due_date ? format(new Date(card.due_date), "dd MMM yyyy, HH:mm", { locale: ptBR }) : "Data de entrega"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
+                <div className="p-3 border-b border-border flex items-center justify-between gap-4">
+                  <span className="text-xs font-medium">Definir data e hora</span>
+                  <Input
+                    type="time"
+                    className="h-8 w-32 text-xs"
+                    value={card.due_date ? format(new Date(card.due_date), "HH:mm") : "12:00"}
+                    onChange={(e) => {
+                      const timeStr = e.target.value;
+                      if (!timeStr) return;
+                      const [hours, minutes] = timeStr.split(":").map(Number);
+                      const currentFullDate = card.due_date ? new Date(card.due_date) : new Date();
+                      currentFullDate.setHours(hours, minutes, 0, 0);
+                      updateCard.mutate({ due_date: currentFullDate.toISOString() });
+                    }}
+                  />
+                </div>
                 <CalendarPicker
                   mode="single"
                   selected={card.due_date ? new Date(card.due_date) : undefined}
-                  onSelect={(d) => { if (d) updateCard.mutate({ due_date: d.toISOString() }); }}
+                  onSelect={(d) => {
+                    if (d) {
+                      const currentDateTime = card.due_date ? new Date(card.due_date) : new Date();
+                      // Keep current time when changing date
+                      d.setHours(currentDateTime.getHours(), currentDateTime.getMinutes(), 0, 0);
+                      updateCard.mutate({ due_date: d.toISOString() });
+                    }
+                  }}
                   locale={ptBR}
                   initialFocus
                   className="p-3 pointer-events-auto"
