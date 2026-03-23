@@ -39,10 +39,10 @@ const fadeUp = {
 const modules = [
   {
     icon: Brain,
-    title: "Mapas Mentais & Diagramas",
+    title: "Mapas Mentais",
     description:
-      "7 tipos de diagrama: mindmap, fluxograma, organograma, timeline, wireframe e mais. Auto-layout inteligente, templates prontos e colaboração ao vivo.",
-    tags: ["Mindmap", "Flowchart", "Orgchart", "Timeline", "Swimlane", "Wireframe"],
+      "Crie mapas mentais incríveis com facilidade. Auto-layout inteligente, templates prontos e colaboração ao vivo.",
+    tags: ["Mindmap", "Auto-layout", "Realtime"],
   },
   {
     icon: LayoutGrid,
@@ -239,7 +239,7 @@ const LandingPage = () => {
             initial="hidden" animate="visible" variants={fadeUp} custom={4}
           >
             {[
-              ["7", "tipos de diagrama"],
+              ["Mindmap", "Foco total"],
               ["10", "módulos integrados"],
               ["3", "assistentes de IA"],
               ["R$ 0", "para começar"],

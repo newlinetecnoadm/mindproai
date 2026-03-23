@@ -8,7 +8,7 @@ import { diagramTypes, getTemplatesByType, templateCategories, type DiagramTempl
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import type { Json } from "@/integrations/supabase/types";
+
 import { cn } from "@/lib/utils";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -24,6 +24,7 @@ const NewDiagram = () => {
   const limits = usePlanLimits();
 
   useEffect(() => {
+    setSelectedType("mindmap");
     if (!limits.canCreateDiagram && !upgradeOpen) {
       setUpgradeOpen(true);
     }
@@ -41,20 +42,20 @@ const NewDiagram = () => {
     setCreating(true);
 
     try {
-      const diagramData: Json = {
+      const diagramData: any = {
         nodes: template.nodes.map((n) => ({
           id: n.id,
           type: n.type,
           position: n.position,
           data: n.data as Record<string, unknown>,
-        })) as unknown as Json,
+        })) as unknown as any,
         edges: template.edges.map((e) => ({
           id: e.id,
           source: e.source,
           target: e.target,
           type: e.type,
           ...(e.label ? { label: e.label } : {}),
-        })) as unknown as Json,
+        })) as unknown as any,
         viewport: {},
       };
 
@@ -97,7 +98,7 @@ const NewDiagram = () => {
           </Button>
           <div>
             <h1 className="text-xl sm:text-2xl font-display font-bold">
-              {selectedType ? "Escolha um template" : "Novo Diagrama"}
+              {selectedType ? "Escolha um template" : "Novo Mapa Mental"}
             </h1>
             <p className="text-muted-foreground text-xs sm:text-sm">
               {selectedType
@@ -108,76 +109,32 @@ const NewDiagram = () => {
           </div>
         </div>
 
-        {!selectedType ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
-            {diagramTypes.map((t) => (
-              <Card
-                key={t.slug}
-                className="group cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
-                onClick={() => setSelectedType(t.slug)}
-              >
-                <CardContent className="p-4 sm:p-6">
-                  <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">{t.icon}</div>
-                  <h3 className="font-semibold text-sm sm:text-base mb-1">{t.name}</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{t.description}</p>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground mt-2 sm:mt-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <>
-            {/* Category filter tabs */}
-            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
-              {templateCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all",
-                    selectedCategory === cat.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  )}
-                >
-                  <span>{cat.emoji}</span>
-                  <span>{cat.name}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {templates.map((tpl) => (
-                <Card
-                  key={tpl.id}
-                  className={cn(
-                    "cursor-pointer hover:border-primary/40 hover:shadow-md transition-all",
-                    creating && "opacity-50 pointer-events-none"
-                  )}
-                  onClick={() => handleSelectTemplate(tpl)}
-                >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="h-20 sm:h-24 bg-muted/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-                      <TemplateThumbnail template={tpl} />
-                    </div>
-                    <h3 className="font-semibold text-sm mb-1">{tpl.name}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
-                    {tpl.category && (
-                      <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                        {templateCategories.find(c => c.id === tpl.category)?.name || tpl.category}
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-              {templates.length === 0 && (
-                <div className="col-span-full text-center py-8 text-muted-foreground text-sm">
-                  Nenhum template nesta categoria. Tente "Todos".
-                </div>
+        {/* Simplified creation flow: only Mind Map templates shown */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {templates.map((tpl) => (
+            <Card
+              key={tpl.id}
+              className={cn(
+                "cursor-pointer hover:border-primary/40 hover:shadow-md transition-all",
+                creating && "opacity-50 pointer-events-none"
               )}
-            </div>
-          </>
-        )}
+              onClick={() => handleSelectTemplate(tpl)}
+            >
+              <CardContent className="p-4 sm:p-5">
+                <div className="h-20 sm:h-24 bg-muted/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                  <TemplateThumbnail template={tpl} />
+                </div>
+                <h3 className="font-semibold text-sm mb-1">{tpl.name}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                {tpl.category && (
+                  <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                    {templateCategories.find(c => (c as any).id === tpl.category)?.name || tpl.category}
+                  </span>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
       <UpgradeModal
         open={upgradeOpen}

@@ -39,10 +39,6 @@ const colorDots: Record<string, string> = {
 
 const addLabels: Record<string, string> = {
   mindmap: "Adicionar nó filho",
-  flowchart: "Adicionar passo",
-  orgchart: "Adicionar membro",
-  timeline: "Adicionar marco",
-  concept_map: "Adicionar conceito",
 };
 
 const shortcuts = [

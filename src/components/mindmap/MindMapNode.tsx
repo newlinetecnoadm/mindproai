@@ -28,7 +28,9 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId === id) {
-        if (detail?.replaceText) setLabel("");
+        if (detail?.replaceText) {
+          setLabel(detail.char ?? "");
+        }
         setEditing(true);
       }
     };
@@ -40,8 +42,16 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
 
   const handleBlur = () => {
     setEditing(false);
-    data.label = label;
+    // Final sync on blur
     window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } }));
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setLabel(newVal);
+    // Sync to global state during typing so manual node additions (Tab/Enter) 
+    // use the latest available text even before blur.
+    window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: newVal } }));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -100,7 +110,7 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
         <input
           ref={inputRef}
           value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          onChange={handleTextChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}

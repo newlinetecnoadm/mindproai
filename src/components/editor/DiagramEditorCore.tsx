@@ -23,6 +23,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import { useAutoLayout } from "@/hooks/useAutoLayout";
+import { useAutosave, type AutosaveStatus } from "@/hooks/useAutosave";
 import { buildNodeStyle, inferStyleKey, getNodeStyle } from "@/lib/nodeStyles";
 import "@xyflow/react/dist/style.css";
 import MindMapNode from "@/components/mindmap/MindMapNode";
@@ -157,9 +158,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
   const lastPersistedSnapshot = useRef<string | null>(null);
   const remoteUpdateRef = useRef(false);
-  const autosaveInFlightRef = useRef(false);
-  const autosaveQueuedRef = useRef(false);
-  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const nodesRef = useRef(nodes);
@@ -172,6 +170,47 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const { fitView, zoomIn, zoomOut } = useReactFlow();
 
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("idle");
+  const pendingDataChangesRef = useRef<Map<string, string>>(new Map());
+  const syncTimeoutRef = useRef<NodeJS.Timeout>();
+  const lastThumbnailTimeRef = useRef<number>(0);
+  const idleThumbnailTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Function to flush all pending text changes to the global state immediately
+  const flushPendingDataChanges = useCallback(() => {
+    if (pendingDataChangesRef.current.size === 0) return;
+    
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    
+    const changes = new Map(pendingDataChangesRef.current);
+    pendingDataChangesRef.current.clear();
+    
+    setNodes((nds) => 
+      nds.map(n => {
+        const newVal = changes.get(n.id);
+        return newVal !== undefined ? { ...n, data: { ...n.data, label: newVal } } : n;
+      })
+    );
+  }, [setNodes]);
+
+  // Silent Autosave Hook
+  const { triggerSave } = useAutosave(
+    { nodes, edges, themeId: theme.id },
+    {
+      debounceMs: 800,
+      onSave: async (data) => {
+        // Data-only save. Highly responsive.
+        await onSaveRef.current(data.nodes, data.edges, data.themeId, undefined, { silent: true });
+        
+        // Update snapshot after successful save to skip next reflected update
+        lastPersistedSnapshot.current = buildContentSnapshot(data.nodes, data.edges, data.themeId);
+        setLastSavedAt(new Date());
+      },
+      onStatusChange: (status) => {
+        setAutosaveStatus(status);
+      }
+    }
+  );
 
   useEffect(() => {
     setCurrentEdgeType(defaultStructuredEdgeType);
@@ -181,19 +220,33 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     (changes: Parameters<typeof onNodesChangeCore>[0]) => {
       onNodesChangeCore(changes);
 
-      const hasDimensionChange = changes.some(
-        (c) => c.type === 'dimensions' && c.resizing !== true
-      );
+      // Trigger silent autosave
+      if (!remoteUpdateRef.current) {
+        triggerSave();
+      }
+
+      // Only trigger auto-layout on node removal. 
+      // Dimension changes (typing) should NOT trigger layout to prevent jumping while editing.
       const hasRemoval = changes.some((c) => c.type === 'remove');
 
-      if (hasDimensionChange || (hasRemoval && isMindmapLike(diagramType))) {
+      if (hasRemoval && isMindmapLike(diagramType)) {
         if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
         layoutTimeoutRef.current = setTimeout(() => {
           triggerLayout();
         }, 200);
       }
     },
-    [onNodesChangeCore, triggerLayout, diagramType]
+    [onNodesChangeCore, triggerLayout, diagramType, triggerSave]
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: Parameters<typeof onEdgesChange>[0]) => {
+      onEdgesChange(changes);
+      if (!remoteUpdateRef.current) {
+        triggerSave();
+      }
+    },
+    [onEdgesChange, triggerSave]
   );
 
   const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
@@ -237,92 +290,24 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const el = document.querySelector(".react-flow__viewport") as HTMLElement;
     if (!el) return undefined;
     try {
-      const dataUrl = await toPng(el, { width: 400, height: 240, quality: 0.7, pixelRatio: 1 });
+      const dataUrl = await toPng(el, { 
+        width: 400, 
+        height: 240, 
+        quality: 0.5, 
+        pixelRatio: 0.5, // Faster capture
+        style: {
+          // Disable animations in the clone to avoid thread blocking / freezing
+          animation: 'none',
+          transition: 'none'
+        }
+      });
       return dataUrl;
     } catch {
       return undefined;
     }
   }, []);
 
-  const persistAutosave = useCallback(async () => {
-    const latestNodes = nodesRef.current;
-    const latestEdges = edgesRef.current;
-    const latestThemeId = latestThemeIdRef.current;
-    const currentSnapshot = buildContentSnapshot(latestNodes, latestEdges, latestThemeId);
-
-    if (lastPersistedSnapshot.current === null) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      return;
-    }
-
-    if (remoteUpdateRef.current) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      return;
-    }
-
-    if (currentSnapshot === lastPersistedSnapshot.current) {
-      return;
-    }
-
-    if (autosaveInFlightRef.current) {
-      autosaveQueuedRef.current = true;
-      return;
-    }
-
-    autosaveInFlightRef.current = true;
-    try {
-      const thumb = await captureThumbnail();
-      await onSaveRef.current(latestNodes, latestEdges, latestThemeId, thumb, { silent: true });
-      lastPersistedSnapshot.current = currentSnapshot;
-    } catch (err) {
-      console.error("Autosave failed:", err);
-    } finally {
-      autosaveInFlightRef.current = false;
-      if (autosaveQueuedRef.current) {
-        autosaveQueuedRef.current = false;
-        if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
-        autosaveTimeoutRef.current = setTimeout(() => {
-          void persistAutosave();
-        }, 800);
-      }
-    }
-  }, [buildContentSnapshot, captureThumbnail]);
-
-  const scheduleAutosave = useCallback(() => {
-    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
-    autosaveTimeoutRef.current = setTimeout(() => {
-      void persistAutosave();
-    }, 800);
-  }, [persistAutosave]);
-
-  // Autosave por mudança real (nó/aresta/tema), com debounce e sem feedback intrusivo.
-  useEffect(() => {
-    const currentSnapshot = buildContentSnapshot(nodes, edges, theme.id);
-
-    if (remoteUpdateRef.current) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      return;
-    }
-
-    if (lastPersistedSnapshot.current === null) {
-      lastPersistedSnapshot.current = currentSnapshot;
-      return;
-    }
-
-    if (currentSnapshot === lastPersistedSnapshot.current) {
-      return;
-    }
-
-    scheduleAutosave();
-  }, [nodes, edges, theme.id, buildContentSnapshot, scheduleAutosave]);
-
-  useEffect(() => {
-    return () => {
-      if (autosaveTimeoutRef.current) {
-        clearTimeout(autosaveTimeoutRef.current);
-      }
-    };
-  }, []);
+  // We no longer need the legacy watch useEffect for autosave
 
   // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
   const handleThemeChange = useCallback((newTheme: EditorTheme) => {
@@ -342,18 +327,83 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       const ce = assignEdgeColors(cn, currentEdges, opts);
       setNodes(cn);
       setEdges(ce);
+      triggerSave();
     }
-  }, [diagramType, setNodes, setEdges]);
+  }, [diagramType, setNodes, setEdges, triggerSave]);
 
   // Apply remote updates from other users
   useEffect(() => {
     if (remoteNodes && remoteNodes.length > 0) {
-      remoteUpdateRef.current = true;
       const nextRemoteEdges = remoteEdges || [];
       const nextThemeId = remoteThemeId || theme.id;
+      
+      // 1. REFLECTION CHECK: If this update matches what we just saved, skip it entirely.
+      // This prevents the "refresh" sensation.
+      const incomingSnapshot = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
+      if (incomingSnapshot === lastPersistedSnapshot.current) {
+        return;
+      }
 
-      setNodes(remoteNodes);
-      setEdges(nextRemoteEdges);
+      const currentNodes = nodesRef.current;
+      
+      // 2. SELECTIVE MERGING: Keep our local version if it's "fresher" or currently active.
+      const mergedNodes = remoteNodes.map((remoteNode) => {
+        const localNode = currentNodes.find((n) => n.id === remoteNode.id);
+        
+        if (!localNode) return remoteNode;
+
+        // If the node is selected, it's definitely being edited.
+        if (localNode.selected) return localNode;
+
+        // If data is identical, keep local to preserve React references
+        const localDataStr = JSON.stringify(localNode.data);
+        const remoteDataStr = JSON.stringify(remoteNode.data);
+        if (localDataStr === remoteDataStr && 
+            Math.abs(localNode.position.x - remoteNode.position.x) < 0.1 && 
+            Math.abs(localNode.position.y - remoteNode.position.y) < 0.1) {
+          return localNode;
+        }
+        
+        return remoteNode;
+      });
+
+      // Also ensure we don't lose local nodes that aren't yet in the remote update (rare but possible)
+      currentNodes.forEach(localNode => {
+        if (!remoteNodes.find(rn => rn.id === localNode.id)) {
+           mergedNodes.push(localNode);
+        }
+      });
+
+      // 3. EDGE MERGING: Keep local edges that connect nodes we still have locally
+      const currentEdges = edgesRef.current;
+      const mergedEdges = [...nextRemoteEdges];
+      currentEdges.forEach(localEdge => {
+        const alreadyInRemote = nextRemoteEdges.find(re => re.id === localEdge.id);
+        if (!alreadyInRemote) {
+          // If the edge involves a node that is "local only", keep the edge!
+          const sourceIsLocalOnly = !remoteNodes.find(rn => rn.id === localEdge.source);
+          const targetIsLocalOnly = !remoteNodes.find(rn => rn.id === localEdge.target);
+          if (sourceIsLocalOnly || targetIsLocalOnly) {
+            mergedEdges.push(localEdge);
+          }
+        }
+      });
+
+      // Apply mindmap styling immediately to prevent "gray edges" flash
+      let finalNodes = mergedNodes;
+      let finalEdges = mergedEdges;
+
+      if (isMindmapLike(diagramType)) {
+        const opts = themeOptionsRef.current;
+        finalNodes = assignDepthColors(mergedNodes, mergedEdges, opts);
+        finalEdges = assignEdgeColors(finalNodes, mergedEdges, opts);
+      }
+
+      remoteUpdateRef.current = true;
+      setNodes(finalNodes);
+      setEdges(finalEdges);
+      
+      // Update our snapshot tracker so we know what the server currently has
       lastPersistedSnapshot.current = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
 
       if (remoteThemeId) {
@@ -366,14 +416,15 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         remoteUpdateRef.current = false;
       });
     }
-  }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot]);
+  }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot, diagramType]);
 
   const onConnect = useCallback(
     (params: Connection) => {
       takeSnapshot();
       setEdges((eds) => addEdge({ ...params, type: currentEdgeType }, eds));
+      triggerSave();
     },
-    [setEdges, takeSnapshot, currentEdgeType]
+    [setEdges, takeSnapshot, currentEdgeType, triggerSave]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
@@ -404,8 +455,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       setNodes(positioned);
       setEdges(laid.edges);
     }
+    triggerSave({ nodes: positioned, edges: laid.edges, themeId: theme.id });
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [diagramType, setNodes, setEdges, fitView]);
+  }, [diagramType, setNodes, setEdges, fitView, triggerSave, theme.id]);
 
   // Re-layout all nodes
   const handleReLayout = useCallback(() => {
@@ -444,6 +496,35 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     window.addEventListener("mindmap-toggle-collapse", handler);
     return () => window.removeEventListener("mindmap-toggle-collapse", handler);
   }, [diagramType, applyAutoLayout, takeSnapshot]);
+
+  // Handle data changes from custom node editors (e.g. MindMapNode typing)
+  // Optimized: Throttle global state updates during typing to prevent "agarradas"
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.nodeId || !detail?.field || detail.field !== "label") return;
+
+      const { nodeId, value } = detail;
+      
+      // Store in ref for immediate access (e.g. by Tab/Enter handlers)
+      pendingDataChangesRef.current.set(nodeId, value);
+
+      // Debounce the actual setNodes call to avoid blocking the main thread
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        flushPendingDataChanges();
+      }, 200);
+
+      // Trigger autosave timer (but this is already debounced in useAutosave)
+      triggerSave();
+    };
+
+    window.addEventListener("node-data-changed", handler);
+    return () => {
+      window.removeEventListener("node-data-changed", handler);
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [flushPendingDataChanges, triggerSave]);
 
   // Collect descendants of a node
   const collectDescendantIds = useCallback((nodeId: string, edgeList: Edge[]): Set<string> => {
@@ -573,6 +654,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
+    // Flush any pending text changes before creating new nodes
+    flushPendingDataChanges();
+
     takeSnapshot();
     const parentDepth = getNodeDepth(parent.id, edges);
     const childDepth = parentDepth + 1;
@@ -657,6 +741,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
+    // Flush any pending text changes before creating new nodes
+    flushPendingDataChanges();
+
     takeSnapshot();
     const parentId = parentEdge.source;
     const parentDepth = getNodeDepth(parentId, edges);
@@ -694,6 +781,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
     if (toDelete.size === 0) return;
 
+    flushPendingDataChanges();
     takeSnapshot();
     const childMap = new Map<string, string[]>();
     for (const e of edges) {
@@ -713,33 +801,40 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   const handleColorChange = useCallback(
     (color: string) => {
+      flushPendingDataChanges();
       takeSnapshot();
       const ids = new Set(selectedNodes.map((n) => n.id));
       setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, color } } : n));
+      triggerSave();
     },
-    [selectedNodes, setNodes, takeSnapshot]
+    [selectedNodes, setNodes, takeSnapshot, triggerSave]
   );
 
   const handleShapeChange = useCallback(
     (shape: string) => {
+      flushPendingDataChanges();
       takeSnapshot();
       const ids = new Set(selectedNodes.map((n) => n.id));
       setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, shape } } : n));
+      triggerSave();
     },
-    [selectedNodes, setNodes, takeSnapshot]
+    [selectedNodes, setNodes, takeSnapshot, triggerSave]
   );
 
   const handleVariantChange = useCallback(
     (variant: string) => {
+      flushPendingDataChanges();
       takeSnapshot();
       const ids = new Set(selectedNodes.map((n) => n.id));
       setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, variant } } : n));
+      triggerSave();
     },
-    [selectedNodes, setNodes, takeSnapshot]
+    [selectedNodes, setNodes, takeSnapshot, triggerSave]
   );
 
   const handleDuplicate = useCallback(() => {
     if (selectedNodes.length === 0) return;
+    flushPendingDataChanges();
     takeSnapshot();
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
@@ -767,17 +862,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
     setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
     setEdges((eds) => [...eds, ...newEdges]);
-  }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot]);
+    triggerSave();
+  }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot, triggerSave]);
 
-  const handleSave = useCallback(async () => {
-    const snapshot = buildContentSnapshot(nodes, edges, theme.id);
-    if (snapshot === lastPersistedSnapshot.current) return;
-
-    const thumb = await captureThumbnail();
-    await onSaveRef.current(nodes, edges, theme.id, thumb, { silent: false });
-    lastPersistedSnapshot.current = snapshot;
-    setLastSavedAt(new Date());
-  }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
+  // handleSave was unused as everything is autosaved
 
   const getFlowElement = useCallback(() => {
     return document.querySelector(".react-flow__viewport") as HTMLElement | null;
@@ -965,22 +1053,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 250 }), 10);
   }, [setNodes, fitView]);
 
-  // Listen for node data changes from inline editing (nodes mutate data directly)
-  // This forces a new nodes reference so autosave detects the change
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { nodeId, field, value } = (e as CustomEvent).detail ?? {};
-      if (!nodeId) return;
-      setNodes((nds) =>
-        nds.map((n) =>
-          n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n
-        )
-      );
-    };
-    window.addEventListener("node-data-changed", handler);
-    return () => window.removeEventListener("node-data-changed", handler);
-  }, [setNodes]);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -998,7 +1070,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
       if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
       if (e.key === "Delete" || e.key === "Backspace") handleDelete();
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); triggerSave(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
@@ -1032,7 +1104,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, handleSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, handleReLayout, searchOpen]);
+  }, [handleAddChild, handleAddSibling, handleDelete, triggerSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, handleReLayout, searchOpen, selectedNodes]);
 
   // AI: apply generated map
   const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
@@ -1125,13 +1197,39 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     applyAutoLayout(allNodes, coloredEdgesFinal);
   }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
 
+  // Generate thumbnail only after 30 seconds of idleness to prevent lagginess
+  useEffect(() => {
+    if (idleThumbnailTimeoutRef.current) clearTimeout(idleThumbnailTimeoutRef.current);
+    
+    idleThumbnailTimeoutRef.current = setTimeout(async () => {
+      if (nodes.length === 0) return;
+      
+      const capture = async () => {
+        const thumb = await captureThumbnail();
+        lastThumbnailTimeRef.current = Date.now();
+        await onSaveRef.current(nodesRef.current, edgesRef.current, latestThemeIdRef.current, thumb, { silent: true });
+      };
+
+      // Wrap in requestIdleCallback to avoid blocking UI animations
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => capture(), { timeout: 2000 });
+      } else {
+        capture();
+      }
+    }, 30000); // 30 seconds of idleness
+    
+    return () => {
+      if (idleThumbnailTimeoutRef.current) clearTimeout(idleThumbnailTimeoutRef.current);
+    };
+  }, [nodes, edges, captureThumbnail]); 
+
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
         onAddNode={handleAddChild}
         onAddSpecialNode={handleAddSpecialNode}
         onDelete={handleDelete}
-        onSave={handleSave}
+        onSave={triggerSave}
         onZoomIn={() => zoomIn()}
         onZoomOut={() => zoomOut()}
         onFitView={() => fitView({ padding: 0.2, duration: 300 })}
@@ -1163,7 +1261,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         themeCardText={ui.cardText}
       />
       {/* Autosave indicator */}
-      {saving && (
+      {(saving || autosaveStatus === "saving") && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
           style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
@@ -1172,7 +1270,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           Salvando...
         </div>
       )}
-      {!saving && lastSavedAt && (
+      {!(saving || autosaveStatus === "saving") && lastSavedAt && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
           style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}

@@ -28,21 +28,10 @@ import { cn } from "@/lib/utils";
 
 const typeIcons: Record<string, React.ReactNode> = {
   mindmap: <Brain className="w-5 h-5" />,
-  flowchart: <GitBranch className="w-5 h-5" />,
-  orgchart: <Users className="w-5 h-5" />,
-  timeline: <Timer className="w-5 h-5" />,
-  concept_map: <Link2 className="w-5 h-5" />,
-  swimlane: <LayoutGrid className="w-5 h-5" />,
 };
 
 const typeLabels: Record<string, string> = {
   mindmap: "Mapa Mental",
-  flowchart: "Fluxograma",
-  orgchart: "Organograma",
-  timeline: "Linha do Tempo",
-  concept_map: "Mapa Conceitual",
-  swimlane: "Swimlane",
-  wireframe: "Wireframe",
 };
 
 type SortOption = "updated" | "created" | "name";
@@ -403,7 +392,7 @@ const DiagramList = () => {
       <PageTransition className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-display font-bold mb-1">Meus Diagramas</h1>
+            <h1 className="text-2xl font-display font-bold mb-1">Meus Mapas Mentais</h1>
             <p className="text-muted-foreground">{totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -430,9 +419,7 @@ const DiagramList = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                {availableTypes.map((t: string) => (
-                  <SelectItem key={t} value={t}>{typeLabels[t] || t}</SelectItem>
-                ))}
+                <SelectItem value="mindmap">Mapa Mental</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>

@@ -31,7 +31,7 @@ interface UseRealtimeDiagramOptions {
   userEmail: string;
   userName?: string;
   userAvatar?: string;
-  onRemoteUpdate?: (nodes: Node[], edges: Edge[], theme: string | null) => void;
+  onRemoteUpdate?: (nodes: Node[], edges: Edge[], theme: string | null, title?: string) => void;
 }
 
 export function useRealtimeDiagram({
@@ -80,12 +80,19 @@ export function useRealtimeDiagram({
         const updatedData = payload.new;
         if (!updatedData?.data) return;
 
-        const diagramData = updatedData.data as { nodes?: Node[]; edges?: Edge[] };
+        const diagramData = updatedData.data as { nodes?: Node[]; edges?: Edge[]; last_updated_by?: string };
+        
+        // Reflection Protection: Skip updates that we initiated
+        if (diagramData.last_updated_by === userId) {
+          return;
+        }
+
         if (diagramData?.nodes && onRemoteUpdateRef.current) {
           onRemoteUpdateRef.current(
             diagramData.nodes,
             diagramData.edges || [],
-            updatedData.theme || null
+            updatedData.theme || null,
+            updatedData.title || undefined
           );
         }
       }

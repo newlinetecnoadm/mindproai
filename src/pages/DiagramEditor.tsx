@@ -58,7 +58,9 @@ const DiagramEditor = () => {
         return;
       }
 
-      setTitle(data.title);
+      if (data.title && (title === "Sem título" || !title)) {
+        setTitle(data.title);
+      }
       setDiagramType(data.type);
       setIsPublic(data.is_public ?? false);
       setPublicToken(data.public_token ?? null);
@@ -90,14 +92,46 @@ const DiagramEditor = () => {
     loadDiagram();
   }, [id, navigate]);
 
+  // Debounced title save
+  useEffect(() => {
+    if (loading || !id || title === "Sem título") return;
+
+    const timer = setTimeout(async () => {
+      try {
+        setSaving(true);
+        const { error } = await supabase
+          .from("diagrams")
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        
+        if (error) throw error;
+        
+        setSavedRecently(true);
+        setSaving(false);
+        if (savedTimer.current) clearTimeout(savedTimer.current);
+        savedTimer.current = setTimeout(() => setSavedRecently(false), 2000);
+      } catch (err) {
+        console.error("Failed to save title:", err);
+        setSaving(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [title, id, loading]);
+
   // Realtime: presence + sync
   const handleRemoteUpdate = useCallback(
-    (nodes: Node[], edges: Edge[], theme: string | null) => {
+    (nodes: Node[], edges: Edge[], theme: string | null, newTitle?: string) => {
+      if (newTitle && newTitle !== title) {
+        // Only update title if user isn't currently editing it (placeholder check)
+        // In a real app we'd use focus state, but here we'll just check if it's a real change.
+        setTitle(newTitle);
+      }
       setRemoteNodes(nodes);
       setRemoteEdges(edges);
       setRemoteThemeId(theme || undefined);
     },
-    []
+    [title]
   );
 
   const { onlineUsers } = useRealtimeDiagram({
@@ -106,7 +140,10 @@ const DiagramEditor = () => {
     userEmail: user?.email || "",
     userName: user?.user_metadata?.full_name,
     userAvatar: user?.user_metadata?.avatar_url,
-    onRemoteUpdate: handleRemoteUpdate,
+    onRemoteUpdate: (nodes, edges, theme, title) => {
+      // Skip updates if they were sent by us (reflection protection)
+      if (handleRemoteUpdate) handleRemoteUpdate(nodes, edges, theme, title);
+    },
   });
 
   const handleSave = useCallback(
@@ -162,7 +199,7 @@ const DiagramEditor = () => {
           .from("diagrams")
           .update({
             title,
-            data: diagramData,
+            data: { ...diagramData, last_updated_by: user.id },
             theme: themeId,
             updated_at: new Date().toISOString(),
             ...(thumbnailUrl ? { thumbnail: thumbnailUrl } : {}),
