@@ -1233,7 +1233,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onZoomIn={() => zoomIn()}
         onZoomOut={() => zoomOut()}
         onFitView={() => fitView({ padding: 0.2, duration: 300 })}
-        onColorChange={handleColorChange}
         onUndo={undo}
         onRedo={redo}
         onExportPng={handleExportPng}
@@ -1283,7 +1282,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       <NodeFloatingToolbar
         selectedNodes={selectedNodes}
         diagramType={diagramType}
-        onColorChange={handleColorChange}
         onShapeChange={handleShapeChange}
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}

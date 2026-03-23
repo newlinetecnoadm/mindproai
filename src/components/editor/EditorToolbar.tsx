@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Palette, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,26 +16,6 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { editorThemes, type EditorTheme } from "./editorThemes";
 import { cn } from "@/lib/utils";
-
-const nodeColors = [
-  { name: "Padrão", value: "default" },
-  { name: "Laranja", value: "orange" },
-  { name: "Azul", value: "blue" },
-  { name: "Verde", value: "green" },
-  { name: "Roxo", value: "purple" },
-  { name: "Vermelho", value: "red" },
-  { name: "Amarelo", value: "yellow" },
-];
-
-const colorDots: Record<string, string> = {
-  default: "bg-muted-foreground",
-  orange: "bg-orange-500",
-  blue: "bg-blue-500",
-  green: "bg-emerald-500",
-  purple: "bg-purple-500",
-  red: "bg-red-500",
-  yellow: "bg-amber-500",
-};
 
 const addLabels: Record<string, string> = {
   mindmap: "Adicionar nó filho",
@@ -101,7 +81,6 @@ interface EditorToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitView: () => void;
-  onColorChange: (color: string) => void;
   onUndo: () => void;
   onRedo: () => void;
   onExportPng: () => void;
@@ -133,9 +112,9 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
   </TooltipProvider>
 );
 
-const EditorToolbar = ({
+  const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onColorChange, onUndo, onRedo, onExportPng, onExportPdf,
+  onUndo, onRedo, onExportPng, onExportPdf,
   onThemeChange, onReLayout, onAIAssist, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
 }: EditorToolbarProps) => {
@@ -182,24 +161,6 @@ const EditorToolbar = ({
       <TipButton label="Excluir selecionado (Delete)" variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} disabled={!hasSelection}>
         <Trash2 className="w-4 h-4" />
       </TipButton>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <span>
-            <TipButton label="Cor do nó selecionado" variant="ghost" size="icon" className="h-8 w-8" disabled={!hasSelection}>
-              <Palette className="w-4 h-4" />
-            </TipButton>
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {nodeColors.map((c) => (
-            <DropdownMenuItem key={c.value} onClick={() => onColorChange(c.value)}>
-              <span className={`w-3 h-3 rounded-full ${colorDots[c.value]} mr-2`} />
-              {c.name}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       <div className="w-px h-5 bg-border mx-1" />
 
