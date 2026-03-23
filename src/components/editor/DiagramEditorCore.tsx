@@ -93,7 +93,7 @@ interface DiagramEditorCoreProps {
   initialNodes?: Node[];
   initialEdges?: Edge[];
   initialThemeId?: string;
-  onSave: (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string) => Promise<void>;
+  onSave: (nodes: Node[], edges: Edge[], themeId: string, thumbnailDataUrl?: string, options?: { silent?: boolean }) => Promise<void>;
   saving: boolean;
   remoteNodes?: Node[];
   remoteEdges?: Edge[];
@@ -158,6 +158,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const lastPersistedSnapshot = useRef<string | null>(null);
   const remoteUpdateRef = useRef(false);
   const autosaveInFlightRef = useRef(false);
+  const autosaveQueuedRef = useRef(false);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const nodesRef = useRef(nodes);
@@ -242,49 +244,85 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, []);
 
-  // Autosave loop: resilient even when node components mutate data in-place
+  const persistAutosave = useCallback(async () => {
+    const latestNodes = nodesRef.current;
+    const latestEdges = edgesRef.current;
+    const latestThemeId = latestThemeIdRef.current;
+    const currentSnapshot = buildContentSnapshot(latestNodes, latestEdges, latestThemeId);
+
+    if (lastPersistedSnapshot.current === null) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      return;
+    }
+
+    if (remoteUpdateRef.current) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      return;
+    }
+
+    if (currentSnapshot === lastPersistedSnapshot.current) {
+      return;
+    }
+
+    if (autosaveInFlightRef.current) {
+      autosaveQueuedRef.current = true;
+      return;
+    }
+
+    autosaveInFlightRef.current = true;
+    try {
+      const thumb = await captureThumbnail();
+      await onSaveRef.current(latestNodes, latestEdges, latestThemeId, thumb, { silent: true });
+      lastPersistedSnapshot.current = currentSnapshot;
+    } catch (err) {
+      console.error("Autosave failed:", err);
+    } finally {
+      autosaveInFlightRef.current = false;
+      if (autosaveQueuedRef.current) {
+        autosaveQueuedRef.current = false;
+        if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = setTimeout(() => {
+          void persistAutosave();
+        }, 800);
+      }
+    }
+  }, [buildContentSnapshot, captureThumbnail]);
+
+  const scheduleAutosave = useCallback(() => {
+    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    autosaveTimeoutRef.current = setTimeout(() => {
+      void persistAutosave();
+    }, 800);
+  }, [persistAutosave]);
+
+  // Autosave por mudança real (nó/aresta/tema), com debounce e sem feedback intrusivo.
   useEffect(() => {
-    const saveIfChanged = async () => {
-      if (autosaveInFlightRef.current) return;
+    const currentSnapshot = buildContentSnapshot(nodes, edges, theme.id);
 
-      const latestNodes = nodesRef.current;
-      const latestEdges = edgesRef.current;
-      const latestThemeId = latestThemeIdRef.current;
-      const currentSnapshot = buildContentSnapshot(latestNodes, latestEdges, latestThemeId);
+    if (remoteUpdateRef.current) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      return;
+    }
 
-      if (lastPersistedSnapshot.current === null) {
-        lastPersistedSnapshot.current = currentSnapshot;
-        return;
-      }
+    if (lastPersistedSnapshot.current === null) {
+      lastPersistedSnapshot.current = currentSnapshot;
+      return;
+    }
 
-      if (remoteUpdateRef.current) {
-        lastPersistedSnapshot.current = currentSnapshot;
-        return;
-      }
+    if (currentSnapshot === lastPersistedSnapshot.current) {
+      return;
+    }
 
-      if (currentSnapshot === lastPersistedSnapshot.current) {
-        return;
-      }
+    scheduleAutosave();
+  }, [nodes, edges, theme.id, buildContentSnapshot, scheduleAutosave]);
 
-      autosaveInFlightRef.current = true;
-      try {
-        const thumb = await captureThumbnail();
-        await onSaveRef.current(latestNodes, latestEdges, latestThemeId, thumb);
-        setLastSavedAt(new Date());
-        lastPersistedSnapshot.current = currentSnapshot;
-      } catch (err) {
-        console.error("Autosave failed:", err);
-      } finally {
-        autosaveInFlightRef.current = false;
+  useEffect(() => {
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
       }
     };
-
-    const intervalId = setInterval(() => {
-      void saveIfChanged();
-    }, 10000);
-
-    return () => clearInterval(intervalId);
-  }, [buildContentSnapshot, captureThumbnail]);
+  }, []);
 
   // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
   const handleThemeChange = useCallback((newTheme: EditorTheme) => {
@@ -736,7 +774,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     if (snapshot === lastPersistedSnapshot.current) return;
 
     const thumb = await captureThumbnail();
-    await onSaveRef.current(nodes, edges, theme.id, thumb);
+    await onSaveRef.current(nodes, edges, theme.id, thumb, { silent: false });
     lastPersistedSnapshot.current = snapshot;
     setLastSavedAt(new Date());
   }, [nodes, edges, theme.id, captureThumbnail, buildContentSnapshot]);
