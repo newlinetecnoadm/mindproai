@@ -1183,9 +1183,14 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
               </Popover>
             </div>
 
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
-              <Trash2 className="w-3.5 h-3.5" /> Excluir card
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => archiveCardMut.mutate()}>
+                <Archive className="w-3.5 h-3.5" /> Arquivar
+              </Button>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
+                <Trash2 className="w-3.5 h-3.5" /> Excluir card
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
