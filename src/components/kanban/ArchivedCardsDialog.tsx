@@ -35,11 +35,12 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
       const { data, error } = await supabase
         .from("board_cards")
         .select("id, title, column_id, archived_at, position")
-        .eq("board_id", boardId)
-        .eq("is_archived" as any, true)
-        .order("archived_at" as any, { ascending: false });
+        .eq("board_id", boardId) as any;
       if (error) throw error;
-      return (data || []) as ArchivedCard[];
+      const all = (data || []) as ArchivedCard[];
+      return all
+        .filter((c: any) => c.is_archived === true)
+        .sort((a, b) => (b.archived_at || "").localeCompare(a.archived_at || ""));
     },
   });
 
