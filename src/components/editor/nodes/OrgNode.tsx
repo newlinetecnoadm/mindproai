@@ -166,6 +166,46 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
           )}
         </div>
       </div>
+
+      {(data as any).hasChildren && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: id } }));
+          }}
+          className="collapse-button"
+          style={{
+            position: "absolute",
+            bottom: -6,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            backgroundColor: "#ffffff",
+            border: `1.5px solid ${((data as any).branchHex as string | undefined) || "#e5e7eb"}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+            zIndex: 10,
+            transition: "all 0.2s ease",
+            pointerEvents: "all",
+          }}
+        >
+          {(data as any).isCollapsed && (
+            <div 
+              style={{ 
+                width: 4, 
+                height: 4, 
+                borderRadius: "2px", 
+                backgroundColor: ((data as any).branchHex as string | undefined) || "#6b7280" 
+              }} 
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

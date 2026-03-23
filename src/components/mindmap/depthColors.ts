@@ -149,6 +149,7 @@ export function assignDepthColors(
   themeOptions?: { edgeColor?: string; isDefault?: boolean; isDark?: boolean }
 ): Node[] {
   const depthMap = buildDepthMap(nodes, edges);
+  const sourceNodes = new Set(edges.map(e => e.source));
 
   const depth1Nodes = nodes.filter((n) => depthMap.get(n.id) === 1);
 
@@ -182,11 +183,20 @@ export function assignDepthColors(
     const branchHex = branchAncestorId ? depth1HexMap.get(branchAncestorId) : undefined;
 
     const color = branchHex ? "branch" : getColorForDepth(depth);
+    const hasChildren = sourceNodes.has(node.id);
+
     return {
       ...node,
       // CRITICAL: preserve node.hidden so collapsed subtrees stay hidden after theme/layout changes
       hidden: node.hidden,
-      data: { ...node.data, color, branchHex: branchHex ?? getBranchHex(color), depth, isDark: themeOptions?.isDark },
+      data: { 
+        ...node.data, 
+        color, 
+        branchHex: branchHex ?? getBranchHex(color), 
+        depth, 
+        isDark: themeOptions?.isDark,
+        hasChildren
+      },
     };
   });
 }
@@ -218,26 +228,6 @@ export function assignEdgeColors(
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const depthMap = buildDepthMap(nodes, edges);
 
-  // Child count per source node
-  const childCount = new Map<string, number>();
-  for (const e of edges) {
-    childCount.set(e.source, (childCount.get(e.source) ?? 0) + 1);
-  }
-
-  // Mark ONE collapse edge per parent — ONLY for depth >= 1 sources
-  // (i.e., the circle is not shown on edges coming from the root node)
-  const collapseEdgeIds = new Set<string>();
-  const parentIds = [...new Set(edges.map((e) => e.source))];
-  for (const parentId of parentIds) {
-    const sourceDepth = depthMap.get(parentId) ?? 0;
-    if (sourceDepth < 1) continue; // ← skip root edges
-
-    const childEdges = edges.filter((e) => e.source === parentId);
-    if (childEdges.length === 0) continue;
-    const midIdx = Math.floor((childEdges.length - 1) / 2);
-    collapseEdgeIds.add(childEdges[midIdx].id);
-  }
-
   // Build animation style suffix for this theme
   const animStyle: Record<string, unknown> = {};
   if (theme?.edgeAnimation && theme.edgeAnimation !== "none") {
@@ -248,8 +238,6 @@ export function assignEdgeColors(
   return edges.map((edge) => {
     const sourceNode = nodeMap.get(edge.source);
     const sourceDepth = depthMap.get(edge.source) ?? 0;
-    const isCollapsed = !!(sourceNode?.data as any)?.isCollapsed;
-    const isCollapseEdge = collapseEdgeIds.has(edge.id);
 
     // For edges FROM root (depth 0), the color comes from the TARGET (depth-1 child).
     // For all other edges, the source node carries the branch color.
@@ -273,8 +261,6 @@ export function assignEdgeColors(
       data: {
         ...(edge.data ?? {}),
         branchColor: branchHex,
-        isCollapseEdge,
-        isCollapsed,
         sourceNodeId: edge.source,
       },
     };

@@ -53,7 +53,7 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
 
   function build(id: string, depth: number): TreeNode | null {
     const node = nodeMap.get(id);
-    if (!node) return null;
+    if (!node || node.hidden) return null;
 
     const isRoot = !!(node.data as any).isRoot || depth === 0;
     const childIds = childrenMap.get(id) || [];
@@ -88,6 +88,11 @@ function layoutMindmapBranch(
   const { h: nodeH, w: nodeW } = getNodeDimensions(tree.node);
   const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
   positions.set(tree.id, { x, y });
+
+  // Set side for child nodes (root has no side)
+  if (!tree.isRoot) {
+    (tree.node.data as any).side = direction === 1 ? "right" : "left";
+  }
 
   if (tree.children.length === 0) return;
 
@@ -173,7 +178,7 @@ function buildOrgTree(nodes: Node[], edges: Edge[]) {
 
   function build(id: string): OrgTreeNode | null {
     const node = nodeMap.get(id);
-    if (!node) return null;
+    if (!node || node.hidden) return null;
     const childIds = childrenMap.get(id) || [];
     const children = childIds.map((c) => build(c)).filter(Boolean) as OrgTreeNode[];
     const { w: nodeW } = getNodeDimensions(node);
@@ -251,7 +256,7 @@ function layoutTimeline(nodes: Node[], edges: Edge[]): Map<string, { x: number; 
     current = childMap.get(current) as string;
   }
   // Add any unvisited nodes
-  nodes.forEach((n) => { if (!visited.has(n.id)) ordered.push(n.id); });
+  nodes.forEach((n) => { if (!visited.has(n.id) && !n.hidden) ordered.push(n.id); });
 
   let currentX = 0;
   ordered.forEach((id) => {
@@ -269,6 +274,7 @@ function layoutTimeline(nodes: Node[], edges: Edge[]): Map<string, { x: number; 
 function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
   if (nodes.length === 0) return positions;
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
   const childrenMap = new Map<string, string[]>();
   const hasParent = new Set<string>();
@@ -289,7 +295,10 @@ function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number
   const visited = new Set<string>([rootId]);
 
   function layoutLevel(parentId: string, parentX: number, parentY: number, startAngle: number, sweep: number, radius: number) {
-    const childIds = (childrenMap.get(parentId) || []).filter((id) => !visited.has(id));
+    const childIds = (childrenMap.get(parentId) || []).filter((id) => {
+      const n = nodeMap.get(id);
+      return !visited.has(id) && n && !n.hidden;
+    });
     if (childIds.length === 0) return;
 
     const angleStep = sweep / Math.max(childIds.length, 1);
@@ -313,7 +322,10 @@ function layoutConceptMap(nodes: Node[], edges: Edge[]): Map<string, { x: number
     });
   }
 
-  const directChildren = (childrenMap.get(rootId) || []).filter((id) => !visited.has(id));
+  const directChildren = (childrenMap.get(rootId) || []).filter((id) => {
+    const n = nodeMap.get(id);
+    return !visited.has(id) && n && !n.hidden;
+  });
   if (directChildren.length > 0) {
     const rootNode = nodes.find(n => n.id === rootId);
     if (rootNode) {

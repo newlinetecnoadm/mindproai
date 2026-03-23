@@ -498,15 +498,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       const toggledNodes = toggleNodeCollapse(nodeId, nodesRef.current);
       const { visibleNodes, visibleEdges } = getVisibleGraph(toggledNodes, edgesRef.current);
 
-      if (isMindmapLike(diagramType)) {
-        const opts = themeOptionsRef.current;
-        const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
-        const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
-        // Apply layout+setNodes atomically to avoid race condition with triggerLayout
-        applyAutoLayout(coloredNodes, coloredEdges);
-      } else {
-        applyAutoLayout(visibleNodes, visibleEdges);
-      }
+      const opts = themeOptionsRef.current;
+      const coloredNodes = isMindmapLike(diagramType) ? assignDepthColors(visibleNodes, visibleEdges, opts) : visibleNodes;
+      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNodes, visibleEdges, opts) : visibleEdges;
+      
+      // Apply layout+setNodes atomically to avoid race condition with triggerLayout
+      applyAutoLayout(coloredNodes, coloredEdges);
     };
     window.addEventListener("mindmap-toggle-collapse", handler);
     return () => window.removeEventListener("mindmap-toggle-collapse", handler);

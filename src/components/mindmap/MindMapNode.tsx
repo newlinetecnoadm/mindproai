@@ -144,6 +144,45 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
             {label}
           </span>
       )}
+
+      {data.hasChildren && !isRoot && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: id } }));
+          }}
+          className="collapse-button"
+          style={{
+            position: "absolute",
+            [(data as any).side === "left" ? "left" : "right"]: -6,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            backgroundColor: "#ffffff",
+            border: `1.5px solid ${fillColor || data.branchHex || "#e5e7eb"}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+            zIndex: 10,
+            transition: "all 0.2s ease",
+          }}
+        >
+          {data.isCollapsed && (
+            <div 
+              style={{ 
+                width: 4, 
+                height: 4, 
+                borderRadius: "2px", 
+                backgroundColor: fillColor || data.branchHex || "#6b7280" 
+              }} 
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
