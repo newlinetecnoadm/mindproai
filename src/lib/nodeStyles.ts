@@ -58,10 +58,10 @@ export const NODE_STYLES: Record<string, CSSProperties> = {
   // ── Org chart ─────────────────────────────────────────────
   'orgchart-root': {
     ...BASE,
-    background: '#4472C4',
+    background: 'transparent',
     border: 'none',
-    borderRadius: '6px',
-    color: '#ffffff',
+    boxShadow: 'none',
+    color: '#3d3d3d',
     fontWeight: '700',
   },
   'orgchart-child': {

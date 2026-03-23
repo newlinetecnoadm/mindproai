@@ -198,3 +198,136 @@ function HierarchyEdgeComponent(props: EdgeProps) {
   return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
 export const HierarchyEdge = memo(HierarchyEdgeComponent);
+
+// ── Straight Mind Map Edge (Straight + interactive collapse circle) ──────
+
+function StraightMindMapEdgeComponent(props: EdgeProps) {
+  const { id, sourceX, sourceY, targetX, targetY, style, data } = props;
+
+  const [edgePath] = getStraightPath({
+    sourceX, sourceY,
+    targetX, targetY,
+  });
+
+  const branchColor = (data as any)?.branchColor as string | undefined;
+  const isCollapseEdge = (data as any)?.isCollapseEdge as boolean | undefined;
+  const isCollapsed = (data as any)?.isCollapsed as boolean | undefined;
+  const sourceNodeId = (data as any)?.sourceNodeId as string | undefined;
+  const edgeStyle = getAnimationStyle(style);
+  const strokeColor = branchColor ?? "#6B7280";
+
+  const handleCollapseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.nativeEvent.stopImmediatePropagation();
+    if (sourceNodeId) {
+      window.dispatchEvent(
+        new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: sourceNodeId } })
+      );
+    }
+  };
+
+  return (
+    <g>
+      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={props.markerEnd} />
+      {isCollapseEdge && (
+        <>
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R + 6}
+            fill="transparent"
+            style={{ cursor: "pointer", pointerEvents: "all" }}
+            onClick={handleCollapseClick}
+          />
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R}
+            fill={isCollapsed ? strokeColor : "white"}
+            stroke={strokeColor}
+            strokeWidth={1.5}
+            style={{ cursor: "pointer", pointerEvents: "none" }}
+          />
+          {!isCollapsed && (
+            <circle
+              cx={sourceX}
+              cy={sourceY}
+              r={2}
+              fill={strokeColor}
+              style={{ pointerEvents: "none" }}
+            />
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+export const StraightMindMapEdge = memo(StraightMindMapEdgeComponent);
+
+// ── Square Mind Map Edge (Orthogonal + interactive collapse circle) ──────
+
+function SquareMindMapEdgeComponent(props: EdgeProps) {
+  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
+
+  const [edgePath] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+    borderRadius: 0, // Perfectly square as requested
+  });
+
+  const branchColor = (data as any)?.branchColor as string | undefined;
+  const isCollapseEdge = (data as any)?.isCollapseEdge as boolean | undefined;
+  const isCollapsed = (data as any)?.isCollapsed as boolean | undefined;
+  const sourceNodeId = (data as any)?.sourceNodeId as string | undefined;
+  const edgeStyle = getAnimationStyle(style);
+  const strokeColor = branchColor ?? "#6B7280";
+
+  const handleCollapseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.nativeEvent.stopImmediatePropagation();
+    if (sourceNodeId) {
+      window.dispatchEvent(
+        new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: sourceNodeId } })
+      );
+    }
+  };
+
+  return (
+    <g>
+      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={props.markerEnd} />
+      {isCollapseEdge && (
+        <>
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R + 6}
+            fill="transparent"
+            style={{ cursor: "pointer", pointerEvents: "all" }}
+            onClick={handleCollapseClick}
+          />
+          <circle
+            cx={sourceX}
+            cy={sourceY}
+            r={CIRCLE_R}
+            fill={isCollapsed ? strokeColor : "white"}
+            stroke={strokeColor}
+            strokeWidth={1.5}
+            style={{ cursor: "pointer", pointerEvents: "none" }}
+          />
+          {!isCollapsed && (
+            <circle
+              cx={sourceX}
+              cy={sourceY}
+              r={2}
+              fill={strokeColor}
+              style={{ pointerEvents: "none" }}
+            />
+          )}
+        </>
+      )}
+    </g>
+  );
+}
+export const SquareMindMapEdge = memo(SquareMindMapEdgeComponent);

@@ -129,18 +129,20 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
           }}
         />
       ) : (
-        <span
-          style={{
-            color: textColor,
-            fontSize,
-            fontWeight,
-            lineHeight: "1.4",
-            letterSpacing: "-0.01em",
-            userSelect: "none",
-          }}
-        >
-          {label}
-        </span>
+          <span
+            style={{
+              color: textColor,
+              fontSize,
+              fontWeight,
+              lineHeight: "1.4",
+              letterSpacing: "-0.01em",
+              userSelect: "none",
+              textAlign: "center",
+              display: "block",
+            }}
+          >
+            {label}
+          </span>
       )}
     </div>
   );

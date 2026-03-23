@@ -169,7 +169,7 @@ function buildOrgTree(nodes: Node[], edges: Edge[]) {
   if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
   if (!rootId) return null;
 
-  interface OrgTreeNode { id: string; children: OrgTreeNode[]; subtreeWidth: number; node: Node; }
+  interface OrgTreeNode { id: string; children: OrgTreeNode[]; subtreeWidth: number; node: Node; childCenterGap?: number; }
 
   function build(id: string): OrgTreeNode | null {
     const node = nodeMap.get(id);
@@ -177,27 +177,55 @@ function buildOrgTree(nodes: Node[], edges: Edge[]) {
     const childIds = childrenMap.get(id) || [];
     const children = childIds.map((c) => build(c)).filter(Boolean) as OrgTreeNode[];
     const { w: nodeW } = getNodeDimensions(node);
-    const subtreeWidth = children.length === 0
-      ? nodeW
-      : Math.max(nodeW, children.reduce((s, c) => s + c.subtreeWidth, 0) + (children.length - 1) * ORG_H_GAP);
-    return { id, children, subtreeWidth, node };
+    
+    let subtreeWidth = nodeW;
+    let childCenterGap = 0;
+
+    if (children.length > 0) {
+      // Balanced Org Layout:
+      // We want siblings to have EQUAL center-to-center distance if possible.
+      // Constraint: Center_{i+1} - Center_i >= (SubtreeWidth_i + SubtreeWidth_{i+1})/2 + ORG_H_GAP
+      let maxRequiredGap = 0;
+      for (let i = 0; i < children.length - 1; i++) {
+        const gap = (children[i].subtreeWidth + children[i+1].subtreeWidth) / 2 + ORG_H_GAP;
+        maxRequiredGap = Math.max(maxRequiredGap, gap);
+      }
+      childCenterGap = maxRequiredGap;
+      // Total width is based on the gaps between centers + the half-widths of the first and last subtrees
+      const totalWidth = (children.length - 1) * childCenterGap + (children[0].subtreeWidth + children[children.length - 1].subtreeWidth) / 2;
+      subtreeWidth = Math.max(nodeW, totalWidth);
+    }
+
+    return { id, children, subtreeWidth, node, childCenterGap };
   }
   return build(rootId);
 }
 
 function layoutOrgTree(
-  tree: { id: string; children: any[]; subtreeWidth: number; node: Node },
+  tree: { id: string; children: any[]; subtreeWidth: number; node: Node, childCenterGap?: number },
   x: number,
   y: number,
   positions: Map<string, { x: number; y: number }>
 ) {
   const { h: nodeH, w: nodeW } = getNodeDimensions(tree.node);
-  positions.set(tree.id, { x: x + tree.subtreeWidth / 2 - nodeW / 2, y });
+  const parentCenterX = x + tree.subtreeWidth / 2;
+  positions.set(tree.id, { x: parentCenterX - nodeW / 2, y });
+  
   if (tree.children.length === 0) return;
-  let childX = x;
-  for (const child of tree.children) {
-    layoutOrgTree(child, childX, y + nodeH + ORG_V_GAP, positions);
-    childX += child.subtreeWidth + ORG_H_GAP;
+  
+  const gap = tree.childCenterGap || ORG_H_GAP;
+  const numChildren = tree.children.length;
+  
+  // Vertical step: use a more generous fixed gap for Orgs to ensure alignment
+  // even if node heights vary slightly (labels).
+  const verticalStep = 100;
+
+  for (let i = 0; i < numChildren; i++) {
+    const child = tree.children[i];
+    // Offset each child center from the parent center based on its index
+    const childCenterX = parentCenterX + (i - (numChildren - 1) / 2) * gap;
+    const childSubtreeX = childCenterX - child.subtreeWidth / 2;
+    layoutOrgTree(child, childSubtreeX, y + verticalStep, positions);
   }
 }
 
@@ -329,16 +357,22 @@ function getBestHandles(
 
 // ─── Center positions around origin ─────────────────────
 
-function centerPositions(positions: Map<string, { x: number; y: number }>, defaultW = NODE_WIDTH, defaultH = NODE_HEIGHT) {
+function centerPositions(positions: Map<string, { x: number; y: number }>, nodes: Node[]) {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  positions.forEach((pos) => {
+  
+  positions.forEach((pos, id) => {
+    const node = nodeMap.get(id);
+    const { w, h } = node ? getNodeDimensions(node) : { w: NODE_WIDTH, h: NODE_HEIGHT };
     minX = Math.min(minX, pos.x);
     minY = Math.min(minY, pos.y);
-    maxX = Math.max(maxX, pos.x + defaultW);
-    maxY = Math.max(maxY, pos.y + defaultH);
+    maxX = Math.max(maxX, pos.x + w);
+    maxY = Math.max(maxY, pos.y + h);
   });
+  
   const offsetX = -(minX + maxX) / 2;
   const offsetY = -(minY + maxY) / 2;
+  
   positions.forEach((pos, id) => {
     positions.set(id, { x: pos.x + offsetX, y: pos.y + offsetY });
   });
@@ -379,19 +413,19 @@ export function autoLayoutDiagram(
       if (!tree) return { nodes, edges };
       positions = new Map();
       layoutOrgTree(tree, 0, 0, positions);
-      centerPositions(positions, ORG_NODE_WIDTH, ORG_NODE_HEIGHT);
+      centerPositions(positions, nodes);
       break;
     }
 
     case "timeline": {
       positions = layoutTimeline(nodes, edges);
-      centerPositions(positions, TL_NODE_WIDTH, TL_NODE_HEIGHT);
+      centerPositions(positions, nodes);
       break;
     }
 
     case "concept_map": {
       positions = layoutConceptMap(nodes, edges);
-      centerPositions(positions, CONCEPT_NODE_WIDTH, CONCEPT_NODE_HEIGHT);
+      centerPositions(positions, nodes);
       break;
     }
 
@@ -409,22 +443,20 @@ function getNodeDimensions(node: Node): { w: number; h: number } {
   if (mw !== undefined && mh !== undefined) {
     return { w: mw, h: mh };
   }
-
-  // Fallbacks if measured is not available
-  const w = node.width;
-  const h = node.height;
-  if (w !== undefined && h !== undefined) {
-    return { w, h };
-  }
-
+ 
+  // Fallbacks if measured is not yet available — Estimate based on label
+  const label = (node.data as any)?.label || "";
+  const subLabel = (node.data as any)?.subLabel || "";
+  const estimatedW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
+ 
   const d = node.data as any;
-  if (d?.isRoot) return { w: ROOT_WIDTH, h: ROOT_HEIGHT };
+  if (d?.isRoot) return { w: Math.max(180, estimatedW), h: ROOT_HEIGHT };
+  
   const type = node.type;
-  if (type === "org") return { w: ORG_NODE_WIDTH, h: ORG_NODE_HEIGHT };
+  if (type === "org" || type === "org_mindmap") return { w: estimatedW, h: subLabel ? 54 : 40 };
   if (type === "timeline") return { w: TL_NODE_WIDTH, h: TL_NODE_HEIGHT };
   if (type === "concept") return { w: CONCEPT_NODE_WIDTH, h: CONCEPT_NODE_HEIGHT };
-  // mindmap nodes are text-only; use compact fallback when measured is not yet available
-  if (type === "mindmap") return { w: NODE_WIDTH, h: NODE_HEIGHT };
+  if (type === "mindmap") return { w: estimatedW, h: 28 };
   return { w: NODE_WIDTH, h: NODE_HEIGHT };
 }
 

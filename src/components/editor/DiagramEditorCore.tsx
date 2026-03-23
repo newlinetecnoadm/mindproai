@@ -33,8 +33,9 @@ import TimelineNode from "./nodes/TimelineNode";
 import ConceptNode from "./nodes/ConceptNode";
 import DiamondNode from "./nodes/DiamondNode";
 import StickyNoteNode from "./nodes/StickyNoteNode";
+import OrgMindMapNode from "@/components/mindmap/OrgMindMapNode";
 import GhostNode from "@/components/mindmap/GhostNode";
-import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge } from "./edges/CustomEdges";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge, StraightMindMapEdge, SquareMindMapEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
@@ -59,6 +60,7 @@ function themeUI(t: EditorTheme) {
 
 const nodeTypes = {
   mindmap: MindMapNode as any,
+  org_mindmap: OrgMindMapNode as any,
   ghost: GhostNode as any,
   flowchart: FlowchartNode as any,
   org: OrgNode as any,
@@ -75,6 +77,8 @@ const edgeTypes = {
   orthogonal: OrthogonalEdge as any,
   straight: StraightEdge as any,
   hierarchy: HierarchyEdge as any,
+  straight_mindmap: StraightMindMapEdge as any,
+  square_mindmap: SquareMindMapEdge as any,
 };
 
 const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
@@ -82,7 +86,7 @@ const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
 const typeToNodeType: Record<string, string> = {
   mindmap: "mindmap",
   flowchart: "flowchart",
-  orgchart: "org",
+  orgchart: "org_mindmap",
   timeline: "timeline",
   concept_map: "concept",
   swimlane: "flowchart",
@@ -121,7 +125,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     edgeColor: theme.edgeColor,
     edgeAnimation: theme.edgeAnimation,
     edgeDashArray: theme.edgeDashArray,
-    edgeType: diagramType === "orgchart" ? "orthogonal" : "mindmap",
+    edgeType: diagramType === "orgchart" ? "square_mindmap" : "mindmap",
     isDefault: theme.id === "default",
     isDark: isColorDark(theme.bg),
 
@@ -171,7 +175,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("idle");
-  const pendingDataChangesRef = useRef<Map<string, string>>(new Map());
+  const pendingDataChangesRef = useRef<Map<string, Record<string, any>>>(new Map());
   const syncTimeoutRef = useRef<NodeJS.Timeout>();
   const lastThumbnailTimeRef = useRef<number>(0);
   const idleThumbnailTimeoutRef = useRef<NodeJS.Timeout>();
@@ -182,13 +186,13 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     
-    const changes = new Map(pendingDataChangesRef.current);
+    const changesCopy = new Map(pendingDataChangesRef.current);
     pendingDataChangesRef.current.clear();
     
     setNodes((nds) => 
       nds.map(n => {
-        const newVal = changes.get(n.id);
-        return newVal !== undefined ? { ...n, data: { ...n.data, label: newVal } } : n;
+        const fieldChanges = changesCopy.get(n.id);
+        return fieldChanges ? { ...n, data: { ...n.data, ...fieldChanges } } : n;
       })
     );
   }, [setNodes]);
@@ -434,11 +438,22 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   // applyAutoLayout: always re-applies colors for mindmap
   // Uses applyPositions to avoid dimension-change loops (preserves measured/width/height)
   const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    const nodesWithMeasured = nextNodes.map((n) => ({
-      ...n,
-      width: n.measured?.width ?? (n.data as any)?.isRoot ? 180 : 120,
-      height: n.measured?.height ?? (n.data as any)?.isRoot ? 40 : 28,
-    }));
+    const nodesWithMeasured = nextNodes.map((n) => {
+      const mw = n.measured?.width;
+      const mh = n.measured?.height;
+      if (mw !== undefined && mh !== undefined) return { ...n, width: mw, height: mh };
+
+      const label = (n.data as any)?.label || "";
+      const subLabel = (n.data as any)?.subLabel || "";
+      const estW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
+      const isRoot = (n.data as any)?.isRoot;
+
+      return {
+        ...n,
+        width: isRoot ? Math.max(180, estW) : (diagramType === "orgchart" ? estW : 120),
+        height: isRoot ? 40 : (diagramType === "orgchart" ? (subLabel ? 54 : 40) : 28),
+      };
+    });
     const laid = autoLayoutDiagram(nodesWithMeasured, nextEdges, diagramType);
     // Apply positions back to ORIGINAL nodes — preserves measured so no dimension events
     const positioned = nextNodes.map((n) => {
@@ -502,12 +517,13 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (!detail?.nodeId || !detail?.field || detail.field !== "label") return;
+      if (!detail?.nodeId || !detail?.field) return;
 
-      const { nodeId, value } = detail;
+      const { nodeId, field, value } = detail;
       
       // Store in ref for immediate access (e.g. by Tab/Enter handlers)
-      pendingDataChangesRef.current.set(nodeId, value);
+      const existing = pendingDataChangesRef.current.get(nodeId) || {};
+      pendingDataChangesRef.current.set(nodeId, { ...existing, [field]: value });
 
       // Debounce the actual setNodes call to avoid blocking the main thread
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);

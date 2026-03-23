@@ -316,4 +316,13 @@
   min-width: 38px;
   text-align: center;
   line-height: 1.4;
-}
+}
+
+/* Remove gray borders from Mind Map and Organograma nodes */
+.react-flow__node-mindmap,
+.react-flow__node-org_mindmap {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px !important;
+}

@@ -27,9 +27,26 @@ const blankMindmap: DiagramTemplate = {
   edges: [],
 };
 
+// --- Blank Org Chart Template ---
+const blankOrgchart: DiagramTemplate = {
+  id: "org-blank",
+  name: "Em branco",
+  description: "Crie um organograma vertical com o estilo do mapa mental",
+  type: "orgchart",
+  nodes: [{
+    id: "root",
+    type: "org_mindmap",
+    position: { x: 0, y: 0 },
+    data: { label: "Líder / Empresa", isRoot: true, color: "orange" },
+    style: buildNodeStyle("mindmap", true, 0),
+  }],
+  edges: [],
+};
+
 // --- All templates ------------------------------
 export const allTemplates: DiagramTemplate[] = [
   blankMindmap,
+  blankOrgchart,
 ];
 
 export function getTemplatesByType(type: string): DiagramTemplate[] {
@@ -42,4 +59,5 @@ export const templateCategories = [
 
 export const diagramTypes = [
   { slug: "mindmap", name: "Mapa Mental", icon: "🧠", description: "Hierárquico radial, nós orgânicos" },
+  { slug: "orgchart", name: "Organograma", icon: "📊", description: "Hierárquico vertical, arestas retas" },
 ] as const;

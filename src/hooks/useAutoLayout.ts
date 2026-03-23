@@ -6,11 +6,22 @@ import { assignDepthColors, assignEdgeColors, type EdgeThemeOptions } from '@/co
 
 /** Inflate measured/estimated dimensions for layout calculation only. */
 function withMeasured(nodes: Node[]): Node[] {
-  return nodes.map((n) => ({
-    ...n,
-    width: n.measured?.width ?? (n.data as any)?.isRoot ? 180 : 120,
-    height: n.measured?.height ?? (n.data as any)?.isRoot ? 40 : 28,
-  }));
+  return nodes.map((n) => {
+    if (n.measured?.width !== undefined && n.measured?.height !== undefined) {
+      return n;
+    }
+    // Sync estimation logic with mindmapLayout.ts
+    const label = (n.data as any)?.label || "";
+    const subLabel = (n.data as any)?.subLabel || "";
+    const estW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
+    const isRoot = (n.data as any)?.isRoot;
+    
+    return {
+      ...n,
+      width: isRoot ? Math.max(180, estW) : estW,
+      height: isRoot ? 40 : (subLabel ? 54 : 40),
+    };
+  });
 }
 
 /**
@@ -37,6 +48,7 @@ export function useAutoLayout(
   const { getNodes, getEdges, setNodes: setStoreNodes, setEdges: setStoreEdges, fitView } = useReactFlow();
   const nodesInitialized = useNodesInitialized({ includeHiddenNodes: false });
   const hasLayouted = useRef(false);
+  const prevNodesCount = useRef(0);
   const themeRef = useRef(themeOptions);
   themeRef.current = themeOptions;
   const setNodesRef = useRef(setComponentNodes ?? setStoreNodes);
@@ -47,11 +59,19 @@ export function useAutoLayout(
   // Initial layout: runs once when nodes are first measured by React Flow
   useEffect(() => {
     if (!nodesInitialized) return;
+    
+    const nodes = getNodes();
+    const edges = getEdges();
+    
+    // Reset layout flag if node count changed to allow a pass after measurement
+    if (nodes.length !== prevNodesCount.current) {
+      hasLayouted.current = false;
+      prevNodesCount.current = nodes.length;
+    }
+
     if (hasLayouted.current) return;
     hasLayouted.current = true;
 
-    const nodes = getNodes();
-    const edges = getEdges();
     const laid = autoLayoutDiagram(withMeasured(nodes), edges, diagramType);
     // Restore original nodes with updated positions only (don't pass explicit width/height)
     const positioned = applyPositions(nodes, laid.nodes);
