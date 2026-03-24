@@ -66,7 +66,7 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
       await supabase.from("card_comments").delete().eq("card_id", cardId);
       await supabase.from("card_label_assignments").delete().eq("card_id", cardId);
       await supabase.from("card_members").delete().eq("card_id", cardId);
-      await supabase.from("card_attachments").delete().eq("card_id", cardId);
+      await supabase.from("card_members").delete().eq("card_id", cardId);
       const { data: cls } = await supabase.from("card_checklists").select("id").eq("card_id", cardId);
       if (cls?.length) {
         await supabase.from("checklist_items").delete().in("checklist_id", cls.map((c: any) => c.id));
