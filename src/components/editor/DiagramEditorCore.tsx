@@ -503,15 +503,17 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot, diagramType]);
 
   const handleToggleConnectors = useCallback(() => {
+    if (diagramType === "orgchart") return;
     setNodes((nds) =>
       nds.map((n) =>
         n.selected ? { ...n, data: { ...n.data, showHandles: !(n.data as any).showHandles } } : n
       )
     );
-  }, [setNodes]);
+  }, [setNodes, diagramType]);
 
   const onConnect = useCallback(
     (params: Connection) => {
+      if (diagramType === "orgchart") return;
       takeSnapshot();
       setEdges((eds) => {
         const nextEdges = addEdge({ ...params, type: currentEdgeType, data: { ...(params as any).data, isCustom: true } }, eds);

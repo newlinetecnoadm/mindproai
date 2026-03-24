@@ -119,16 +119,18 @@ const NodeFloatingToolbar = ({
         <Copy className="w-3.5 h-3.5" />
       </TipButton>
 
-      {/* Connector button next to duplicate */}
-      <TipButton 
-        variant="ghost" 
-        size="icon" 
-        className="h-7 w-7 text-primary" 
-        label="Novo Conector: Exibir pontos de ligação para este nó"
-        onClick={onToggleConnectors}
-      >
-        <Link2 className="w-3.5 h-3.5" />
-      </TipButton>
+      {/* Connector button next to duplicate - hidden for orgchart */}
+      {diagramType !== "orgchart" && (
+        <TipButton 
+          variant="ghost" 
+          size="icon" 
+          className="h-7 w-7 text-primary" 
+          label="Novo Conector: Exibir pontos de ligação para este nó"
+          onClick={onToggleConnectors}
+        >
+          <Link2 className="w-3.5 h-3.5" />
+        </TipButton>
+      )}
 
       {/* Shape picker (flowchart only) */}
       {showShapes && (
