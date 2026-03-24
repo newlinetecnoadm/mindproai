@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocation } from "react-router-dom";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type AiMode = "conversion" | "basic" | "instructive" | "full";
@@ -110,6 +112,10 @@ const AIChatWidget = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const aiMode = useAiMode();
+  const isMobile = useIsMobile();
+  const location = useLocation();
+  
+  const isDetailPage = location.pathname.includes("/boards/") || location.pathname.includes("/diagramas/");
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -166,16 +172,22 @@ const AIChatWidget = () => {
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300",
+          "fixed right-6 z-[60] shadow-lg flex items-center justify-center transition-all duration-300",
           "bg-primary text-primary-foreground hover:scale-105 active:scale-95",
+          isMobile ? "w-12 h-12" : "w-14 h-14 rounded-full",
+          isMobile ? "bottom-24" : "bottom-6",
+          isMobile ? "rounded-xl" : "rounded-full",
           open && "rotate-90"
         )}
       >
-        {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {open ? <X className={isMobile ? "w-5 h-5" : "w-6 h-6"} /> : <MessageCircle className={isMobile ? "w-5 h-5" : "w-6 h-6"} />}
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className={cn(
+          "fixed right-4 left-4 sm:left-auto sm:right-6 z-[60] sm:w-[380px] max-h-[80vh] sm:max-h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300",
+          isMobile ? "bottom-40" : "bottom-24"
+        )}>
           {/* Header */}
           <div className="px-4 py-3 border-b border-border bg-primary/5 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">

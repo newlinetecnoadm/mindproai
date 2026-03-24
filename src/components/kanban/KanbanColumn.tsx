@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import KanbanCard, { type CardData, type CardLabel, type CardMemberProfile } from "./KanbanCard";
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface ColumnData {
   id: string;
@@ -35,6 +36,7 @@ interface KanbanColumnProps {
 }
 
 const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, onRenameColumn, onDropInboxItem, highlightedCardIds, labelsMap, membersMap }: KanbanColumnProps) => {
+  const isMobile = useIsMobile();
   const [addingCard, setAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -110,7 +112,8 @@ const KanbanColumn = ({ column, cards, onAddCard, onCardClick, onDeleteColumn, o
       ref={setSortableRef}
       style={sortableStyle}
       className={cn(
-        "flex flex-col w-72 shrink-0 rounded-xl border transition-all",
+        "flex flex-col shrink-0 rounded-xl border transition-all",
+        isMobile ? "w-full" : "w-72",
         "bg-secondary/70 border-border/60",
         (isOver || nativeDragOver) && "ring-2 ring-primary/30",
         isColumnDragging && "opacity-40"

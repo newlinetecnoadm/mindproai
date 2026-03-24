@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageTransition, StaggerContainer, StaggerItem } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
-import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, GripVertical, Pencil, Share2 } from "lucide-react";
+import { Plus, Kanban, Trash2, Star, Clock, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, FolderPlus, Users, GripVertical, Pencil, Share2, Search } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import NewBoardDialog, { type BoardTemplate } from "@/components/boards/NewBoardDialog";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
@@ -91,6 +92,9 @@ const WorkspaceList = () => {
   const [shareWs, setShareWs] = useState<{ id: string; title: string } | null>(null);
   const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
   const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; boardCount: number } | null>(null);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [search, setSearch] = useState("");
+  const isMobile = useIsMobile();
   const limits = usePlanLimits();
 
   // Fetch workspaces (own + shared via workspace_members)
@@ -309,37 +313,42 @@ const WorkspaceList = () => {
   };
 
   // Group own boards by workspace
+  const totalCount = ownBoards.length;
+
+  const filteredBoards = useMemo(() => {
+    let result = [...boards] as any[];
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter((b: any) => b.title.toLowerCase().includes(q));
+    }
+    return result;
+  }, [boards, search]);
+
   const boardsByWs = useMemo(() => {
     const wsIds = new Set(workspaces.map((ws: any) => ws.id));
-    const map = new Map<string, typeof ownBoards>();
-    const unassigned: typeof ownBoards = [];
-    for (const b of ownBoards) {
+    const map = new Map<string, any[]>();
+    const unassigned: any[] = [];
+    for (const b of filteredBoards) {
       const wsId = (b as any).workspace_id;
       if (wsId && wsIds.has(wsId)) {
         if (!map.has(wsId)) map.set(wsId, []);
         map.get(wsId)!.push(b);
       } else {
+        // If it's own board with no WS, or shared board with no WS/invisible WS
         unassigned.push(b);
       }
     }
-    // Also group shared boards that belong to a visible workspace
-    for (const b of sharedBoards) {
-      const wsId = (b as any).workspace_id;
-      if (wsId && wsIds.has(wsId)) {
-        if (!map.has(wsId)) map.set(wsId, []);
-        map.get(wsId)!.push(b);
-      }
-    }
     return { map, unassigned };
-  }, [ownBoards, sharedBoards, workspaces]);
+  }, [filteredBoards, workspaces]);
 
-  // Shared boards not in any visible workspace
   const orphanSharedBoards = useMemo(() => {
     const wsIds = new Set(workspaces.map((ws: any) => ws.id));
-    return sharedBoards.filter(b => !(b as any).workspace_id || !wsIds.has((b as any).workspace_id));
-  }, [sharedBoards, workspaces]);
-
-  const totalCount = ownBoards.length;
+    return sharedBoards.filter(b => {
+      const bWsId = (b as any).workspace_id;
+      const matchesSearch = search.trim() ? b.title.toLowerCase().includes(search.toLowerCase().trim()) : true;
+      return matchesSearch && (!bWsId || !wsIds.has(bWsId));
+    });
+  }, [sharedBoards, workspaces, search]);
 
   // Realtime: refresh when memberships change
   useEffect(() => {
@@ -358,50 +367,68 @@ const WorkspaceList = () => {
   }, [user, queryClient]);
 
   const renderBoardCard = (board: any) => (
-    <div
-      key={board.id}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("application/board-id", board.id);
-        setDragBoardId(board.id);
-      }}
-      onDragEnd={() => { setDragBoardId(null); setDragOverWsId(null); }}
-      className={cn(
-        "group rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden",
-        dragBoardId === board.id ? "opacity-50 border-primary/40" : "border-border"
-      )}
-      onClick={() => navigate(`/boards/${board.id}`)}
-    >
+    <StaggerItem key={board.id}>
       <div
-        className="h-24 flex items-end p-3 relative"
-        style={{ backgroundColor: board.cover_color || "#1e293b" }}
+        draggable={!isMobile}
+        onDragStart={(e) => {
+          if (isMobile) return;
+          e.dataTransfer.setData("application/board-id", board.id);
+          setDragBoardId(board.id);
+        }}
+        onDragEnd={() => { if (!isMobile) { setDragBoardId(null); setDragOverWsId(null); } }}
+        className={cn(
+          "group rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden",
+          dragBoardId === board.id ? "opacity-50 border-primary/40" : "border-border",
+          isMobile ? "flex h-20" : "flex flex-col h-full"
+        )}
+        onClick={() => navigate(`/boards/${board.id}`)}
       >
-        <GripVertical className="w-4 h-4 text-white/60 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <h3 className="text-sm font-bold text-white drop-shadow-sm truncate">{board.title}</h3>
-      </div>
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          {formatDistanceToNow(new Date(board.updated_at!), { addSuffix: true, locale: ptBR })}
-        </span>
-        <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
-            e.stopPropagation();
-            toggleStarMut.mutate({ boardId: board.id, starred: !board.is_starred });
-          }}>
-            <Star className={cn("w-3.5 h-3.5", board.is_starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
-          </Button>
-          {board.user_id === user?.id && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => {
-              e.stopPropagation();
-              if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
-            }}>
-              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-            </Button>
+        <div
+          className={cn(
+            "flex items-center justify-center relative shrink-0",
+            isMobile ? "w-20 h-20" : "h-24 flex items-end p-3"
           )}
+          style={{ backgroundColor: board.cover_color || "#1e293b" }}
+        >
+          {isMobile ? (
+             <Kanban className="w-6 h-6 text-white/40" />
+          ) : (
+             <GripVertical className="w-4 h-4 text-white/60 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
+          {!isMobile && <h3 className="text-sm font-bold text-white drop-shadow-sm truncate">{board.title}</h3>}
+        </div>
+        <div className={cn("p-3 flex-1 flex flex-col justify-center", isMobile ? "min-w-0" : "")}>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-sm truncate flex-1">{board.title}</h3>
+            {board.is_starred && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 shrink-0" />}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDistanceToNow(new Date(board.updated_at!), { addSuffix: true, locale: ptBR })}
+            </span>
+            <div className="flex items-center gap-0.5">
+              {!isMobile && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
+                  e.stopPropagation();
+                  toggleStarMut.mutate({ boardId: board.id, starred: !board.is_starred });
+                }}>
+                  <Star className={cn("w-3.5 h-3.5", board.is_starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />
+                </Button>
+              )}
+              {board.user_id === user?.id && (
+                <Button variant="ghost" size="icon" className={cn("h-7 w-7", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")} onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm("Arquivar este board?")) deleteMut.mutate(board.id);
+                }}>
+                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </StaggerItem>
   );
 
   const handleWsDragOver = (e: React.DragEvent, wsId: string) => {
@@ -449,20 +476,56 @@ const WorkspaceList = () => {
   return (
     <DashboardLayout>
       <PageTransition className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-display font-bold mb-1">Boards</h1>
-            <p className="text-muted-foreground">{totalCount} board{totalCount !== 1 ? "s" : ""}</p>
+        <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-stretch gap-4")}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-display font-bold mb-0.5">Meus Boards</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-semibold opacity-70">
+                {totalCount} board{totalCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+            {isMobile && (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => setShowMobileSearch(!showMobileSearch)} className={cn(showMobileSearch && "text-primary bg-primary/5")}>
+                  <Search className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setWsDialogOpen(true)}>
+                  <FolderPlus className="w-5 h-5 text-muted-foreground" />
+                </Button>
+                <Button variant="hero" size="icon" className="h-9 w-9 rounded-full shadow-lg" onClick={() => handleNewBoard()}>
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setWsDialogOpen(true)}>
-              <FolderPlus className="w-4 h-4 mr-1" /> Workspace
-            </Button>
-            <Button variant="hero" onClick={() => handleNewBoard()}>
-              <Plus className="w-4 h-4 mr-1" /> Novo Board
-            </Button>
-          </div>
+          
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setWsDialogOpen(true)}>
+                <FolderPlus className="w-4 h-4 mr-1" /> Workspace
+              </Button>
+              <Button variant="hero" onClick={() => handleNewBoard()}>
+                <Plus className="w-4 h-4 mr-1" /> Novo Board
+              </Button>
+            </div>
+          )}
         </div>
+
+        {/* Search for mobile */}
+        {isMobile && showMobileSearch && (
+          <div className="mb-6 animate-in slide-in-from-top-2 duration-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar boards..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                className="pl-9 h-10 bg-muted/30 border-none rounded-xl" 
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
 
         {isFetching && !isLoading && (
           <Progress value={75} className="h-1 mb-4 w-48 mx-auto" />
@@ -569,11 +632,14 @@ const WorkspaceList = () => {
                   </div>
                   {!isCollapsed && (
                     wsBoards.length === 0 ? (
-                      <p className="text-xs text-muted-foreground ml-6">Nenhum board neste workspace</p>
+                      <p className="text-xs text-muted-foreground ml-6 sm:ml-6">Nenhum board neste workspace</p>
                     ) : (
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 ml-6">
+                      <StaggerContainer className={cn(
+                        "grid gap-4 ml-0 sm:ml-6",
+                        isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                      )}>
                         {wsBoards.map(renderBoardCard)}
-                      </div>
+                      </StaggerContainer>
                     )
                   )}
                 </div>

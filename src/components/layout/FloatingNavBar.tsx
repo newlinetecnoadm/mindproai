@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Inbox, CalendarDays, Kanban, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,7 @@ const FloatingNavBar = ({ activePanel, onTogglePanel }: FloatingNavBarProps) => 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const { data: boards = [] } = useQuery({
     queryKey: ["boards-nav", user?.id],
@@ -91,7 +93,7 @@ const FloatingNavBar = ({ activePanel, onTogglePanel }: FloatingNavBarProps) => 
               )}
             >
               <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              {!isMobile && <span>{item.label}</span>}
               {isActive && (
                 <motion.div
                   layoutId="floating-nav-indicator"
@@ -107,7 +109,7 @@ const FloatingNavBar = ({ activePanel, onTogglePanel }: FloatingNavBarProps) => 
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-200">
               <ArrowLeftRight className="w-4 h-4" />
-              <span>Switch boards</span>
+              {!isMobile && <span>Switch boards</span>}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

@@ -26,6 +26,7 @@ interface BoardFiltersProps {
   onChange: (filters: BoardFilterState) => void;
   labels: { id: string; name: string | null; color: string }[];
   members: { user_id: string; email?: string; full_name?: string | null }[];
+  hideSearch?: boolean;
 }
 
 const DUE_OPTIONS: { value: BoardFilterState["dueDateFilter"]; label: string }[] = [
@@ -35,7 +36,7 @@ const DUE_OPTIONS: { value: BoardFilterState["dueDateFilter"]; label: string }[]
   { value: "no_date", label: "Sem data" },
 ];
 
-const BoardFilters = ({ filters, onChange, labels, members }: BoardFiltersProps) => {
+const BoardFilters = ({ filters, onChange, labels, members, hideSearch }: BoardFiltersProps) => {
   const [open, setOpen] = useState(false);
 
   const activeCount =
@@ -52,23 +53,25 @@ const BoardFilters = ({ filters, onChange, labels, members }: BoardFiltersProps)
   return (
     <div className="flex items-center gap-2">
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <Input
-          value={filters.search}
-          onChange={(e) => update({ search: e.target.value })}
-          placeholder="Buscar cards..."
-          className="h-8 w-48 pl-8 text-xs"
-        />
-        {filters.search && (
-          <button
-            onClick={() => update({ search: "" })}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-      </div>
+      {!hideSearch && (
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            value={filters.search}
+            onChange={(e) => update({ search: e.target.value })}
+            placeholder="Buscar cards..."
+            className="h-8 w-48 pl-8 text-xs"
+          />
+          {filters.search && (
+            <button
+              onClick={() => update({ search: "" })}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter popover */}
       <Popover open={open} onOpenChange={setOpen}>

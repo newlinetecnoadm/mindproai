@@ -18,6 +18,8 @@ import KanbanCard, { type CardData, type CardLabel, type CardMemberProfile } fro
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface KanbanBoardProps {
   columns: ColumnData[];
@@ -52,10 +54,13 @@ const KanbanBoard = ({
   labelsMap,
   membersMap,
 }: KanbanBoardProps) => {
+  const isMobile = useIsMobile();
   const [activeCard, setActiveCard] = useState<CardData | null>(null);
   const [activeColumn, setActiveColumn] = useState<ColumnData | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
+  const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
+  const [activeTab, setActiveTab] = useState<string>(sortedColumns[0]?.id || "");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -65,8 +70,6 @@ const KanbanBoard = ({
     (columnId: string) => cards.filter((c) => c.column_id === columnId).sort((a, b) => a.position - b.position),
     [cards]
   );
-
-  const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
 
   const collisionDetectionStrategy = useCallback(
     (args: any) => {
@@ -228,6 +231,78 @@ const KanbanBoard = ({
       setAddingColumn(false);
     }
   };
+
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col pt-2 w-full overflow-x-hidden">
+        <Tabs value={activeTab || sortedColumns[0]?.id} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="bg-transparent justify-start px-4 h-11 overflow-x-auto overflow-y-hidden no-scrollbar gap-2 mb-2 shrink-0">
+            {sortedColumns.map((col) => (
+              <TabsTrigger
+                key={col.id}
+                value={col.id}
+                className="rounded-full px-5 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border/50 transition-all shadow-sm shrink-0"
+              >
+                {col.title}
+              </TabsTrigger>
+            ))}
+            <button
+              onClick={() => setAddingColumn(true)}
+              className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-dashed border-border text-muted-foreground shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </TabsList>
+
+          <div className="flex-1 overflow-hidden px-4">
+            {sortedColumns.map((col) => (
+              <TabsContent key={col.id} value={col.id} className="h-full mt-0 focus-visible:ring-0">
+                <KanbanColumn
+                  column={col}
+                  cards={getColumnCards(col.id)}
+                  onAddCard={onAddCard}
+                  onCardClick={onCardClick}
+                  onDeleteColumn={onDeleteColumn}
+                  onRenameColumn={onRenameColumn}
+                  onDropInboxItem={onDropInboxItem}
+                  highlightedCardIds={highlightedCardIds}
+                  labelsMap={labelsMap}
+                  membersMap={membersMap}
+                />
+              </TabsContent>
+            ))}
+            
+            {addingColumn && (
+              <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-6">
+                <div className="w-full max-w-sm p-4 bg-card rounded-2xl border border-border shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+                  <h3 className="text-lg font-bold">Nova Coluna</h3>
+                  <Input
+                    placeholder="Nome da coluna..."
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddColumn();
+                      if (e.key === "Escape") setAddingColumn(false);
+                    }}
+                    autoFocus
+                    className="h-12 text-base rounded-xl"
+                  />
+                  <div className="flex gap-3">
+                    <Button className="flex-1 h-11 rounded-xl font-bold" onClick={handleAddColumn}>
+                      Adicionar
+                    </Button>
+                    <Button variant="ghost" className="flex-1 h-11 rounded-xl" onClick={() => setAddingColumn(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Tabs>
+      </div>
+    );
+  }
 
   return (
     <DndContext

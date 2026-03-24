@@ -11,10 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import DiagramEditorCore from "@/components/editor/DiagramEditorCore";
+import { buildNodeStyle, inferStyleKey } from "@/lib/nodeStyles";
+import { cn } from "@/lib/utils";
 import type { Node, Edge } from "@xyflow/react";
 import type { Json } from "@/integrations/supabase/types";
 import { diagramTypes } from "@/data/templates";
-import { buildNodeStyle, inferStyleKey } from "@/lib/nodeStyles";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type SaveOptions = {
   silent?: boolean;
@@ -43,6 +45,7 @@ const DiagramEditor = () => {
   const [remoteNodes, setRemoteNodes] = useState<Node[] | undefined>();
   const [remoteEdges, setRemoteEdges] = useState<Edge[] | undefined>();
   const [remoteThemeId, setRemoteThemeId] = useState<string | undefined>();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const loadDiagram = async () => {
@@ -309,10 +312,13 @@ const DiagramEditor = () => {
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="h-8 w-64 text-sm font-medium border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
+          className={cn(
+            "h-8 text-sm font-medium border-none bg-transparent hover:bg-muted focus-visible:bg-muted",
+            isMobile ? "w-32" : "w-64"
+          )}
           placeholder="Nome do diagrama"
         />
-        {typeInfo && (
+        {typeInfo && !isMobile && (
           <Badge variant="secondary" className="text-xs gap-1">
             {typeInfo.icon} {typeInfo.name}
           </Badge>
@@ -364,9 +370,17 @@ const DiagramEditor = () => {
               </div>
             </TooltipProvider>
           )}
-          <span className="text-xs text-muted-foreground transition-opacity">
-            {saving ? "Salvando..." : savedRecently ? "✓ Salvo" : ""}
-          </span>
+          {!isMobile && (
+            <span className="text-xs text-muted-foreground transition-opacity min-w-[60px]">
+              {saving ? "Salvando..." : savedRecently ? "✓ Salvo" : ""}
+            </span>
+          )}
+          {isMobile && saving && (
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse mr-1" />
+          )}
+          {isMobile && !saving && savedRecently && (
+            <span className="text-xs text-green-500 font-bold mr-1">✓</span>
+          )}
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import {
   Pencil, AlertTriangle, GripVertical,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -98,6 +99,8 @@ const DiagramList = () => {
   const [sortBy, setSortBy] = useState<SortOption>("updated");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [wsDialogOpen, setWsDialogOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const isMobile = useIsMobile();
   const [collapsedWs, setCollapsedWs] = useState<Set<string>>(new Set());
   const [renamingWs, setRenamingWs] = useState<{ id: string; title: string } | null>(null);
   const [deletingWs, setDeletingWs] = useState<{ id: string; title: string; diagramCount: number } | null>(null);
@@ -331,20 +334,25 @@ const DiagramList = () => {
   const renderDiagramCard = (d: any, isOwner: boolean) => (
     <StaggerItem key={d.id}>
       <div
-        draggable={isOwner}
+        draggable={isOwner && !isMobile}
         onDragStart={(e) => {
+          if (isMobile) return;
           e.dataTransfer.setData("application/diagram-id", d.id);
           setDragDiagramId(d.id);
         }}
-        onDragEnd={() => { setDragDiagramId(null); setDragOverWsId(null); }}
+        onDragEnd={() => { if (!isMobile) { setDragDiagramId(null); setDragOverWsId(null); } }}
         className={cn(
           "group rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden",
-          dragDiagramId === d.id ? "opacity-50 border-primary/40" : "border-border"
+          dragDiagramId === d.id ? "opacity-50 border-primary/40" : "border-border",
+          isMobile ? "flex h-24" : "flex flex-col"
         )}
         onClick={() => navigate(`/diagramas/${d.id}`)}
       >
-        <div className="h-32 bg-muted flex items-center justify-center text-muted-foreground/30 overflow-hidden relative">
-          {isOwner && (
+        <div className={cn(
+          "bg-muted flex items-center justify-center text-muted-foreground/30 overflow-hidden relative shrink-0",
+          isMobile ? "w-24 h-24" : "h-32 w-full"
+        )}>
+          {isOwner && !isMobile && (
             <GripVertical className="w-4 h-4 text-muted-foreground/40 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
           )}
           {d.thumbnail ? (
@@ -353,15 +361,17 @@ const DiagramList = () => {
             typeIcons[d.type] || <Brain className="w-10 h-10" />
           )}
         </div>
-        <div className="p-4">
+        <div className={cn("p-3 flex-1 flex flex-col justify-center", isMobile ? "min-w-0" : "")}>
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-sm truncate flex-1">{d.title}</h3>
-            {!isOwner && (
-              <Badge variant="secondary" className="text-[10px] shrink-0">Compartilhado</Badge>
+            {!isOwner && !isMobile && (
+              <Badge variant="secondary" className="text-[10px] shrink-0">Comp.</Badge>
             )}
-            <Badge variant="outline" className="text-[10px] shrink-0">
-              {typeLabels[d.type] || d.type}
-            </Badge>
+            {!isMobile && (
+              <Badge variant="outline" className="text-[10px] shrink-0">
+                {typeLabels[d.type] || d.type}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -372,13 +382,13 @@ const DiagramList = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                className={cn("h-8 w-8", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (confirm("Excluir este diagrama?")) deleteMutation.mutate(d.id);
                 }}
               >
-                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                <Trash2 className="w-4 h-4 text-destructive" />
               </Button>
             )}
           </div>
@@ -390,48 +400,78 @@ const DiagramList = () => {
   return (
     <DashboardLayout>
       <PageTransition className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-display font-bold mb-1">Meus Mapas Mentais</h1>
-            <p className="text-muted-foreground">{totalCount} diagrama{totalCount !== 1 ? "s" : ""}</p>
+        <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-stretch gap-4")}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-display font-bold mb-0.5">Meus Mapas Mentais</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-semibold opacity-70">
+                {totalCount} diagrama{totalCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+            {isMobile && (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => setShowMobileSearch(!showMobileSearch)} className={cn(showMobileSearch && "text-primary bg-primary/5")}>
+                  <Search className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setWsDialogOpen(true)}>
+                  <FolderPlus className="w-5 h-5" />
+                </Button>
+                <Button variant="hero" size="icon" className="h-9 w-9 rounded-full shadow-lg" onClick={handleNewDiagram}>
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setWsDialogOpen(true)}>
-              <FolderPlus className="w-4 h-4 mr-1" /> Workspace
-            </Button>
-            <Button variant="hero" onClick={handleNewDiagram}>
-              <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
-            </Button>
-          </div>
+          
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setWsDialogOpen(true)}>
+                <FolderPlus className="w-4 h-4 mr-1" /> Workspace
+              </Button>
+              <Button variant="hero" onClick={handleNewDiagram}>
+                <Plus className="w-4 h-4 mr-1" /> Novo Diagrama
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Search and filters */}
         {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className={cn(
+            "flex flex-col sm:flex-row gap-3 mb-6",
+            isMobile && !showMobileSearch && "hidden"
+          )}>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar diagramas..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
+              <Input 
+                placeholder="Buscar diagramas..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                className="pl-9 h-10 sm:h-9 bg-muted/30 border-none rounded-xl" 
+              />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[180px] h-9">
-                <SlidersHorizontal className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="mindmap">Mapa Mental</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-full sm:w-[180px] h-9">
-                <SelectValue placeholder="Ordenar" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated">Última edição</SelectItem>
-                <SelectItem value="created">Data de criação</SelectItem>
-                <SelectItem value="name">Nome (A-Z)</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="flex-1 sm:w-[180px] h-10 sm:h-9 bg-muted/30 border-none rounded-xl">
+                  <SlidersHorizontal className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="mindmap">Mapa Mental</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <SelectTrigger className="flex-1 sm:w-[180px] h-10 sm:h-9 bg-muted/30 border-none rounded-xl">
+                  <SelectValue placeholder="Ordenar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="updated">Última edição</SelectItem>
+                  <SelectItem value="created">Data de criação</SelectItem>
+                  <SelectItem value="name">Nome (A-Z)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
@@ -517,9 +557,12 @@ const DiagramList = () => {
                       </div>
                       {!isCollapsed && (
                         wsDiagrams.length === 0 ? (
-                          <p className="text-xs text-muted-foreground ml-6">Nenhum diagrama neste workspace</p>
+                          <p className="text-xs text-muted-foreground ml-6 sm:ml-6">Nenhum diagrama neste workspace</p>
                         ) : (
-                          <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 ml-6">
+                          <StaggerContainer className={cn(
+                            "grid gap-4 ml-0 sm:ml-6",
+                            isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                          )}>
                             {wsDiagrams.map((d: any) => renderDiagramCard(d, true))}
                           </StaggerContainer>
                         )

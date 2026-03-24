@@ -46,6 +46,8 @@ import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
 import { UserRoleProvider } from "./UserRoleContext";
 import { OutlineView } from "./OutlineView";
 import { ImportOutlineDialog } from "./ImportOutlineDialog";
+import MobileNodeDrawer from "./MobileNodeDrawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 /** Derive UI chrome colors from a theme (bg + edge only) */
@@ -232,6 +234,9 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [currentEdgeType, setCurrentEdgeType] = useState(defaultStructuredEdgeType);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
+  const [mobileDrawerNode, setMobileDrawerNode] = useState<Node | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isMobile = useIsMobile();
   const lastPersistedSnapshot = useRef<string | null>(null);
   const remoteUpdateRef = useRef(false);
   const onSaveRef = useRef(onSave);
@@ -1352,8 +1357,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         themeCardBorder={ui.cardBorder}
         themeCardText={ui.cardText}
       />
-      {/* Autosave indicator */}
-      {(saving || autosaveStatus === "saving") && (
+      {/* Autosave indicator - hide on mobile since it's in the header */}
+      {!isMobile && (saving || autosaveStatus === "saving") && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
           style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
@@ -1362,7 +1367,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           Salvando...
         </div>
       )}
-      {!(saving || autosaveStatus === "saving") && lastSavedAt && (
+      {!isMobile && !(saving || autosaveStatus === "saving") && lastSavedAt && (
         <div
           className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
           style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
@@ -1382,8 +1387,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onAddSibling={handleAddSibling}
         onVariantChange={handleVariantChange}
       />
-      {/* Keyboard shortcut legend — bottom-left, mindmap only */}
-      {isMindmapLike(diagramType) && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
+      {/* Keyboard shortcut legend — bottom-left, mindmap only - hide on mobile */}
+      {!isMobile && isMindmapLike(diagramType) && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
         <div
           className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg px-3 py-2 text-xs backdrop-blur-sm shadow-md"
           style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.cardBorder}`, color: ui.cardText }}
@@ -1447,6 +1452,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           onNodeDrag={userRole === "viewer" ? undefined : handleNodeDrag}
           onNodeDragStop={userRole === "viewer" ? undefined : handleNodeDragStop}
           onNodeContextMenu={handleNodeContextMenu}
+          onNodeClick={(_e, node) => {
+            if (isMobile && userRole !== "viewer") {
+              setMobileDrawerNode(node);
+            }
+          }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView={!initialFitDone.current}
@@ -1469,12 +1479,18 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
           <Controls
             showInteractive={false}
-            style={{ backgroundColor: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
+            style={{ 
+              backgroundColor: themeUI(theme).cardBg, 
+              borderColor: themeUI(theme).cardBorder, 
+              borderRadius: 12,
+              bottom: isMobile ? 120 : undefined
+            }}
             className="!rounded-xl !shadow-md [&>button]:!border-0"
           />
           <MiniMap
             style={{ backgroundColor: theme.minimapBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
             className="!rounded-xl !shadow-md"
+            position={isMobile ? "bottom-left" : "bottom-right"}
             maskColor={theme.minimapMask}
             nodeColor={themeUI(theme).minimapNode}
           />
@@ -1519,6 +1535,23 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           userRole={userRole}
         />
       )}
+      <MobileNodeDrawer
+        isOpen={!!mobileDrawerNode}
+        onClose={() => setMobileDrawerNode(null)}
+        node={mobileDrawerNode}
+        diagramType={diagramType}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
+        onAddChild={handleAddChild}
+        onAddSibling={handleAddSibling}
+        onColorChange={handleColorChange}
+        onShapeChange={handleShapeChange}
+        onVariantChange={handleVariantChange}
+        onAIAssist={limits.aiGeneration ? () => {
+          setContextMenu({ x: window.innerWidth / 2, y: window.innerHeight / 2, node: mobileDrawerNode! });
+          setMobileDrawerNode(null);
+        } : undefined}
+      />
     </div>
   );
 }

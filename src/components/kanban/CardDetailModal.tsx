@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive, Pencil, GripVertical, Check
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive, Pencil, GripVertical, Check, LayoutGrid
 } from "lucide-react";
 import {
   DndContext,
@@ -40,6 +40,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Progress } from "@/components/ui/progress";
+import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CardDetailModalProps {
   cardId: string | null;
@@ -138,6 +140,7 @@ const SortableChecklistItem = ({
 };
 
 const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }: CardDetailModalProps) => {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -812,646 +815,543 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <div className={cn("space-y-6", isMobile ? "pb-4 -mt-2" : "p-0")}>
         {/* Cover */}
         {card.cover_color && (
-          <div className="h-8 rounded-t-lg" style={{ backgroundColor: card.cover_color }} />
+          <div className="h-8 rounded-t-lg -mx-4 -mt-4 mb-4" style={{ backgroundColor: card.cover_color }} />
         )}
 
-        <div className="p-6 space-y-6">
-          {/* Title */}
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => { if (title.trim() && title !== card.title) updateCard.mutate({ title }); }}
-            className="text-xl font-bold border-none bg-transparent px-0 h-auto focus-visible:ring-0 focus-visible:bg-muted rounded-lg px-2 -mx-2"
-          />
-
-          {/* Labels + Diagram link */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {assignedLabels.map((l: any) => (
-              <Badge key={l.id} className="text-white text-xs" style={{ backgroundColor: l.color }}>
-                {l.name || "Sem nome"}
-              </Badge>
-            ))}
-            {linkedDiagram ? (
-              <Badge
-                variant="outline"
-                className="text-xs gap-1 cursor-pointer hover:bg-primary/10 border-primary/30 text-primary"
-                onClick={() => {
-                  onOpenChange(false);
-                  navigate(`/diagramas/${linkedDiagram.id}`);
-                }}
-              >
-                <ExternalLink className="w-3 h-3" />
-                {linkedDiagram.title}
-              </Badge>
-            ) : (
-              <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker} modal={true}>
-                <PopoverTrigger asChild>
-                  <button type="button" className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border border-border cursor-pointer hover:bg-muted/80 transition-colors">
-                    <GitBranch className="w-3 h-3" /> Diagrama
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-3" align="start">
-                  <p className="text-xs font-medium mb-2">Seus diagramas</p>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {userDiagrams.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-2 text-center">Nenhum diagrama encontrado</p>
-                    )}
-                    {userDiagrams.map((d: any) => (
-                      <button
-                        key={d.id}
-                        onClick={() => {
-                          updateCard.mutate({ diagram_id: d.id });
-                          setShowDiagramPicker(false);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded text-left text-xs hover:bg-muted/50 transition-colors"
-                      >
-                        {d.thumbnail ? (
-                          <img src={d.thumbnail} alt="" className="w-10 h-7 object-cover rounded shrink-0" />
-                        ) : (
-                          <div className="w-10 h-7 flex items-center justify-center rounded bg-muted shrink-0">
-                            <GitBranch className="w-3 h-3 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{d.title}</p>
-                          <p className="text-[10px] text-muted-foreground capitalize">{d.type?.replace("_", " ")}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-            {linkedDiagram && (
-              <Button variant="ghost" size="sm" className="h-5 px-1 text-destructive" onClick={() => updateCard.mutate({ diagram_id: null })}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
-
-          {/* Due date */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {card.due_date ? format(new Date(card.due_date), "dd MMM yyyy, HH:mm", { locale: ptBR }) : "Data de entrega"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-3 border-b border-border flex items-center justify-between gap-4">
-                  <span className="text-xs font-medium">Definir data e hora</span>
-                  <Input
-                    type="time"
-                    className="h-8 w-32 text-xs"
-                    value={card.due_date ? format(new Date(card.due_date), "HH:mm") : "12:00"}
-                    onChange={(e) => {
-                      const timeStr = e.target.value;
-                      if (!timeStr) return;
-                      const [hours, minutes] = timeStr.split(":").map(Number);
-                      const currentFullDate = card.due_date ? new Date(card.due_date) : new Date();
-                      currentFullDate.setHours(hours, minutes, 0, 0);
-                      updateCard.mutate({ due_date: currentFullDate.toISOString() });
-                    }}
-                  />
-                </div>
-                <CalendarPicker
-                  mode="single"
-                  selected={card.due_date ? new Date(card.due_date) : undefined}
-                  onSelect={(d) => {
-                    if (d) {
-                      const currentDateTime = card.due_date ? new Date(card.due_date) : new Date();
-                      // Keep current time when changing date
-                      d.setHours(currentDateTime.getHours(), currentDateTime.getMinutes(), 0, 0);
-                      updateCard.mutate({ due_date: d.toISOString() });
-                    }
-                  }}
-                  locale={ptBR}
-                  initialFocus
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-
-            {card.due_date && (
-              <>
-                <ReminderPicker cardId={cardId!} dueDate={card.due_date} />
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
-                  Remover data
-                </Button>
-              </>
-            )}
-
-            {/* Label picker */}
-            <Popover open={showLabelPicker} onOpenChange={setShowLabelPicker}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <Tag className="w-3.5 h-3.5" /> Labels
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="start">
-                <p className="text-xs font-medium mb-2">Labels do board</p>
-                <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
-                  {boardLabels.map((l: any) => (
-                    <button
-                      key={l.id}
-                      onClick={() => toggleLabel.mutate(l.id)}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
-                        cardLabelIds.includes(l.id) ? "bg-muted ring-1 ring-primary/30" : "hover:bg-muted/50"
-                      )}
-                    >
-                      <div className="w-6 h-4 rounded" style={{ backgroundColor: l.color }} />
-                      <span className="flex-1 truncate">{l.name || "Sem nome"}</span>
-                      {cardLabelIds.includes(l.id) && <CheckSquare className="w-3.5 h-3.5 text-primary" />}
-                    </button>
-                  ))}
-                </div>
-                <div className="border-t border-border pt-2 space-y-2">
-                  <p className="text-xs text-muted-foreground">Criar nova label</p>
-                  <Input value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} placeholder="Nome" className="h-7 text-xs" />
-                  <div className="flex gap-1 flex-wrap">
-                    {LABEL_COLORS.map((c) => (
-                      <button
-                        key={c.color}
-                        onClick={() => setNewLabelColor(c.color)}
-                        className={cn("w-6 h-6 rounded", newLabelColor === c.color && "ring-2 ring-offset-1 ring-primary")}
-                        style={{ backgroundColor: c.color }}
-                      />
-                    ))}
-                  </div>
-                  <Button size="sm" className="h-7 text-xs w-full" onClick={() => { if (newLabelName.trim()) createLabel.mutate({ name: newLabelName, color: newLabelColor }); }}>
-                    Criar label
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Members */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Membros</span>
+        <div className={cn("flex flex-col gap-6", !isMobile && "p-0")}>
+          {/* Title and ID */}
+          <div className="space-y-1">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => { if (title.trim() && title !== card.title) updateCard.mutate({ title }); }}
+              className="text-xl font-bold border-none bg-transparent px-0 h-auto focus-visible:ring-0 focus-visible:bg-muted rounded-lg px-2 -mx-2"
+            />
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
+              <span>Card {cardId?.substring(0, 8)}</span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <LayoutGrid className="w-3 h-3" />
+                No Board
+              </span>
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {allBoardUsers
-                .filter((u: any) => cardMemberIds.includes(u.user_id))
-                .map((u: any) => (
-                  <Badge
-                    key={u.user_id}
-                    variant="outline"
-                    className="text-xs cursor-pointer hover:bg-destructive/10"
-                    onClick={() => toggleMember.mutate(u.user_id)}
-                  >
-                    {u.full_name || u.email} ×
+          </div>
+
+          <div className={cn("grid gap-8", !isMobile && "grid-cols-4")}>
+            <div className={cn("space-y-8", !isMobile ? "col-span-3" : "col-span-1")}>
+              {/* Labels + Diagram link */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {assignedLabels.map((l: any) => (
+                  <Badge key={l.id} className="text-white text-xs" style={{ backgroundColor: l.color }}>
+                    {l.name || "Sem nome"}
                   </Badge>
                 ))}
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> Adicionar membro
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-3" align="start">
-                <p className="text-xs font-medium mb-2">Membros do board</p>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {allBoardUsers.map((u: any) => (
-                    <button
-                      key={u.user_id}
-                      onClick={() => toggleMember.mutate(u.user_id)}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
-                        cardMemberIds.includes(u.user_id) ? "bg-muted ring-1 ring-primary/30" : "hover:bg-muted/50"
-                      )}
-                    >
-                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                        {(u.full_name || u.email || "?").charAt(0).toUpperCase()}
-                      </div>
-                      <span className="truncate">{u.full_name || u.email}</span>
-                      {cardMemberIds.includes(u.user_id) && <CheckSquare className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <AlignLeft className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Descrição</span>
-              </div>
-              {isEditingDescription && (
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="hero" 
-                    className="h-7 text-xs" 
+                {linkedDiagram ? (
+                  <Badge
+                    variant="outline"
+                    className="text-xs gap-1 cursor-pointer hover:bg-primary/10 border-primary/30 text-primary"
                     onClick={() => {
-                      updateCard.mutate({ description: description || null });
-                      setIsEditingDescription(false);
+                      onOpenChange(false);
+                      navigate(`/diagramas/${linkedDiagram.id}`);
                     }}
                   >
-                    Salvar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-7 text-xs" 
-                    onClick={() => {
-                      setDescription(card.description || "");
-                      setIsEditingDescription(false);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              )}
-            </div>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onFocus={() => setIsEditingDescription(true)}
-              placeholder="Adicione uma descrição..."
-              rows={3}
-              className="resize-none text-sm transition-all focus-visible:ring-1"
-            />
-          </div>
-
-          {/* Diagram link is now a direct redirect - no preview dialog */}
-
-          {/* Checklists */}
-          {checklists.map((cl: any) => {
-            const items = checklistItems.filter((i: any) => i.checklist_id === cl.id);
-            const checked = items.filter((i: any) => i.is_checked).length;
-            const progress = items.length > 0 ? (checked / items.length) * 100 : 0;
-
-            return (
-              <div key={cl.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <CheckSquare className="w-4 h-4 text-muted-foreground shrink-0" />
-                    {editingChecklistId === cl.id ? (
-                      <div className="flex flex-1 gap-1">
-                        <Input
-                          autoFocus
-                          value={editingChecklistTitle}
-                          onChange={(e) => setEditingChecklistTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() });
-                            else if (e.key === "Escape") setEditingChecklistId(null);
-                          }}
-                          className="h-7 text-sm font-medium flex-1"
-                        />
-                        <Button size="sm" variant="hero" className="h-7 w-7 p-0" onClick={() => { if (editingChecklistTitle.trim()) updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle.trim() }); }}>
-                          <Check className="w-3.5 h-3.5" />
-                        </Button>
+                    <ExternalLink className="w-3 h-3" />
+                    {linkedDiagram.title}
+                  </Badge>
+                ) : (
+                  <Popover open={showDiagramPicker} onOpenChange={setShowDiagramPicker} modal={true}>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border border-border cursor-pointer hover:bg-muted/80 transition-colors">
+                        <GitBranch className="w-3 h-3" /> Diagrama
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-3" align="start">
+                      <p className="text-xs font-medium mb-2">Seus diagramas</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {userDiagrams.length === 0 && (
+                          <p className="text-xs text-muted-foreground py-2 text-center">Nenhum diagrama encontrado</p>
+                        )}
+                        {userDiagrams.map((d: any) => (
+                          <button
+                            key={d.id}
+                            onClick={() => {
+                              updateCard.mutate({ diagram_id: d.id });
+                              setShowDiagramPicker(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded text-left text-xs hover:bg-muted/50 transition-colors"
+                          >
+                            {d.thumbnail ? (
+                              <img src={d.thumbnail} alt="" className="w-10 h-7 object-cover rounded shrink-0" />
+                            ) : (
+                              <div className="w-10 h-7 flex items-center justify-center rounded bg-muted shrink-0">
+                                <GitBranch className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">{d.title}</p>
+                              <p className="text-[10px] text-muted-foreground capitalize">{d.type?.replace("_", " ")}</p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    ) : (
-                      <span
-                        className="text-sm font-medium cursor-pointer hover:text-primary truncate"
-                        onClick={() => { setEditingChecklistId(cl.id); setEditingChecklistTitle(cl.title); }}
-                        title="Clique para editar"
-                      >{cl.title}</span>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive shrink-0" onClick={() => deleteChecklist.mutate(cl.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {linkedDiagram && (
+                  <Button variant="ghost" size="sm" className="h-5 px-1 text-destructive" onClick={() => updateCard.mutate({ diagram_id: null })}>
+                    <Trash2 className="w-3 h-3" />
                   </Button>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[11px] text-muted-foreground w-8">{Math.round(progress)}%</span>
-                  <Progress value={progress} className="h-1.5 flex-1" />
-                </div>
-                <div className="space-y-1 ml-1">
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleChecklistDragEnd(e, cl.id)}>
-                    <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-                      {items.sort((a: any, b: any) => (a.position || 0) - (b.position || 0)).map((item: any) => (
-                        <SortableChecklistItem
-                          key={item.id}
-                          item={item}
-                          onToggle={(itemId: string, checked: boolean) => toggleItem.mutate({ itemId, checked })}
-                          onEdit={(itemId: string, text: string) => { setEditingItemId(itemId); setEditingItemText(text); }}
-                          onDelete={(itemId: string) => deleteChecklistItem.mutate(itemId)}
-                          isEditing={editingItemId === item.id}
-                          editingText={editingItemText}
-                          onEditingTextChange={setEditingItemText}
-                          onSave={(itemId: string) => { if (editingItemText.trim()) updateChecklistItem.mutate({ itemId, text: editingItemText.trim() }); }}
-                          onCancel={() => setEditingItemId(null)}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                  <div className="flex gap-1 mt-2 ml-6">
-                    <Input
-                      value={newItemTexts[cl.id] || ""}
-                      onChange={(e) => setNewItemTexts({ ...newItemTexts, [cl.id]: e.target.value })}
-                      placeholder="Adicionar item..."
-                      className="h-7 text-xs flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && newItemTexts[cl.id]?.trim()) {
-                          addChecklistItem.mutate({ checklistId: cl.id, text: newItemTexts[cl.id].trim() });
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0"
-                      disabled={!newItemTexts[cl.id]?.trim()}
-                      onClick={() => {
-                        if (newItemTexts[cl.id]?.trim()) addChecklistItem.mutate({ checklistId: cl.id, text: newItemTexts[cl.id].trim() });
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Add checklist */}
-          <div className="flex gap-2">
-            <Input
-              value={newChecklistTitle}
-              onChange={(e) => setNewChecklistTitle(e.target.value)}
-              placeholder="Nova checklist..."
-              className="h-8 text-xs flex-1"
-              onKeyDown={(e) => { if (e.key === "Enter" && newChecklistTitle.trim()) addChecklist.mutate(newChecklistTitle.trim()); }}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1"
-              disabled={!newChecklistTitle.trim()}
-              onClick={() => { if (newChecklistTitle.trim()) addChecklist.mutate(newChecklistTitle.trim()); }}
-            >
-              <CheckSquare className="w-3.5 h-3.5" /> Checklist
-            </Button>
-          </div>
-
-          {/* Attachments */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Anexos</span>
-                {attachments.length > 0 && (
-                  <span className="text-xs text-muted-foreground">({attachments.length})</span>
                 )}
               </div>
-              <label className="cursor-pointer">
-                <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  {uploading ? "Enviando..." : "Adicionar"}
-                </span>
-              </label>
-            </div>
-            {attachments.length > 0 && (
-              <div className="space-y-2">
-                {attachments.map((att: any) => {
-                  const isImage = att.mime_type?.startsWith("image/");
-                  return (
-                    <div key={att.id} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/30 group">
-                      {isImage ? (
-                        <img src={att.url} alt={att.name} className="w-16 h-12 object-cover rounded shrink-0" />
-                      ) : (
-                        <div className="w-16 h-12 flex items-center justify-center rounded bg-muted shrink-0">
-                          <FileText className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{att.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {att.created_at && format(new Date(att.created_at), "dd MMM, HH:mm", { locale: ptBR })}
-                        </p>
-                      </div>
-                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-muted transition-colors" title="Download">
-                        <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                      </a>
-                      <button onClick={() => deleteAttachment.mutate({ id: att.id, url: att.url })} className="p-1.5 rounded hover:bg-destructive/10 transition-colors" title="Excluir">
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
-          {/* Comments */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Comentários</span>
-            </div>
-            <div className="space-y-3 mb-4">
-              {comments.map((c: any) => (
-                <div key={c.id} className="bg-muted/50 rounded-lg p-3 group/comment">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">Você</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(c.created_at), "dd MMM, HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
-                    {c.user_id === user?.id && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => {
-                            setEditingCommentId(c.id);
-                            setEditingCommentContent(c.content);
-                          }}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive"
-                          onClick={() => {
-                            if (confirm("Excluir comentário?")) deleteComment.mutate(c.id);
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {editingCommentId === c.id ? (
-                    <div className="space-y-2 mt-2">
-                      <MentionInput
-                        value={editingCommentContent}
-                        onChange={setEditingCommentContent}
-                        users={mentionUsers}
-                        placeholder="Editar comentário..."
-                        autoFocus
-                        onSubmit={() => {
-                          if (editingCommentContent.trim()) {
-                            updateComment.mutate({ commentId: c.id, content: editingCommentContent.trim() });
-                          }
+              {/* Due date and reminders */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {card.due_date ? format(new Date(card.due_date), "dd MMM yyyy, HH:mm", { locale: ptBR }) : "Data de entrega"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <div className="p-3 border-b border-border flex items-center justify-between gap-4">
+                      <span className="text-xs font-medium">Definir data e hora</span>
+                      <Input
+                        type="time"
+                        className="h-8 w-32 text-xs"
+                        value={card.due_date ? format(new Date(card.due_date), "HH:mm") : "12:00"}
+                        onChange={(e) => {
+                          const timeStr = e.target.value;
+                          if (!timeStr) return;
+                          const [hours, minutes] = timeStr.split(":").map(Number);
+                          const currentFullDate = card.due_date ? new Date(card.due_date) : new Date();
+                          currentFullDate.setHours(hours, minutes, 0, 0);
+                          updateCard.mutate({ due_date: currentFullDate.toISOString() });
                         }}
                       />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="hero"
-                          className="h-7 text-xs"
-                          onClick={() => {
-                            if (editingCommentContent.trim()) {
-                              updateComment.mutate({ commentId: c.id, content: editingCommentContent.trim() });
-                            }
-                          }}
-                        >
-                          Salvar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs"
-                          onClick={() => setEditingCommentId(null)}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">
-                      {renderCommentWithMentions(c.content)}
-                    </p>
-                  )}
+                    <CalendarPicker
+                      mode="single"
+                      selected={card.due_date ? new Date(card.due_date) : undefined}
+                      onSelect={(d) => {
+                        if (d) {
+                          const currentDateTime = card.due_date ? new Date(card.due_date) : new Date();
+                          d.setHours(currentDateTime.getHours(), currentDateTime.getMinutes(), 0, 0);
+                          updateCard.mutate({ due_date: d.toISOString() });
+                        }
+                      }}
+                      locale={ptBR}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {card.due_date && (
+                  <>
+                    <ReminderPicker cardId={cardId!} dueDate={card.due_date} />
+                    <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive" onClick={() => updateCard.mutate({ due_date: null })}>
+                      Remover data
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <AlignLeft className="w-4 h-4" />
+                  Descrição
+                </div>
+                {isEditingDescription ? (
+                  <div className="space-y-3 px-1">
+                    <Textarea
+                      autoFocus
+                      placeholder="Adicione uma descrição mais detalhada..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="min-h-[120px] text-sm resize-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => { updateCard.mutate({ description }); setIsEditingDescription(false); }}>Salvar</Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setDescription(card.description || ""); setIsEditingDescription(false); }}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => setIsEditingDescription(true)}
+                    className={cn(
+                      "min-h-[60px] p-3 rounded-lg text-sm cursor-pointer border border-transparent transition-all",
+                      description ? "hover:bg-muted/50" : "bg-muted/50 flex items-center justify-center text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {description || "Adicionar uma descrição..."}
+                  </div>
+                )}
+              </div>
+
+              {/* Checklists */}
+              {checklists.map((cl: any) => (
+                <div key={cl.id} className="space-y-4">
+                  <div className="flex items-center justify-between group px-1">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <CheckSquare className="w-4 h-4" />
+                      {editingChecklistId === cl.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            autoFocus
+                            value={editingChecklistTitle}
+                            onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle }); }}
+                            className="h-8 text-sm w-48"
+                          />
+                          <Button size="sm" className="h-8" onClick={() => updateChecklistTitle.mutate({ checklistId: cl.id, title: editingChecklistTitle })}>Salvar</Button>
+                          <Button variant="ghost" size="sm" className="h-8" onClick={() => setEditingChecklistId(null)}>Cancelar</Button>
+                        </div>
+                      ) : (
+                        <span className="cursor-pointer hover:underline" onClick={() => { setEditingChecklistId(cl.id); setEditingChecklistTitle(cl.title); }}>{cl.title}</span>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteChecklist.mutate(cl.id)}>Excluir</Button>
+                  </div>
+
+                  {(() => {
+                    const items = checklistItems.filter((i: any) => i.checklist_id === cl.id).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+                    const progress = items.length ? Math.round((items.filter((i: any) => i.is_checked).length / items.length) * 100) : 0;
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 px-1">
+                          <span className="text-[10px] font-bold w-7 text-right">{progress}%</span>
+                          <Progress value={progress} className="h-2 flex-1" />
+                        </div>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleChecklistDragEnd(e, cl.id)}>
+                          <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-0.5 ml-1">
+                              {items.map((item: any) => (
+                                <SortableChecklistItem
+                                  key={item.id}
+                                  item={item}
+                                  isEditing={editingItemId === item.id}
+                                  editingText={editingItemText}
+                                  onEditingTextChange={setEditingItemText}
+                                  onToggle={(itemId: string, checked: boolean) => toggleItem.mutate({ itemId, checked })}
+                                  onEdit={(itemId: string, text: string) => { setEditingItemId(itemId); setEditingItemText(text); }}
+                                  onSave={(itemId: string) => updateChecklistItem.mutate({ itemId, text: editingItemText })}
+                                  onDelete={(itemId: string) => deleteChecklistItem.mutate(itemId)}
+                                  onCancel={() => setEditingItemId(null)}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                        <div className="px-7">
+                          {newItemTexts[cl.id] !== undefined ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                autoFocus
+                                placeholder="Adicionar um item"
+                                value={newItemTexts[cl.id]}
+                                onChange={(e) => setNewItemTexts({ ...newItemTexts, [cl.id]: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addChecklistItem.mutate({ checklistId: cl.id, text: newItemTexts[cl.id] }); } }}
+                                className="min-h-[60px] text-xs resize-none"
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" className="h-8 text-xs" onClick={() => addChecklistItem.mutate({ checklistId: cl.id, text: newItemTexts[cl.id] })}>Adicionar</Button>
+                                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { const n = { ...newItemTexts }; delete n[cl.id]; setNewItemTexts(n); }}>Cancelar</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs -ml-2" onClick={() => setNewItemTexts({ ...newItemTexts, [cl.id]: "" })}>Adicionar um item</Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
-            </div>
-            <div className="flex gap-2">
-              <MentionInput
-                value={newComment}
-                onChange={setNewComment}
-                onSubmit={() => { if (newComment.trim()) addComment.mutate(newComment.trim()); }}
-                users={mentionUsers}
-                placeholder="Escreva um comentário... Use @ para mencionar"
-              />
-              <Button
-                size="sm"
-                variant="hero"
-                className="h-auto self-end"
-                disabled={!newComment.trim()}
-                onClick={() => { if (newComment.trim()) addComment.mutate(newComment.trim()); }}
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
 
-          {/* Activity Feed - collapsible */}
-          <details className="group">
-            <summary className="flex items-center gap-2 cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
-              <Activity className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Atividade</span>
-              <span className="text-[10px] text-muted-foreground ml-auto group-open:rotate-90 transition-transform">▶</span>
-            </summary>
-            <div className="mt-2">
-              <CardActivityFeed cardId={cardId!} />
-            </div>
-          </details>
-
-          {/* Card actions */}
-          <div className="border-t border-border pt-4 space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {/* Copy card */}
-              <Popover open={showCopyCard} onOpenChange={setShowCopyCard}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                    <Copy className="w-3.5 h-3.5" /> Copiar
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-3" align="start">
-                  <p className="text-xs font-medium mb-3">Copiar card</p>
-                  <div className="space-y-2 mb-3">
-                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                      <Checkbox checked={copyChecklists} onCheckedChange={(v) => setCopyChecklists(!!v)} />
-                      Copiar checklists ({checklists.length})
-                    </label>
-                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                      <Checkbox checked={copyLabels} onCheckedChange={(v) => setCopyLabels(!!v)} />
-                      Copiar labels ({cardLabelIds.length})
-                    </label>
+              {/* Comments */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-sm font-semibold px-1">
+                  <MessageSquare className="w-4 h-4" />
+                  Atividade
+                </div>
+                <div className="flex gap-3 px-1">
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shrink-0">
+                    {user?.email?.charAt(0).toUpperCase()}
                   </div>
-                  <Button size="sm" className="w-full h-7 text-xs" onClick={() => copyCardMut.mutate()} disabled={copyCardMut.isPending}>
-                    {copyCardMut.isPending ? "Copiando..." : "Criar cópia"}
-                  </Button>
-                </PopoverContent>
-              </Popover>
+                  <div className="flex-1 space-y-2">
+                    <MentionInput
+                      value={newComment}
+                      onChange={setNewComment}
+                      users={mentionUsers}
+                      placeholder="Escreva um comentário... (use @ para mencionar)"
+                      className="min-h-[80px]"
+                    />
+                    <Button size="sm" disabled={!newComment.trim()} onClick={() => addComment.mutate(newComment)}>Comentar</Button>
+                  </div>
+                </div>
 
-              {/* Move card */}
-              <Popover open={showMoveCard} onOpenChange={(o) => { setShowMoveCard(o); if (!o) { setMoveTargetBoardId(""); setMoveTargetColumns([]); } }}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                    <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-3" align="start">
-                  <p className="text-xs font-medium mb-3">Mover para outro board</p>
-                  <div className="space-y-2 mb-3">
-                    <Select value={moveTargetBoardId} onValueChange={loadTargetColumns}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Selecionar board..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allBoards.filter((b: any) => b.id !== boardId).map((b: any) => (
-                          <SelectItem key={b.id} value={b.id} className="text-xs">{b.title}</SelectItem>
+                <div className="space-y-6 pb-4">
+                  {comments.map((c: any) => (
+                    <div key={c.id} className="flex gap-3 px-1 group">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">
+                        {/* Try to find full name for avatar letter if possible */}
+                        {allBoardUsers.find((u: any) => u.user_id === c.user_id)?.full_name?.charAt(0).toUpperCase() || c.user_id?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold">{allBoardUsers.find((u: any) => u.user_id === c.user_id)?.full_name || "Usuário"}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ptBR })}</span>
+                        </div>
+                        {editingCommentId === c.id ? (
+                          <div className="space-y-2 mt-2">
+                            <MentionInput
+                              value={editingCommentContent}
+                              onChange={setEditingCommentContent}
+                              users={mentionUsers}
+                              className="min-h-[80px]"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" onClick={() => updateComment.mutate({ commentId: c.id, content: editingCommentContent })}>Salvar</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setEditingCommentId(null)}>Cancelar</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg bg-muted/40 p-3 text-sm whitespace-pre-wrap break-words">
+                            {renderCommentWithMentions(c.content)}
+                          </div>
+                        )}
+                        {c.user_id === user?.id && !editingCommentId && (
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button className="hover:underline" onClick={() => { setEditingCommentId(c.id); setEditingCommentContent(c.content); }}>Editar</button>
+                            <button className="hover:underline text-destructive" onClick={() => { if (confirm("Excluir comentário?")) deleteComment.mutate(c.id); }}>Excluir</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <details className="text-xs text-muted-foreground px-1 group cursor-pointer border-t border-border pt-4">
+                  <summary className="hover:text-foreground transition-colors font-medium flex items-center gap-1 list-none">
+                    <Activity className="w-3 h-3" />
+                    Mostrar histórico de atividades
+                  </summary>
+                  <div className="mt-4 pl-4 border-l border-muted">
+                    <CardActivityFeed cardId={cardId!} />
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            {/* Sidebar Actions */}
+          <div className={cn("space-y-6", isMobile ? "border-t border-border pt-6" : "col-span-1")}>
+              <div className="space-y-4">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ações</p>
+                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                  <Popover open={showLabelPicker} onOpenChange={setShowLabelPicker}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2">
+                        <Tag className="w-3.5 h-3.5" /> Labels
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <p className="text-xs font-medium mb-2">Labels do board</p>
+                      <div className="space-y-1 mb-3 max-h-40 overflow-y-auto">
+                        {boardLabels.map((l: any) => (
+                          <button
+                            key={l.id}
+                            onClick={() => toggleLabel.mutate(l.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
+                              cardLabelIds.includes(l.id) ? "bg-muted ring-1 ring-primary/30" : "hover:bg-muted/50"
+                            )}
+                          >
+                            <div className="w-6 h-4 rounded" style={{ backgroundColor: l.color }} />
+                            <span className="flex-1 truncate">{l.name || "Sem nome"}</span>
+                            {cardLabelIds.includes(l.id) && <Check className="w-3 h-3 text-primary" />}
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    {moveTargetColumns.length > 0 && (
-                      <Select value={moveTargetColumnId} onValueChange={setMoveTargetColumnId}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Selecionar coluna..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {moveTargetColumns.map((c) => (
-                            <SelectItem key={c.id} value={c.id} className="text-xs">{c.title}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    className="w-full h-7 text-xs"
-                    disabled={!moveTargetColumnId || moveCardToBoardMut.isPending}
-                    onClick={() => moveCardToBoardMut.mutate()}
-                  >
-                    {moveCardToBoardMut.isPending ? "Movendo..." : "Mover card"}
-                  </Button>
-                </PopoverContent>
-              </Popover>
-            </div>
+                      </div>
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-[10px] font-bold text-muted-foreground mb-2 px-1">Criar nova label</p>
+                        <div className="space-y-2 px-1">
+                          <Input
+                            placeholder="Nome da label"
+                            value={newLabelName}
+                            onChange={(e) => setNewLabelName(e.target.value)}
+                            className="h-7 text-xs"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {LABEL_COLORS.map((c) => (
+                              <button
+                                key={c.color}
+                                className={cn("w-5 h-5 rounded flex items-center justify-center transition-transform", newLabelColor === c.color && "ring-2 ring-primary ring-offset-1 scale-110")}
+                                style={{ backgroundColor: c.color }}
+                                onClick={() => setNewLabelColor(c.color)}
+                              >
+                                {newLabelColor === c.color && <Check className="w-3 h-3 text-white" />}
+                              </button>
+                            ))}
+                          </div>
+                          <Button 
+                            className="w-full h-7 text-xs" 
+                            disabled={!newLabelName.trim()} 
+                            onClick={() => createLabel.mutate({ name: newLabelName.trim(), color: newLabelColor })}
+                          >
+                            Criar e adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => archiveCardMut.mutate()}>
-                <Archive className="w-3.5 h-3.5" /> Arquivar
-              </Button>
-              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive text-xs gap-1" onClick={() => deleteCard.mutate()}>
-                <Trash2 className="w-3.5 h-3.5" /> Excluir card
-              </Button>
+                  <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2" onClick={() => addChecklist.mutate("Checklist")}>
+                    <CheckSquare className="w-3.5 h-3.5" /> Checklist
+                  </Button>
+
+                  <div className="relative">
+                    <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileUpload} disabled={uploading} />
+                    <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2 w-full" disabled={uploading}>
+                      <Paperclip className={cn("w-3.5 h-3.5", uploading && "animate-pulse")} /> {uploading ? "Enviando..." : "Anexar"}
+                    </Button>
+                  </div>
+
+                  {/* Move/Copy actions */}
+                  <div className="grid grid-cols-2 gap-2 w-full col-span-2 sm:col-span-1">
+                    <Popover open={showCopyCard} onOpenChange={setShowCopyCard}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2">
+                          <Copy className="w-3.5 h-3.5" /> Copiar
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3" align="start">
+                        <p className="text-xs font-medium mb-3">Copiar card</p>
+                        <div className="space-y-2 mb-3">
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <Checkbox checked={copyChecklists} onCheckedChange={(v) => setCopyChecklists(!!v)} />
+                            Checklists ({checklists.length})
+                          </label>
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <Checkbox checked={copyLabels} onCheckedChange={(v) => setCopyLabels(!!v)} />
+                            Labels ({cardLabelIds.length})
+                          </label>
+                        </div>
+                        <Button size="sm" className="w-full h-8 text-xs font-semibold" onClick={() => copyCardMut.mutate()} disabled={copyCardMut.isPending}>
+                          {copyCardMut.isPending ? "Copiando..." : "Criar cópia"}
+                        </Button>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Popover open={showMoveCard} onOpenChange={(o) => { setShowMoveCard(o); if (!o) { setMoveTargetBoardId(""); setMoveTargetColumns([]); } }}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2">
+                          <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3" align="start">
+                        <p className="text-xs font-medium mb-3">Mover card</p>
+                        <div className="space-y-2 mb-3">
+                          <Select value={moveTargetBoardId} onValueChange={loadTargetColumns}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Board..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allBoards.filter((b: any) => b.id !== boardId).map((b: any) => (
+                                <SelectItem key={b.id} value={b.id} className="text-xs">{b.title}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {moveTargetColumns.length > 0 && (
+                            <Select value={moveTargetColumnId} onValueChange={setMoveTargetColumnId}>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Coluna..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {moveTargetColumns.map((c) => (
+                                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.title}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs font-semibold"
+                          disabled={!moveTargetColumnId || moveCardToBoardMut.isPending}
+                          onClick={() => moveCardToBoardMut.mutate()}
+                        >
+                          {moveCardToBoardMut.isPending ? "Movendo..." : "Mover agora"}
+                        </Button>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+
+              {/* Members */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Membros</p>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {cardMemberIds.map((uid: string) => {
+                    const profile = allBoardUsers.find((u: any) => u.user_id === uid);
+                    return (
+                      <div
+                        key={uid}
+                        className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white cursor-help border-2 border-background"
+                        title={profile?.full_name || profile?.email || "Membro"}
+                      >
+                        {profile?.full_name?.charAt(0).toUpperCase() || profile?.email?.charAt(0).toUpperCase() || "?"}
+                      </div>
+                    );
+                  })}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 text-muted-foreground">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <p className="text-xs font-medium mb-2">Membros do board</p>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {allBoardUsers.map((u: any) => (
+                          <button
+                            key={u.user_id}
+                            onClick={() => toggleMember.mutate(u.user_id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted/50 transition-colors"
+                          >
+                            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white", cardMemberIds.includes(u.user_id) ? "bg-primary" : "bg-muted text-muted-foreground")}>
+                              {u.full_name?.charAt(0).toUpperCase() || "?"}
+                            </div>
+                            <span className="flex-1 truncate">{u.full_name || u.email}</span>
+                            {cardMemberIds.includes(u.user_id) && <Check className="w-3 h-3 text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Dangerous actions */}
+              <div className="pt-4 border-t border-border space-y-2">
+                <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-9 gap-2" onClick={() => archiveCardMut.mutate()}>
+                  <Archive className="w-3.5 h-3.5" /> Arquivar este card
+                </Button>
+                <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-9 gap-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => { if (confirm("Excluir card permanentemente?")) deleteCard.mutate(); }}>
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir permanentemente
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </ResponsiveModal>
   );
 };
 

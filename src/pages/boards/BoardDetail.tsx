@@ -7,7 +7,7 @@ import { useCardActivity } from "@/hooks/useCardActivity";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { toast } from "sonner";
-import { ArrowLeft, Archive } from "lucide-react";
+import { ArrowLeft, Archive, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
@@ -24,6 +24,8 @@ import ArchivedCardsDialog from "@/components/kanban/ArchivedCardsDialog";
 import type { ColumnData } from "@/components/kanban/KanbanColumn";
 import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 const BoardDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +40,8 @@ const BoardDetail = () => {
   const [realtimeHighlightedCards, setRealtimeHighlightedCards] = useState<Set<string>>(new Set());
   const { logActivity } = useCardActivity();
   const { createNotification } = useNotifications();
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleTogglePanel = (panel: "inbox" | "planner") => {
     setActivePanel((prev) => (prev === panel ? null : panel));
@@ -592,35 +596,86 @@ const BoardDetail = () => {
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/boards")}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <Input
-          value={boardTitle}
-          onChange={(e) => setBoardTitle(e.target.value)}
-          onBlur={() => { if (boardTitle.trim() && boardTitle !== board.title) updateTitleMut.mutate(boardTitle); }}
-          className="h-8 w-64 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted"
-        />
-        <div className="ml-auto flex items-center gap-2">
-          <NotificationBell />
-          {limits.aiGeneration && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
-          <BoardThemePicker
-            currentTheme={(board as any).theme || "default"}
-            onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
-          />
-          <ShareBoardDialog boardId={id!} boardTitle={board.title} />
-          <BoardFilters
-            filters={filters}
-            onChange={setFilters}
-            labels={boardLabels}
-            members={boardMembers}
-          />
-          <ArchivedCardsDialog
-            boardId={id!}
-            columns={columns}
-            onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
-          />
-        </div>
+        {isMobile && isSearchMode ? (
+          <div className="flex-1 flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSearchMode(false)}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder="Buscar cards..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                className="h-9 w-full pl-8 text-sm bg-muted/50 border-none focus-visible:ring-1"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => setFilters({ ...filters, search: "" })}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/boards")}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <Input
+              value={boardTitle}
+              onChange={(e) => setBoardTitle(e.target.value)}
+              onBlur={() => { if (boardTitle.trim() && boardTitle !== board.title) updateTitleMut.mutate(boardTitle); }}
+              className={cn(
+                "h-8 text-sm font-semibold border-none bg-transparent hover:bg-muted focus-visible:bg-muted",
+                isMobile ? "flex-1 min-w-0" : "w-64"
+              )}
+            />
+            <div className="ml-auto flex items-center gap-1 sm:gap-2">
+              {(!isMobile || limits.aiGeneration) && (
+                <NotificationBell />
+              )}
+              {isMobile && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSearchMode(true)}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              )}
+              {limits.aiGeneration && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
+              {!isMobile && (
+                <>
+                  <BoardThemePicker
+                    currentTheme={(board as any).theme || "default"}
+                    onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
+                  />
+                  <ShareBoardDialog boardId={id!} boardTitle={board.title} />
+                  <BoardFilters
+                    filters={filters}
+                    onChange={setFilters}
+                    labels={boardLabels}
+                    members={boardMembers}
+                  />
+                  <ArchivedCardsDialog
+                    boardId={id!}
+                    columns={columns}
+                    onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+                  />
+                </>
+              )}
+              {isMobile && (
+                <BoardFilters
+                  filters={filters}
+                  onChange={setFilters}
+                  labels={boardLabels}
+                  members={boardMembers}
+                  hideSearch // We'll add this prop to hide the search input inside BoardFilters when on mobile header
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Main content with panels */}

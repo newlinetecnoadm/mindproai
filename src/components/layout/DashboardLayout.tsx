@@ -1,17 +1,15 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Map, Kanban, Calendar, Settings, CreditCard, ChevronLeft, ChevronRight, LogOut, Shield } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileDrawer from "./MobileDrawer";
-import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
-import logoIcon from "@/assets/logo-icon-color-2.png";
+import Logo from "./Logo";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -103,11 +101,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           "flex items-center h-16 border-b border-sidebar-border shrink-0",
           collapsed ? "justify-center px-2" : "px-5"
         )}>
-          {collapsed ? (
-            <img src={logoIcon} alt="MindPro" className="h-8 w-8 object-contain" />
-          ) : (
-            <img src={logoHorizontal} alt="MindPro" className="h-7" />
-          )}
+          <Logo variant={collapsed ? "icon" : "horizontal"} className={collapsed ? "h-8 w-8" : "h-7"} />
         </div>
 
         {/* Trial banner */}

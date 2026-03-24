@@ -3,6 +3,7 @@ import { Settings, LogOut, Shield, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Logo from "./Logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logoHorizontal from "@/assets/logo-horizontal-color.png";
 
 const MobileDrawer = () => {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const MobileDrawer = () => {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 px-4 bg-background border-b border-border md:hidden">
-      <img src={logoHorizontal} alt="MindPro" className="h-6" />
+      <Logo variant="horizontal" className="h-6" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
