@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils";
 
 export type FlowchartNodeData = {
   label: string;
-  shape?: "rectangle" | "diamond" | "oval" | "parallelogram" | "cylinder";
+  shape?: string;
   color?: string;
+  showHandles?: boolean;
 };
 
 const shapeStyles: Record<string, string> = {
@@ -17,9 +18,14 @@ const shapeStyles: Record<string, string> = {
 };
 
 
-const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
-
 function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNodeData }) {
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
+  
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +55,7 @@ function FlowchartNode({ data, selected, id }: NodeProps & { data: FlowchartNode
 
   return (
     <div
+      className="group relative"
       style={{
         padding: isDiamond ? '20px' : '12px 20px',
         wordBreak: 'break-word',

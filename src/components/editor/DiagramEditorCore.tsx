@@ -38,6 +38,7 @@ import GhostNode from "@/components/mindmap/GhostNode";
 import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge, StraightMindMapEdge, SquareMindMapEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
+import EdgeFloatingToolbar from "./EdgeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
 import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
@@ -234,6 +235,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const [currentEdgeType, setCurrentEdgeType] = useState(defaultStructuredEdgeType);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [mobileDrawerNode, setMobileDrawerNode] = useState<Node | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
@@ -500,13 +502,33 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }
   }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot, diagramType]);
 
+  const handleToggleConnectors = useCallback(() => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.selected ? { ...n, data: { ...n.data, showHandles: !(n.data as any).showHandles } } : n
+      )
+    );
+  }, [setNodes]);
+
   const onConnect = useCallback(
     (params: Connection) => {
       takeSnapshot();
-      setEdges((eds) => addEdge({ ...params, type: currentEdgeType }, eds));
+      setEdges((eds) => {
+        const nextEdges = addEdge({ ...params, type: currentEdgeType, data: { ...(params as any).data, isCustom: true } }, eds);
+        // Apply hierarchy colors and theme styles to all edges including the new one
+        return assignEdgeColors(nodes, nextEdges, theme);
+      });
+      // Hide handles after a successful connection to keep UI clean
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === params.source || n.id === params.target
+            ? { ...n, data: { ...n.data, showHandles: false } }
+            : n
+        )
+      );
       triggerSave();
     },
-    [setEdges, takeSnapshot, currentEdgeType, triggerSave]
+    [nodes, setEdges, setNodes, takeSnapshot, currentEdgeType, triggerSave, theme]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
@@ -637,7 +659,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   // Drag start: record which node + subtree is being dragged, show ghost at original position
   const handleNodeDragStart = useCallback((_event: any, draggedNode: Node) => {
-    if ((draggedNode.data as any).isRoot) return;
+    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
+    if (isMainRoot) return;
     const descIds = collectDescendantIds(draggedNode.id, edges);
     setDraggingNodeId(draggedNode.id);
     setDraggingDescendantIds(descIds);
@@ -648,7 +671,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 
   // Drag move: find closest candidate to highlight as drop target
   const handleNodeDrag = useCallback((_event: any, draggedNode: Node) => {
-    if ((draggedNode.data as any).isRoot) return;
+    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
+    if (isMainRoot) return;
     const candidates = nodes.filter(
       (n) => n.id !== draggedNode.id && !draggingDescendantIds.has(n.id)
     );
@@ -671,8 +695,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setDropTargetId(null);
     setGhostNode(null);
 
-    // Don't reparent the root node — just re-layout
-    if ((draggedNode.data as any).isRoot) {
+    // Don't reparent the root node
+    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
+    const isIndependentRoot = (draggedNode.data as any).isIndependent && !edges.find(e => e.target === draggedNode.id);
+
+    if (isMainRoot || isIndependentRoot) {
       applyAutoLayout(nodes, edges);
       return;
     }
@@ -817,6 +844,31 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }, 150);
   }, [takeSnapshot, setNodes]);
 
+  const handleAddIndependentNode = useCallback(() => {
+    takeSnapshot();
+    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const centerX = Math.random() * 100 - 50;
+    const centerY = Math.random() * 100 - 50;
+
+    const newNode: Node = {
+      id: newId,
+      type: nodeType,
+      position: { x: centerX, y: centerY },
+      data: {
+        label: "Novo Tópico",
+        isIndependent: true,
+      },
+      selected: true,
+      style: buildNodeStyle(nodeType || "mindmap", false, 1),
+    };
+
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
+
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
+    }, 150);
+  }, [nodeType, takeSnapshot, setNodes]);
+
   // Change default edge type for new connections
   const handleEdgeTypeChange = useCallback((type: string) => {
     setCurrentEdgeType(type);
@@ -868,30 +920,55 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     }, 150);
   }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout, getBranchColor]);
 
-  const handleDelete = useCallback(() => {
-    const toDelete = new Set(selectedNodes.map((n) => n.id));
-    for (const n of selectedNodes) {
-      if ((n.data as any).isRoot) toDelete.delete(n.id);
+  const handleDelete = useCallback((nodesToDelete?: Node[]) => {
+    const selectedEdges = edges.filter((e) => e.selected);
+    const targets = nodesToDelete || selectedNodes;
+    const toDelete = new Set(targets.map((n) => n.id));
+    
+    // Don't allow deleting the root node
+    for (const id of [...toDelete]) {
+      const node = nodes.find(n => n.id === id);
+      if (node?.data && (node.data as any).isRoot) {
+        toDelete.delete(id);
+      }
     }
-    if (toDelete.size === 0) return;
+    
+    if (toDelete.size === 0 && selectedEdges.length === 0) return;
 
     flushPendingDataChanges();
     takeSnapshot();
+    
     const childMap = new Map<string, string[]>();
     for (const e of edges) {
       const arr = childMap.get(e.source) || [];
       arr.push(e.target);
       childMap.set(e.source, arr);
     }
+    
     function addDescendants(id: string) {
-      for (const c of childMap.get(id) || []) { toDelete.add(c); addDescendants(c); }
+      for (const c of childMap.get(id) || []) {
+        if (!toDelete.has(c)) {
+          toDelete.add(c);
+          addDescendants(c);
+        }
+      }
     }
-    for (const id of [...toDelete]) addDescendants(id);
+    
+    for (const id of [...toDelete]) {
+      addDescendants(id);
+    }
 
     const nextNodes = nodes.filter((n) => !toDelete.has(n.id));
-    const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target));
+    const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target) && !e.selected);
+    
+    setNodes(nextNodes);
+    setEdges(nextEdges);
     applyAutoLayout(nextNodes, nextEdges);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyAutoLayout]);
+    
+    if (userRole !== "viewer") {
+      triggerSave({ nodes: nextNodes, edges: nextEdges, themeId: theme.id });
+    }
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyAutoLayout, userRole, triggerSave, theme.id, flushPendingDataChanges]);
 
   const handleColorChange = useCallback(
     (color: string) => {
@@ -903,6 +980,33 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     },
     [selectedNodes, setNodes, takeSnapshot, triggerSave]
   );
+  
+  const handleEdgeColorChange = useCallback((edgeId: string, customColor: string | undefined) => {
+    takeSnapshot();
+    setEdges((eds) => {
+      const nextEdges = eds.map((e) => e.id === edgeId ? { ...e, data: { ...e.data, customColor } } : e);
+      return assignEdgeColors(nodesRef.current, nextEdges, themeOptionsRef.current);
+    });
+    triggerSave();
+  }, [takeSnapshot, triggerSave, setEdges]);
+
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    takeSnapshot();
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    triggerSave();
+    setSelectedEdgeId(null);
+  }, [setEdges, takeSnapshot, triggerSave]);
+
+  const onPaneClick = useCallback(() => {
+    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, showHandles: false } })));
+    setContextMenu(null);
+    setSelectedEdgeId(null);
+  }, [setNodes]);
+
+  const onEdgeClick = useCallback((_e: React.MouseEvent, edge: Edge) => {
+    if (isMindmapLike(diagramType) && !edge.data?.isCustom) return;
+    setSelectedEdgeId(edge.id);
+  }, [diagramType]);
 
   const handleShapeChange = useCallback(
     (shape: string) => {
@@ -1334,7 +1438,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         canExportPdf={limits.exportPdf}
         onThemeChange={handleThemeChange}
         onReLayout={handleReLayout}
-        onAIAssist={limits.aiGeneration && userRole !== "viewer" ? () => setAiDialogOpen(true) : undefined}
+        onAddIndependentNode={userRole !== "viewer" ? handleAddIndependentNode : undefined}
         currentThemeId={theme.id}
         canUndo={canUndo && userRole !== "viewer"}
         canRedo={canRedo && userRole !== "viewer"}
@@ -1386,6 +1490,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onAddChild={handleAddChild}
         onAddSibling={handleAddSibling}
         onVariantChange={handleVariantChange}
+        onToggleConnectors={handleToggleConnectors}
+      />
+      <EdgeFloatingToolbar
+        selectedEdge={edges.find(e => e.id === selectedEdgeId) || null}
+        onDelete={handleEdgeDelete}
+        onColorChange={handleEdgeColorChange}
       />
       {/* Keyboard shortcut legend — bottom-left, mindmap only - hide on mobile */}
       {!isMobile && isMindmapLike(diagramType) && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
@@ -1447,6 +1557,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           })()}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
+          onPaneClick={onPaneClick}
+          onEdgeClick={userRole === "viewer" ? undefined : onEdgeClick}
           onConnect={userRole === "viewer" ? undefined : onConnect}
           onNodeDragStart={userRole === "viewer" ? undefined : handleNodeDragStart}
           onNodeDrag={userRole === "viewer" ? undefined : handleNodeDrag}
@@ -1471,7 +1583,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           defaultEdgeOptions={{ type: defaultStructuredEdgeType, style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
           proOptions={{ hideAttribution: true }}
           style={{ backgroundColor: theme.bg }}
-          deleteKeyCode={userRole === "viewer" ? null : "Delete"}
+          deleteKeyCode={null}
+          onNodesDelete={userRole === "viewer" ? undefined : handleDelete}
           nodesDraggable={userRole !== "viewer"}
           nodesConnectable={userRole !== "viewer"}
           elementsSelectable={true} 
@@ -1510,15 +1623,6 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         featureLabel="Exportação para PDF"
         planName={limits.displayName}
       />
-      <AIMapAssistDialog
-        open={aiDialogOpen}
-        onOpenChange={setAiDialogOpen}
-        diagramType={diagramType}
-        nodes={nodes}
-        edges={edges}
-        onApplyGenerated={handleApplyGenerated}
-        onApplySuggestion={handleApplySuggestion}
-      />
       <ImportOutlineDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
@@ -1547,6 +1651,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onColorChange={handleColorChange}
         onShapeChange={handleShapeChange}
         onVariantChange={handleVariantChange}
+        onToggleConnectors={handleToggleConnectors}
         onAIAssist={limits.aiGeneration ? () => {
           setContextMenu({ x: window.innerWidth / 2, y: window.innerHeight / 2, node: mobileDrawerNode! });
           setMobileDrawerNode(null);

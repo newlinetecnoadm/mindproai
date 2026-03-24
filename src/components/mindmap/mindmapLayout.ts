@@ -33,7 +33,7 @@ interface TreeNode {
 
 // ─── Tree helpers ────────────────────────────────────────
 
-function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
+function buildTrees(nodes: Node[], edges: Edge[]): TreeNode[] {
   const nodeMap = new Map<string, Node>();
   nodes.forEach((n) => nodeMap.set(n.id, n));
 
@@ -41,25 +41,30 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
   const hasParent = new Set<string>();
 
   edges.forEach((e) => {
+    // CRITICAL: Manual cross-links (isCustom) should NOT affect layout hierarchy
+    if ((e.data as any)?.isCustom) return;
+
     const arr = childrenMap.get(e.source) || [];
     arr.push(e.target);
     childrenMap.set(e.source, arr);
     hasParent.add(e.target);
   });
 
-  let rootId = nodes.find((n) => (n.data as any).isRoot)?.id;
-  if (!rootId) rootId = nodes.find((n) => !hasParent.has(n.id))?.id;
-  if (!rootId) return null;
+  const roots = nodes.filter((n) => !!(n.data as any).isRoot || !hasParent.has(n.id));
+  const visited = new Set<string>();
 
   function build(id: string, depth: number): TreeNode | null {
+    if (visited.has(id)) return null;
     const node = nodeMap.get(id);
     if (!node || node.hidden) return null;
+
+    visited.add(id);
 
     const isRoot = !!(node.data as any).isRoot || depth === 0;
     const childIds = childrenMap.get(id) || [];
     const children = childIds.map((cid) => build(cid, depth + 1)).filter(Boolean) as TreeNode[];
 
-    const { h: nodeH, w: nodeW } = getNodeDimensions(node);
+    const { h: nodeH } = getNodeDimensions(node);
     const subtreeHeight =
       children.length === 0
         ? nodeH
@@ -68,7 +73,7 @@ function buildTree(nodes: Node[], edges: Edge[]): TreeNode | null {
     return { id, children, subtreeHeight, node, isRoot };
   }
 
-  return build(rootId, 0);
+  return roots.map((r) => build(r.id, 0)).filter(Boolean) as TreeNode[];
 }
 
 // ─── Mindmap layout (balanced: root center, children alternating sides) ─────
@@ -154,6 +159,19 @@ function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: numbe
     const { w: childW } = getNodeDimensions(child.node);
     layoutMindmapBranch(child, -(rootW / 2 + H_GAP + childW), leftY, -1, positions);
     leftY += child.subtreeHeight + V_GAP;
+  }
+}
+
+function layoutMindmapUnilateral(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
+  const { h: rootH, w: rootW } = getNodeDimensions(tree.node);
+  positions.set(tree.id, { x: -rootW / 2, y: -rootH / 2 });
+
+  if (tree.children.length === 0) return;
+
+  let childY = -getGroupHeight(tree.children) / 2;
+  for (const child of tree.children) {
+    layoutMindmapBranch(child, rootW / 2 + H_GAP, childY, 1, positions);
+    childY += child.subtreeHeight + V_GAP;
   }
 }
 
@@ -398,13 +416,33 @@ export function autoLayoutMindMap(
 ): { nodes: Node[]; edges: Edge[] } {
   if (nodes.length === 0) return { nodes, edges };
 
-  const tree = buildTree(nodes, edges);
-  if (!tree) return { nodes, edges };
+  const trees = buildTrees(nodes, edges);
+  if (trees.length === 0) return { nodes, edges };
 
-  const positions = new Map<string, { x: number; y: number }>();
-  layoutMindmapBalanced(tree, positions);
+  const allPositions = new Map<string, { x: number; y: number }>();
+  
+  trees.forEach((tree) => {
+    const isIndependent = !!(tree.node.data as any).isIndependent;
+    const treePositions = new Map<string, { x: number; y: number }>();
+    
+    if (isIndependent) {
+      layoutMindmapUnilateral(tree, treePositions);
+      // Offset by current position
+      const offsetX = tree.node.position.x + (tree.node.measured?.width ?? ROOT_WIDTH) / 2;
+      const offsetY = tree.node.position.y + (tree.node.measured?.height ?? ROOT_HEIGHT) / 2;
+      treePositions.forEach((pos, id) => {
+        allPositions.set(id, { x: pos.x + offsetX, y: pos.y + offsetY });
+      });
+    } else {
+      layoutMindmapBalanced(tree, treePositions);
+      // Main root stays at 0,0 locally, but we still apply it to allPositions
+      treePositions.forEach((pos, id) => {
+        allPositions.set(id, pos);
+      });
+    }
+  });
 
-  return applyPositions(nodes, edges, positions, "mindmap");
+  return applyPositions(nodes, edges, allPositions, "mindmap");
 }
 
 export function autoLayoutDiagram(

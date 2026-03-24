@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
-import SEO from "@/components/SEO";
+
 import UpgradeModal from "@/components/UpgradeModal";
 import { cn } from "@/lib/utils";
 

@@ -10,12 +10,17 @@ export type OrgNodeData = {
   color?: string;
   avatarUrl?: string;
   variant?: "full" | "simple";
+  showHandles?: boolean;
 };
 
 
-const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
-
 function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
   const [editingLabel, setEditingLabel] = useState(false);
   const [editingRole, setEditingRole] = useState(false);
   const [label, setLabel] = useState(data.label);

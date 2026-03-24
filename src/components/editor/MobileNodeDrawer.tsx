@@ -7,7 +7,8 @@ import {
   Copy, 
   Plus, 
   ArrowRight, 
-  Sparkles
+  Sparkles,
+  Link2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -23,6 +24,7 @@ interface MobileNodeDrawerProps {
   onShapeChange?: (shape: string) => void;
   onVariantChange?: (variant: string) => void;
   onAIAssist?: () => void;
+  onToggleConnectors?: () => void;
   diagramType: string;
 }
 
@@ -38,6 +40,7 @@ const MobileNodeDrawer = ({
   onShapeChange,
   onVariantChange,
   onAIAssist,
+  onToggleConnectors,
   diagramType
 }: MobileNodeDrawerProps) => {
   if (!node) return null;
@@ -88,6 +91,10 @@ const MobileNodeDrawer = ({
                   <span className="text-[10px]">AI Pro</span>
                 </Button>
               )}
+              <Button variant="ghost" className="h-12 flex-col gap-1 rounded-xl text-primary" onClick={() => { onToggleConnectors?.(); onClose(); }}>
+                <Link2 className="w-4 h-4" />
+                <span className="text-[10px]">Conectar</span>
+              </Button>
               <Button variant="ghost" className="h-12 flex-col gap-1 rounded-xl text-destructive" onClick={() => { onDelete(); onClose(); }}>
                 <Trash2 className="w-4 h-4" />
                 <span className="text-[10px]">Excluir</span>

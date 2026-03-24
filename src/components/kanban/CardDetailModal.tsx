@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlignLeft, Calendar, CheckSquare, MessageSquare, Tag, Trash2, X, Plus, Send,
-  Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive, Pencil, GripVertical, Check, LayoutGrid
+  Paperclip, Download, FileText, Upload, Copy, ArrowRightLeft, Activity, Users, GitBranch, ExternalLink, Archive, Pencil, GripVertical, Check, LayoutGrid
 } from "lucide-react";
 import {
   DndContext,
@@ -253,7 +253,16 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     },
   });
 
-
+  // Attachments
+  const { data: attachments = [] } = useQuery({
+    queryKey: ["card-attachments", cardId],
+    enabled: !!cardId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("card_attachments").select("*").eq("card_id", cardId!).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -318,7 +327,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     queryClient.invalidateQueries({ queryKey: ["card-comments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-label-assignments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-label-assignments"] });
-
+    queryClient.invalidateQueries({ queryKey: ["card-attachments", cardId] });
     queryClient.invalidateQueries({ queryKey: ["board-labels", boardId] });
     queryClient.invalidateQueries({ queryKey: ["card-activities", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card-members"] });
@@ -389,7 +398,7 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
       await supabase.from("card_checklists").delete().eq("card_id", cardId!);
       await supabase.from("card_label_assignments").delete().eq("card_id", cardId!);
       await supabase.from("card_members").delete().eq("card_id", cardId!);
-
+      await supabase.from("card_attachments").delete().eq("card_id", cardId!);
       const { error } = await supabase.from("board_cards").delete().eq("id", cardId!);
       if (error) throw error;
     },
@@ -649,7 +658,53 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     onSuccess: invalidateAll,
   });
 
+  // Upload attachment
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length || !cardId) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `${cardId}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("card-attachments").upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("card-attachments").getPublicUrl(path);
+        await supabase.from("card_attachments").insert({
+          card_id: cardId,
+          name: file.name,
+          url: urlData.publicUrl,
+          mime_type: file.type || null,
+        });
+      }
+      invalidateAll();
+      toast.success("Anexo(s) adicionado(s)");
+    } catch {
+      toast.error("Erro ao fazer upload");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
+  // Delete attachment
+  const deleteAttachment = useMutation({
+    mutationFn: async (att: { id: string; url: string }) => {
+      // Extract storage path from URL
+      const urlParts = att.url.split("/card-attachments/");
+      if (urlParts[1]) {
+        await supabase.storage.from("card-attachments").remove([decodeURIComponent(urlParts[1])]);
+      }
+      const { error } = await supabase.from("card_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Anexo removido");
+    },
+    onError: () => toast.error("Erro ao remover anexo"),
+  });
 
   // All boards for move card
   const { data: allBoards = [] } = useQuery({
@@ -1160,7 +1215,14 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                     <CheckSquare className="w-3.5 h-3.5" /> Checklist
                   </Button>
 
-
+{/* Attachment button hidden as requested
+                  <div className="relative">
+                    <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileUpload} disabled={uploading} />
+                    <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2 w-full" disabled={uploading}>
+                      <Paperclip className={cn("w-3.5 h-3.5", uploading && "animate-pulse")} /> {uploading ? "Enviando..." : "Anexar"}
+                    </Button>
+                  </div>
+                  */}
 
                   {/* Move/Copy actions */}
                   <div className="grid grid-cols-2 gap-2 w-full col-span-2 sm:col-span-1">

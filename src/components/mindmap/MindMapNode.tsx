@@ -1,6 +1,7 @@
 import { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useUserRole } from "../editor/UserRoleContext";
+import { cn } from "@/lib/utils";
 
 export type MindMapNodeData = {
   label: string;
@@ -8,12 +9,13 @@ export type MindMapNodeData = {
   branchHex?: string;
   depth?: number;
   isRoot?: boolean;
+  showHandles?: boolean;
 };
 
 // Brand identity dark gray — used for non-filled node text
 const BRAND_GRAY = "#3d3d3d";
 
-function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
+function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData }) {
   const userRole = useUserRole();
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
@@ -67,23 +69,28 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
 
-  // Depth-1 nodes: filled pill with branch color + white text
-  // All others: transparent background, brand gray text
-  const isDepth1 = !isRoot && depth === 1;
+  // Depth-1 nodes OR Independent Roots: filled pill with branch color + white text
+  const isDepth1 = (!isRoot && depth === 1) || (!!(data as any).isIndependent && depth === 0);
   const fillColor = isDepth1 ? (data.branchHex ?? undefined) : undefined;
   const isDark = !!(data as any).isDark;
-  // Filled nodes (depth-1) always white text; others adapt to theme darkness
+  // Filled nodes always white text; others adapt to theme darkness (default gray)
   const textColor = fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY;
 
   const fontSize = isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem";
   const fontWeight = isRoot ? "700" : "400";
 
 
-  // Handles invisible — React Flow needs them for edge routing
-  const handleStyle = "!w-2 !h-2 !bg-transparent !border-none !opacity-0";
+  // Handles visible when selected — facilitate manual connections
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
 
   return (
     <div
+      className="group relative"
       style={{
         position: "relative",
         display: "inline-flex",

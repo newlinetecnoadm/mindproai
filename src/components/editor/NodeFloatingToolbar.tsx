@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Node } from "@xyflow/react";
 import { useReactFlow } from "@xyflow/react";
-import { Trash2, Copy, Plus, Square, Diamond, Circle, Hexagon, LayoutGrid, User } from "lucide-react";
+import { Trash2, Copy, Plus, Square, Diamond, Circle, Hexagon, LayoutGrid, User, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const flowShapes = [
   { name: "Retângulo", value: "rectangle", icon: Square },
@@ -26,7 +32,19 @@ interface NodeFloatingToolbarProps {
   onAddChild: () => void;
   onAddSibling?: () => void;
   onVariantChange?: (variant: string) => void;
+  onToggleConnectors?: () => void;
 }
+
+const TipButton = ({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.ComponentProps<typeof Button>) => (
+  <TooltipProvider delayDuration={200}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button {...rest}>{children}</Button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs font-medium">{label}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 const NodeFloatingToolbar = ({
   selectedNodes,
@@ -37,6 +55,7 @@ const NodeFloatingToolbar = ({
   onAddChild,
   onAddSibling,
   onVariantChange,
+  onToggleConnectors,
 }: NodeFloatingToolbarProps) => {
   const { getNodesBounds, flowToScreenPosition } = useReactFlow();
 
@@ -48,7 +67,8 @@ const NodeFloatingToolbar = ({
         x: bounds.x + bounds.width / 2,
         y: bounds.y + bounds.height,
       });
-      return { x: screenPos.x, y: screenPos.y + 12 };
+      // Offset reduced to 4px as requested for closer proximity
+      return { x: screenPos.x, y: screenPos.y + 4 };
     } catch {
       return null;
     }
@@ -66,9 +86,15 @@ const NodeFloatingToolbar = ({
     >
       {/* + button with tooltip showing Tab/Enter shortcuts */}
       <div className="node-add-btn-wrapper">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddChild} title="Adicionar filho (Tab)">
+        <TipButton 
+          variant="ghost" 
+          size="icon" 
+          className="h-7 w-7" 
+          onClick={onAddChild} 
+          label="Adicionar filho (Tab)"
+        >
           <Plus className="w-3.5 h-3.5" />
-        </Button>
+        </TipButton>
         <div className="node-add-tooltip" role="tooltip">
           <div className="node-add-tooltip-row">
             <kbd>Tab</kbd>
@@ -83,17 +109,36 @@ const NodeFloatingToolbar = ({
         </div>
       </div>
 
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDuplicate} title="Duplicar">
+      <TipButton 
+        variant="ghost" 
+        size="icon" 
+        className="h-7 w-7" 
+        onClick={onDuplicate} 
+        label="Duplicar (Ctrl+D)"
+      >
         <Copy className="w-3.5 h-3.5" />
-      </Button>
+      </TipButton>
+
+      {/* Connector button next to duplicate */}
+      <TipButton 
+        variant="ghost" 
+        size="icon" 
+        className="h-7 w-7 text-primary" 
+        label="Novo Conector: Exibir pontos de ligação para este nó"
+        onClick={onToggleConnectors}
+      >
+        <Link2 className="w-3.5 h-3.5" />
+      </TipButton>
 
       {/* Shape picker (flowchart only) */}
       {showShapes && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Forma">
-              <Square className="w-3.5 h-3.5" />
-            </Button>
+            <span>
+              <TipButton variant="ghost" size="icon" className="h-7 w-7" label="Trocar Forma">
+                <Square className="w-3.5 h-3.5" />
+              </TipButton>
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top" className="min-w-[130px]">
             {flowShapes.map((s) => (
@@ -110,9 +155,11 @@ const NodeFloatingToolbar = ({
       {showVariant && onVariantChange && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Estilo do nó">
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </Button>
+            <span>
+              <TipButton variant="ghost" size="icon" className="h-7 w-7" label="Estilo do nó">
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </TipButton>
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top" className="min-w-[140px]">
             <DropdownMenuItem onClick={() => onVariantChange("full")}>
@@ -129,15 +176,15 @@ const NodeFloatingToolbar = ({
 
       <div className="w-px h-4 bg-border mx-0.5" />
 
-      <Button
+      <TipButton
         variant="ghost"
         size="icon"
         className="h-7 w-7 text-destructive hover:text-destructive"
         onClick={onDelete}
-        title="Excluir (Delete)"
+        label="Excluir (Delete)"
       >
         <Trash2 className="w-3.5 h-3.5" />
-      </Button>
+      </TipButton>
     </div>
   );
 };

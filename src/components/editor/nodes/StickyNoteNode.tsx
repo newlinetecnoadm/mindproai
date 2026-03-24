@@ -5,12 +5,17 @@ import { cn } from "@/lib/utils";
 export type StickyNoteNodeData = {
   label: string;
   color?: string;
+  showHandles?: boolean;
 };
 
 
-const handleStyle = "!w-2 !h-2 !bg-transparent !border-none hover:!bg-primary/50";
-
 function StickyNoteNode({ data, selected, id }: NodeProps & { data: StickyNoteNodeData }) {
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

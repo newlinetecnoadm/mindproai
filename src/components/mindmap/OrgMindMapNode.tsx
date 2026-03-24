@@ -1,6 +1,7 @@
 import { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useUserRole } from "../editor/UserRoleContext";
+import { cn } from "@/lib/utils";
 
 export type OrgMindMapNodeData = {
   label: string;
@@ -9,12 +10,13 @@ export type OrgMindMapNodeData = {
   branchHex?: string;
   depth?: number;
   isRoot?: boolean;
+  showHandles?: boolean;
 };
 
 // Brand identity dark gray — used for non-filled node text
 const BRAND_GRAY = "#3d3d3d";
 
-function OrgMindMapNode({ data, id }: NodeProps & { data: OrgMindMapNodeData }) {
+function OrgMindMapNode({ data, id, selected }: NodeProps & { data: OrgMindMapNodeData }) {
   const userRole = useUserRole();
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
@@ -90,11 +92,8 @@ function OrgMindMapNode({ data, id }: NodeProps & { data: OrgMindMapNodeData }) 
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
 
-  // Org Chart nodes: filled square with branch color + white text (depth 1)
-  // All others: transparent background, but in Org Chart we often want a border or some structure.
-  // HOWEVER, user requested "nó raiz sem contorno" (like mindmap root).
-  
-  const isDepth1 = !isRoot && depth === 1;
+  // Org Chart nodes: filled square with branch color + white text (depth 1 or independent root)
+  const isDepth1 = (!isRoot && depth === 1) || (!!(data as any).isIndependent && depth === 0);
   const fillColor = isDepth1 ? (data.branchHex ?? undefined) : undefined;
   const isDark = !!(data as any).isDark;
   const textColor = fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY;
@@ -102,12 +101,18 @@ function OrgMindMapNode({ data, id }: NodeProps & { data: OrgMindMapNodeData }) 
   const fontSize = isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem";
   const fontWeight = isRoot ? "700" : "400";
 
-  // Handles invisible — React Flow needs them for edge routing
-  const handleStyle = "!w-2 !h-2 !bg-transparent !border-none !opacity-0";
+  // Handles visible when selected — facilitate manual connections
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
 
   return (
     <div
       ref={containerRef}
+      className="group relative"
       style={{
         position: "relative",
         display: "inline-flex",

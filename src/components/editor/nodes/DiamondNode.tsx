@@ -5,12 +5,17 @@ import { cn } from "@/lib/utils";
 export type DiamondNodeData = {
   label: string;
   color?: string;
+  showHandles?: boolean;
 };
 
 
-const handleStyle = "!w-2.5 !h-2.5 !bg-muted-foreground/50 !border-none hover:!bg-primary/70";
-
 function DiamondNode({ data, selected, id }: NodeProps & { data: DiamondNodeData }) {
+  const handleStyle = cn(
+    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
+    "!transition-opacity !duration-200",
+    !data.showHandles && "!opacity-0 !pointer-events-none",
+    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
+  );
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +47,7 @@ function DiamondNode({ data, selected, id }: NodeProps & { data: DiamondNodeData
 
   return (
     <div
+      className="group relative"
       style={{
         padding: '10px',
         wordBreak: 'break-word',

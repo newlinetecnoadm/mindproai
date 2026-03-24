@@ -100,33 +100,56 @@ export function generateThemeBranchColors(baseHex: string, n: number): string[] 
 // ─── Tree helpers ─────────────────────────────────────────────────────────────
 
 export function getNodeDepth(nodeId: string, edges: Edge[]): number {
-  let depth = 0;
-  let current = nodeId;
+  const queue: { id: string; d: number }[] = [{ id: nodeId, d: 0 }];
   const visited = new Set<string>();
-  while (true) {
-    if (visited.has(current)) break;
-    visited.add(current);
-    const parentEdge = edges.find((e) => e.target === current);
-    if (!parentEdge) break;
-    current = parentEdge.source;
-    depth++;
+  
+  while (queue.length > 0) {
+    const { id, d } = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    
+    const parents = edges.filter((e) => e.target === id);
+    if (parents.length === 0) return d;
+    
+    for (const p of parents) {
+      queue.push({ id: p.source, d: d + 1 });
+    }
   }
-  return depth;
+  return 0;
 }
 
 function findBranchAncestorId(nodeId: string, edges: Edge[]): string | null {
-  const chain: string[] = [];
-  let current = nodeId;
+  // BFS to find the path to root. We want the branch ancestor (the depth-1 node)
+  // that is on the shortest path to the root.
+  const queue: { id: string; path: string[] }[] = [{ id: nodeId, path: [nodeId] }];
   const visited = new Set<string>();
-  while (true) {
-    if (visited.has(current)) break;
-    visited.add(current);
-    chain.unshift(current);
-    const parentEdge = edges.find((e) => e.target === current);
-    if (!parentEdge) break;
-    current = parentEdge.source;
+  
+  let shortestPath: string[] | null = null;
+
+  while (queue.length > 0) {
+    const { id, path } = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    
+    const parents = edges.filter((e) => e.target === id);
+    if (parents.length === 0) {
+      // Reached a root
+      if (!shortestPath || path.length < shortestPath.length) {
+        shortestPath = path;
+      }
+      continue;
+    }
+    
+    for (const p of parents) {
+      queue.push({ id: p.source, path: [...path, p.source] });
+    }
   }
-  if (chain.length >= 2) return chain[1];
+  
+  if (shortestPath && shortestPath.length >= 2) {
+    // shortestPath is [child, ..., root]. We want the node right before root.
+    // root is shortestPath[last], branch node is shortestPath[last-1]
+    return shortestPath[shortestPath.length - 2];
+  }
   return null;
 }
 
@@ -149,9 +172,10 @@ export function assignDepthColors(
   themeOptions?: { edgeColor?: string; isDefault?: boolean; isDark?: boolean }
 ): Node[] {
   const depthMap = buildDepthMap(nodes, edges);
-  const sourceNodes = new Set(edges.map(e => e.source));
+  // CRITICAL: only hierarchical edges count for the collapse (hasChildren) button
+  const sourceNodes = new Set(edges.filter(e => !(e.data as any)?.isCustom).map(e => e.source));
 
-  const depth1Nodes = nodes.filter((n) => depthMap.get(n.id) === 1);
+  const depth1Nodes = nodes.filter((n) => depthMap.get(n.id) === 1 || (n.data as any)?.isIndependent);
 
   // Palette: default theme uses BRANCH_HEX keys, others use theme-derived hex values
   const useThemePalette = themeOptions?.edgeColor && !themeOptions?.isDefault;
@@ -169,9 +193,9 @@ export function assignDepthColors(
 
   return nodes.map((node) => {
     const depth = depthMap.get(node.id) ?? 0;
-    const isRoot = (node.data as any)?.isRoot;
+    const isMainRoot = (node.data as any)?.isRoot && !(node.data as any)?.isIndependent;
 
-    if (isRoot || depth === 0) {
+    if (isMainRoot || (depth === 0 && !(node.data as any)?.isIndependent)) {
       return {
         ...node,
         hidden: node.hidden,
@@ -180,9 +204,12 @@ export function assignDepthColors(
     }
 
     const branchAncestorId = findBranchAncestorId(node.id, edges);
-    const branchHex = branchAncestorId ? depth1HexMap.get(branchAncestorId) : undefined;
+    const isIndependentRoot = (node.data as any)?.isIndependent && depth === 0;
+    
+    // Independent roots are their own branch ancestors
+    const effectiveBranchHex = isIndependentRoot ? depth1HexMap.get(node.id) : (branchAncestorId ? depth1HexMap.get(branchAncestorId) : undefined);
 
-    const color = branchHex ? "branch" : getColorForDepth(depth);
+    const color = (isIndependentRoot || effectiveBranchHex) ? "branch" : getColorForDepth(depth);
     const hasChildren = sourceNodes.has(node.id);
 
     return {
@@ -192,7 +219,7 @@ export function assignDepthColors(
       data: { 
         ...node.data, 
         color, 
-        branchHex: branchHex ?? getBranchHex(color), 
+        branchHex: effectiveBranchHex ?? (isIndependentRoot ? undefined : getBranchHex(color)), 
         depth, 
         isDark: themeOptions?.isDark,
         hasChildren
@@ -242,9 +269,9 @@ export function assignEdgeColors(
     // For edges FROM root (depth 0), the color comes from the TARGET (depth-1 child).
     // For all other edges, the source node carries the branch color.
     const targetNode = nodeMap.get(edge.target);
-    const branchHex: string = sourceDepth === 0
+    const branchHex: string = (edge.data as any)?.customColor || (sourceDepth === 0
       ? ((targetNode?.data as any)?.branchHex ?? BRANCH_HEX.default)
-      : ((sourceNode?.data as any)?.branchHex ?? getBranchHex((sourceNode?.data as any)?.color));
+      : ((sourceNode?.data as any)?.branchHex ?? getBranchHex((sourceNode?.data as any)?.color)));
 
     const strokeWidth = sourceDepth === 0 ? 2 : 1.5;
 

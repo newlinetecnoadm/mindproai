@@ -89,7 +89,7 @@ interface EditorToolbarProps {
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
   onEdgeTypeChange?: (type: string) => void;
-  onAIAssist?: () => void;
+  onAddIndependentNode?: () => void;
   currentThemeId: string;
   canUndo: boolean;
   canRedo: boolean;
@@ -120,7 +120,7 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
   const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onUndo, onRedo, onExportPng, onExportPdf,
-  onThemeChange, onReLayout, onAIAssist, currentThemeId,
+  onThemeChange, onReLayout, onAddIndependentNode, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
   userRole = "viewer",
   viewMode = "graph",
@@ -194,17 +194,11 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
             <Plus className="w-3.5 h-3.5 mr-2" />
             {addLabels[diagramType] || "Adicionar nó"}
           </DropdownMenuItem>
-          {onAddSpecialNode && (
-            <>
-              <DropdownMenuItem onClick={() => onAddSpecialNode("diamond")}>
-                <Diamond className="w-3.5 h-3.5 mr-2" />
-                Decisão (Losango)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAddSpecialNode("sticky")}>
-                <StickyNote className="w-3.5 h-3.5 mr-2" />
-                Nota Adesiva
-              </DropdownMenuItem>
-            </>
+          {onAddIndependentNode && (
+            <DropdownMenuItem onClick={onAddIndependentNode}>
+              <Network className="w-3.5 h-3.5 mr-2" />
+              Novo Nó Avulso
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -287,13 +281,6 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {onAIAssist && (
-        <TipButton label="Assistente de IA — Gerar ou expandir diagrama" variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={onAIAssist}>
-          <Bot className="w-4 h-4" />
-          IA
-        </TipButton>
-      )}
 
       <div className="w-px h-5 bg-border mx-1" />
 

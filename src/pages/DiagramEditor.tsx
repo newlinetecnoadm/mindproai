@@ -191,6 +191,7 @@ const DiagramEditor = () => {
           source: e.source,
           target: e.target,
           type: e.type,
+          data: e.data as Record<string, unknown>,
           ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
           ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
           ...(e.label ? { label: e.label } : {}),

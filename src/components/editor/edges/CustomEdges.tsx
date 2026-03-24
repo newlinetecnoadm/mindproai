@@ -85,8 +85,9 @@ function MindMapEdgeComponent(props: EdgeProps) {
   const isCollapsed = (data as any)?.isCollapsed as boolean | undefined;
   const sourceNodeId = (data as any)?.sourceNodeId as string | undefined;
   const edgeStyle = getAnimationStyle(style);
-  const strokeColor = branchColor ?? "#6B7280";
-
+  // Ensure the stroke from style (which might be the custom color) is used if branchColor is not provided in data
+  // However, assignEdgeColors already puts the correct color in style.stroke, so we should rely on that.
+  
   const handleCollapseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
