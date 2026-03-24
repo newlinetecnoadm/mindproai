@@ -28,6 +28,7 @@ interface ShareDiagramDialogProps {
   isPublic?: boolean;
   publicToken?: string | null;
   onPublicToggle?: (isPublic: boolean) => void;
+  isOwner?: boolean;
 }
 
 const ShareDiagramDialog = ({
@@ -35,6 +36,7 @@ const ShareDiagramDialog = ({
   diagramTitle,
   isPublic,
   publicToken,
+  isOwner,
 }: ShareDiagramDialogProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -202,6 +204,21 @@ const ShareDiagramDialog = ({
       queryClient.invalidateQueries({ queryKey: ["diagram-collaborators", diagramId] });
     },
   });
+  
+  // Update collaborator role
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ collabId, role }: { collabId: string; role: string }) => {
+      const { error } = await supabase
+        .from("diagram_collaborators")
+        .update({ role })
+        .eq("id", collabId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Permissão atualizada");
+      queryClient.invalidateQueries({ queryKey: ["diagram-collaborators", diagramId] });
+    },
+  });
 
   // Cancel invitation
   const cancelInviteMutation = useMutation({
@@ -309,17 +326,35 @@ const ShareDiagramDialog = ({
                   <p className="text-[10px] text-muted-foreground truncate">{c.profile.email}</p>
                 )}
               </div>
-              <Badge variant="outline" className="text-[10px] shrink-0">
-                {roleLabels[c.role] || c.role}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={() => removeMutation.mutate(c.id)}
-              >
-                <Trash2 className="w-3 h-3 text-destructive" />
-              </Button>
+              {isOwner ? (
+                <>
+                  <Select 
+                    value={c.role} 
+                    onValueChange={(newRole) => updateRoleMutation.mutate({ collabId: c.id, role: newRole })}
+                    disabled={updateRoleMutation.isPending}
+                  >
+                    <SelectTrigger className="h-7 w-[90px] text-[10px] py-0 px-2 bg-transparent border-none hover:bg-muted shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Visualizar</SelectItem>
+                      <SelectItem value="editor">Editar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => removeMutation.mutate(c.id)}
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </Button>
+                </>
+              ) : (
+                <Badge variant="outline" className="text-[10px] shrink-0">
+                  {roleLabels[c.role] || c.role}
+                </Badge>
+              )}
             </div>
           ))}
 

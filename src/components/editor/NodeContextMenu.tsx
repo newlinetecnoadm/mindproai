@@ -15,6 +15,7 @@ interface NodeContextMenuProps {
     newNodes: { id: string; label: string }[],
     newEdges: { source: string; target: string }[]
   ) => void;
+  userRole?: "owner" | "editor" | "viewer";
 }
 
 export default function NodeContextMenu({
@@ -24,6 +25,7 @@ export default function NodeContextMenu({
   diagramType,
   onClose,
   onExpandComplete,
+  userRole = "viewer",
 }: NodeContextMenuProps) {
   const [loading, setLoading] = useState(false);
 
@@ -71,7 +73,7 @@ export default function NodeContextMenu({
       >
         <button
           onClick={handleExpand}
-          disabled={loading}
+          disabled={loading || userRole === "viewer"}
           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-colors"
         >
           {loading ? (

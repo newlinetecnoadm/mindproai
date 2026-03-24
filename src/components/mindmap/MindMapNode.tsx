@@ -1,5 +1,6 @@
 import { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useUserRole } from "../editor/UserRoleContext";
 
 export type MindMapNodeData = {
   label: string;
@@ -13,6 +14,7 @@ export type MindMapNodeData = {
 const BRAND_GRAY = "#3d3d3d";
 
 function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
+  const userRole = useUserRole();
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(data.label);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +27,7 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
   }, [editing]);
 
   useEffect(() => {
+    if (userRole === "viewer") return;
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId === id) {
@@ -36,9 +39,11 @@ function MindMapNode({ data, id }: NodeProps & { data: MindMapNodeData }) {
     };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
-  }, [id]);
+  }, [id, userRole]);
 
-  const handleDoubleClick = () => setEditing(true);
+  const handleDoubleClick = () => {
+    if (userRole !== "viewer") setEditing(true);
+  };
 
   const handleBlur = () => {
     setEditing(false);

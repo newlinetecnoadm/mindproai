@@ -1,5 +1,6 @@
-import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot, List, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,6 +98,10 @@ interface EditorToolbarProps {
   diagramType: string;
   exporting: boolean;
   canExportPdf?: boolean;
+  userRole?: "owner" | "editor" | "viewer";
+  viewMode?: "graph" | "outline";
+  onViewModeChange?: (mode: "graph" | "outline") => void;
+  onImportSketch?: () => void;
 }
 
 
@@ -117,9 +122,49 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
   onUndo, onRedo, onExportPng, onExportPdf,
   onThemeChange, onReLayout, onAIAssist, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
+  userRole = "viewer",
+  viewMode = "graph",
+  onViewModeChange,
+  onImportSketch,
 }: EditorToolbarProps) => {
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md flex-wrap max-w-[calc(100vw-2rem)]">
+      {/* View Toggle */}
+      <div className="flex items-center bg-muted/50 rounded-lg p-0.5 mr-1">
+        <TipButton
+          label="Visualização em Gráfico"
+          variant={viewMode === "graph" ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 rounded-md"
+          onClick={() => onViewModeChange?.("graph")}
+        >
+          <Network className="w-3.5 h-3.5" />
+        </TipButton>
+        <TipButton
+          label="Visualização em Esboço"
+          variant={viewMode === "outline" ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 rounded-md"
+          onClick={() => onViewModeChange?.("outline")}
+        >
+          <List className="w-3.5 h-3.5" />
+        </TipButton>
+      </div>
+
+      {userRole !== "viewer" && (
+        <TipButton
+          label="Importar Esboço"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 mr-1 text-primary"
+          onClick={onImportSketch}
+        >
+          <FileText className="w-4 h-4" />
+        </TipButton>
+      )}
+
+      <Separator orientation="vertical" className="h-4 mx-1" />
+
       <TipButton label="Desfazer (Ctrl+Z)" variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo}>
         <Undo2 className="w-4 h-4" />
       </TipButton>
@@ -133,7 +178,13 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <span>
-            <TipButton label={addLabels[diagramType] || "Adicionar nó (Tab)"} variant="ghost" size="icon" className="h-8 w-8">
+            <TipButton 
+              label={addLabels[diagramType] || "Adicionar nó (Tab)"} 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              disabled={userRole === "viewer"}
+            >
               <Plus className="w-4 h-4" />
             </TipButton>
           </span>
@@ -158,7 +209,14 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <TipButton label="Excluir selecionado (Delete)" variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete} disabled={!hasSelection}>
+      <TipButton 
+        label="Excluir selecionado (Delete)" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8" 
+        onClick={onDelete} 
+        disabled={!hasSelection || userRole === "viewer"}
+      >
         <Trash2 className="w-4 h-4" />
       </TipButton>
 

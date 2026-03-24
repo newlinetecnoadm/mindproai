@@ -43,6 +43,9 @@ import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
+import { UserRoleProvider } from "./UserRoleContext";
+import { OutlineView } from "./OutlineView";
+import { ImportOutlineDialog } from "./ImportOutlineDialog";
 
 
 /** Derive UI chrome colors from a theme (bg + edge only) */
@@ -103,6 +106,7 @@ interface DiagramEditorCoreProps {
   remoteNodes?: Node[];
   remoteEdges?: Edge[];
   remoteThemeId?: string;
+  userRole?: "owner" | "editor" | "viewer";
 }
 
 const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
@@ -110,7 +114,9 @@ const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
 /** Diagram types that share the mindmap color/edge/theme system */
 const isMindmapLike = (type: string) => type === "mindmap" || type === "orgchart";
 
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId, userRole = "viewer" }: DiagramEditorCoreProps) {
+  const [viewMode, setViewMode] = useState<"graph" | "outline">("graph");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   // Drag state: which node is being dragged + its descendants
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
@@ -148,6 +154,72 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const initialData = getInitialLayout();
   const [nodes, setNodes, onNodesChangeCore] = useNodesState(initialData.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
+
+  const handleImportOutline = (text: string) => {
+    const lines = text.split("\n").filter(l => l.trim().length > 0);
+    if (lines.length === 0) return;
+
+    const newNodes: any[] = [];
+    const newEdges: any[] = [];
+    const stack: { id: string, indent: number }[] = [];
+
+    lines.forEach((line, index) => {
+      const indent = line.search(/\S/);
+      const label = line.trim();
+      const id = `node-${Date.now()}-${index}`;
+      
+      const isRoot = index === 0;
+      const node: any = {
+        id,
+        type: diagramType === "orgchart" ? "orgMindMap" : "mindMap",
+        position: { x: 0, y: 0 },
+        data: { 
+          label, 
+          isRoot,
+          depth: 0,
+          hasChildren: false,
+        },
+      };
+
+      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+        stack.pop();
+      }
+
+      if (stack.length > 0) {
+        const parentId = stack[stack.length - 1].id;
+        newEdges.push({
+          id: `edge-${parentId}-${id}`,
+          source: parentId,
+          target: id,
+          type: "mindmap", // default
+        });
+        const parentNode = newNodes.find(n => n.id === parentId);
+        if (parentNode) {
+          parentNode.data = { ...parentNode.data, hasChildren: true };
+        }
+      }
+
+      newNodes.push(node);
+      stack.push({ id, indent });
+    });
+
+    setNodes(newNodes);
+    setEdges(newEdges);
+    
+    setTimeout(() => {
+      handleReLayout();
+      if (userRole !== "viewer") {
+        triggerSave({ nodes: newNodes, edges: newEdges, themeId: theme.id });
+      }
+    }, 100);
+
+    toast.success("Esboço importado com sucesso!");
+  };
+
+  const handleNodeLabelChange = (nodeId: string, newLabel: string) => {
+    setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n));
+  };
+
   // useAutoLayout MUST be after setNodes/setEdges so component-level setters can be passed
   const { triggerLayout } = useAutoLayout(diagramType, themeOptions, setNodes, setEdges);
   const [exporting, setExporting] = useState(false);
@@ -203,6 +275,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     {
       debounceMs: 800,
       onSave: async (data) => {
+        if (userRole === "viewer") return;
         // Data-only save. Highly responsive.
         await onSaveRef.current(data.nodes, data.edges, data.themeId, undefined, { silent: true });
         
@@ -470,7 +543,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       setNodes(positioned);
       setEdges(laid.edges);
     }
-    triggerSave({ nodes: positioned, edges: laid.edges, themeId: theme.id });
+    
+    if (userRole !== "viewer") {
+      triggerSave({ nodes: positioned, edges: laid.edges, themeId: theme.id });
+    }
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [diagramType, setNodes, setEdges, fitView, triggerSave, theme.id]);
 
@@ -1242,7 +1318,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onAddNode={handleAddChild}
         onAddSpecialNode={handleAddSpecialNode}
         onDelete={handleDelete}
-        onSave={triggerSave}
+        onSave={() => userRole !== "viewer" && triggerSave({ nodes, edges, themeId: theme.id })}
         onZoomIn={() => zoomIn()}
         onZoomOut={() => zoomOut()}
         onFitView={() => fitView({ padding: 0.2, duration: 300 })}
@@ -1253,14 +1329,18 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         canExportPdf={limits.exportPdf}
         onThemeChange={handleThemeChange}
         onReLayout={handleReLayout}
-        onAIAssist={limits.aiGeneration ? () => setAiDialogOpen(true) : undefined}
+        onAIAssist={limits.aiGeneration && userRole !== "viewer" ? () => setAiDialogOpen(true) : undefined}
         currentThemeId={theme.id}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        canUndo={canUndo && userRole !== "viewer"}
+        canRedo={canRedo && userRole !== "viewer"}
         saving={saving}
         exporting={exporting}
-        hasSelection={selectedNodes.length > 0}
+        hasSelection={selectedNodes.length > 0 && userRole !== "viewer"}
         diagramType={diagramType}
+        userRole={userRole}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onImportSketch={() => setImportDialogOpen(true)}
       />
       {(() => { const ui = themeUI(theme); return (<>
       <NodeSearchBar
@@ -1293,7 +1373,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       )}
       </>); })()}
       <NodeFloatingToolbar
-        selectedNodes={selectedNodes}
+        selectedNodes={userRole === "viewer" ? [] : selectedNodes}
         diagramType={diagramType}
         onShapeChange={handleShapeChange}
         onDuplicate={handleDuplicate}
@@ -1318,82 +1398,95 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           </div>
         </div>
       ); })()}
-      <ReactFlow
-        nodes={[
-          ...nodes.map((n) => {
-            if (!draggingNodeId) return n;
-            const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
-            const isDropTarget = n.id === dropTargetId;
-            return {
-              ...n,
-              style: {
-                ...n.style,
-                opacity: isDragged ? 0.45 : 1,
-                transition: 'opacity 0.15s ease',
-                ...(isDropTarget ? { outline: '2px dashed #E9853A', outlineOffset: '4px', borderRadius: 8 } : {}),
-              },
-            };
-          }),
-          ...(ghostNode ? [] : []), // ghost disabled — using preview edge instead
-        ]}
-        edges={(() => {
-          const baseEdges = draggingNodeId
-            ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
-            : edges;
-          // Preview edge: shows dashed orange connection to the potential new parent
-          if (draggingNodeId && dropTargetId) {
-            baseEdges.push({
-              id: "__preview__",
-              source: dropTargetId,
-              target: draggingNodeId,
-              type: defaultStructuredEdgeType,
-              style: {
-                stroke: "#E9853A",
-                strokeWidth: 1.5,
-                strokeDasharray: "6 3",
-                opacity: 0.75,
-              } as React.CSSProperties,
-              animated: false,
-              data: { isCollapseEdge: false, isPreview: true },
-            } as any);
-          }
-          return baseEdges;
-        })()}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDrag={handleNodeDrag}
-        onNodeDragStop={handleNodeDragStop}
-        onNodeContextMenu={handleNodeContextMenu}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView={!initialFitDone.current}
-        onInit={() => {
-          if (!initialFitDone.current) {
-            initialFitDone.current = true;
-          }
-        }}
-        fitViewOptions={{ padding: 0.3 }}
-        snapToGrid={true}
-        snapGrid={[20, 20]}
-        defaultEdgeOptions={{ type: defaultStructuredEdgeType, style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
-        proOptions={{ hideAttribution: true }}
-        style={{ backgroundColor: theme.bg }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
-        <Controls
-          showInteractive={false}
-          style={{ backgroundColor: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
-          className="!rounded-xl !shadow-md [&>button]:!border-0"
+      {viewMode === "graph" ? (
+        <ReactFlow
+          nodes={[
+            ...nodes.map((n) => {
+              if (!draggingNodeId) return n;
+              const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
+              const isDropTarget = n.id === dropTargetId;
+              return {
+                ...n,
+                style: {
+                  ...n.style,
+                  opacity: isDragged ? 0.45 : 1,
+                  transition: 'opacity 0.15s ease',
+                  ...(isDropTarget ? { outline: '2px dashed #E9853A', outlineOffset: '4px', borderRadius: 8 } : {}),
+                },
+              };
+            }),
+            ...(ghostNode ? [] : []), // ghost disabled — using preview edge instead
+          ]}
+          edges={(() => {
+            const baseEdges = draggingNodeId
+              ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
+              : edges;
+            // Preview edge: shows dashed orange connection to the potential new parent
+            if (draggingNodeId && dropTargetId) {
+              baseEdges.push({
+                id: "__preview__",
+                source: dropTargetId,
+                target: draggingNodeId,
+                type: defaultStructuredEdgeType,
+                style: {
+                  stroke: "#E9853A",
+                  strokeWidth: 1.5,
+                  strokeDasharray: "6 3",
+                  opacity: 0.75,
+                } as React.CSSProperties,
+                animated: false,
+                data: { isCollapseEdge: false, isPreview: true },
+              } as any);
+            }
+            return baseEdges;
+          })()}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={userRole === "viewer" ? undefined : onConnect}
+          onNodeDragStart={userRole === "viewer" ? undefined : handleNodeDragStart}
+          onNodeDrag={userRole === "viewer" ? undefined : handleNodeDrag}
+          onNodeDragStop={userRole === "viewer" ? undefined : handleNodeDragStop}
+          onNodeContextMenu={handleNodeContextMenu}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView={!initialFitDone.current}
+          onInit={() => {
+            if (!initialFitDone.current) {
+              initialFitDone.current = true;
+            }
+          }}
+          fitViewOptions={{ padding: 0.3 }}
+          snapToGrid={true}
+          snapGrid={[20, 20]}
+          defaultEdgeOptions={{ type: defaultStructuredEdgeType, style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
+          proOptions={{ hideAttribution: true }}
+          style={{ backgroundColor: theme.bg }}
+          deleteKeyCode={userRole === "viewer" ? null : "Delete"}
+          nodesDraggable={userRole !== "viewer"}
+          nodesConnectable={userRole !== "viewer"}
+          elementsSelectable={true} 
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
+          <Controls
+            showInteractive={false}
+            style={{ backgroundColor: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
+            className="!rounded-xl !shadow-md [&>button]:!border-0"
+          />
+          <MiniMap
+            style={{ backgroundColor: theme.minimapBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
+            className="!rounded-xl !shadow-md"
+            maskColor={theme.minimapMask}
+            nodeColor={themeUI(theme).minimapNode}
+          />
+        </ReactFlow>
+      ) : (
+        <OutlineView 
+          nodes={nodes} 
+          edges={edges} 
+          onNodeChange={handleNodeLabelChange}
+          readOnly={userRole === "viewer"}
         />
-        <MiniMap
-          style={{ backgroundColor: theme.minimapBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
-          className="!rounded-xl !shadow-md"
-          maskColor={theme.minimapMask}
-          nodeColor={themeUI(theme).minimapNode}
-        />
-      </ReactFlow>
+      )}
       <UpgradeModal
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
@@ -1410,6 +1503,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onApplyGenerated={handleApplyGenerated}
         onApplySuggestion={handleApplySuggestion}
       />
+      <ImportOutlineDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleImportOutline}
+      />
       {contextMenu && limits.aiGeneration && (
         <NodeContextMenu
           x={contextMenu.x}
@@ -1418,6 +1516,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
           diagramType={diagramType}
           onClose={() => setContextMenu(null)}
           onExpandComplete={handleExpandComplete}
+          userRole={userRole}
         />
       )}
     </div>
@@ -1427,7 +1526,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
 export default function DiagramEditorCore(props: DiagramEditorCoreProps) {
   return (
     <ReactFlowProvider>
-      <DiagramEditorInner {...props} />
+      <UserRoleProvider value={props.userRole || "viewer"}>
+        <div className="relative w-full h-full overflow-hidden flex flex-col bg-background">
+          <DiagramEditorInner {...props} />
+        </div>
+      </UserRoleProvider>
     </ReactFlowProvider>
   );
 }

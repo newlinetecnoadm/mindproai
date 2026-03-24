@@ -37,6 +37,7 @@ const DiagramEditor = () => {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer">("viewer");
 
   // Remote sync state
   const [remoteNodes, setRemoteNodes] = useState<Node[] | undefined>();
@@ -65,6 +66,25 @@ const DiagramEditor = () => {
       setIsPublic(data.is_public ?? false);
       setPublicToken(data.public_token ?? null);
       setInitialThemeId(data.theme || undefined);
+
+      // Determine user role
+      if (user && data.user_id === user.id) {
+        setUserRole("owner");
+      } else if (user) {
+        const { data: collab } = await supabase
+          .from("diagram_collaborators")
+          .select("role")
+          .eq("diagram_id", id!)
+          .eq("user_id", user.id)
+          .single();
+        
+        if (collab) {
+          setUserRole(collab.role as "editor" | "viewer");
+        } else if (data.is_public) {
+          setUserRole("viewer");
+        }
+      }
+
       const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
       if (diagramData?.nodes?.length) {
         // 3C — Apply native style to legacy nodes loaded from the database
@@ -306,6 +326,7 @@ const DiagramEditor = () => {
               diagramTitle={title}
               isPublic={isPublic}
               publicToken={publicToken}
+              isOwner={userRole === "owner"}
             />
           )}
           {onlineUsers.length > 0 && (
@@ -360,6 +381,7 @@ const DiagramEditor = () => {
           remoteNodes={remoteNodes}
           remoteEdges={remoteEdges}
           remoteThemeId={remoteThemeId}
+          userRole={userRole}
         />
       </div>
     </div>
