@@ -18,6 +18,7 @@ Plataforma de produtividade visual com mapas mentais, diagramas, boards Kanban e
 | Formulários | React Hook Form + Zod |
 | Gráficos | Recharts |
 | PDF | jsPDF, html-to-image |
+| SEO | react-helmet-async |
 | Backend | Supabase (Auth, Database, Storage, Edge Functions, Realtime) |
 | Pagamentos | Stripe (checkout, webhooks, portal do cliente) |
 
@@ -548,7 +549,10 @@ E-mails suprimidos (bounce, complaint).
 - Organização por diagram_workspaces
 - Layout automático ao carregar template e ao adicionar/mover nós via ELK (`useAutoLayout`)
 - Reorganização manual via botão na toolbar ou atalho `Ctrl+Shift+L`
-- **Collapse/Expand de nós**: botão sutil (+/−) posicionado sobre o conector sainte; detecta filhos considerando edges ocultas; estado `collapsed` persistido no jsonb; relayout automático após toggle
+- **Collapse/Expand de nós**: botão sutil (+/−) posicionado sobre o conector sainte (12px com dot centralizado de 4px); detecta filhos considerando edges ocultas; estado `collapsed` persistido no jsonb; relayout automático após toggle
+- **Outline View**: alternância entre modo gráfico e visão de lista (outline) hierárquica
+- **Importação de Esboço**: criação de estruturas complexas a partir de texto hierárquico (identado)
+- **Gestão de Permissões**: controle granular (Owner, Editor, Viewer) com restrição de ações de edição e IA para visualizadores
 - **Retrocompatibilidade**: nós antigos carregados do banco recebem `node.style` automático via `inferStyleKey` + `buildNodeStyle`
 - Word-wrap correto em todos os tipos de nó (texto longo não vaza para fora do nó)
 
@@ -604,6 +608,12 @@ E-mails suprimidos (bounce, complaint).
 - Chat com IA (AIChatWidget)
 - Assistente para mapas mentais (AIMapAssistDialog)
 - Assistente para boards (AIBoardAssistDialog)
+
+### 11. SEO & Segurança
+- **SEO Dinâmico**: gestão de metadados (Title, Description, Canonical) por página via `react-helmet-async`
+- **Cabeçalhos de Segurança**: implementação de CSP (Content Security Policy), X-Frame-Options, X-Content-Type-Options e Referrer-Policy via meta tags
+- **Acessibilidade & Semântica**: auditoria de hierarquia de títulos (H1-H6) e obrigatoriedade de alt text em assets
+- **E-E-A-T**: otimização de links canônicos e estrutura de autor para melhor ranqueamento
 
 ---
 
@@ -689,3 +699,18 @@ E-mails suprimidos (bounce, complaint).
 - **UI Refinada**: Implementação do componente `Avatar` no diálogo de compartilhamento e ícone de Coroa para identificar o dono do recurso.
 - Lint & Type Check: ✅ Pass
 - Date: 2026-03-23
+
+## ✅ PHASE XIV COMPLETE: Diagram Permissions, Outline View & Sketch Import
+- **Gestão de Permissões**: Implementação do `UserRoleContext` para gerenciar acesso (Owner, Editor, Viewer). Restrição de salvamento, edição e ferramentas de IA para usuários em modo visualização.
+- **Outline View (Visão de Tópicos)**: Nova interface que exibe o diagrama em formato de lista hierárquica editável, facilitando a visualização de grandes estruturas.
+- **Importação de Esboço (Sketch Import)**: Funcionalidade para criar diagramas inteiros colando texto identado, convertendo níveis de identação em profundidade de nós.
+- **Refinamento UI Collapse**: Centralização do dot interno do botão de collapse e ajuste de posicionamento bilateral.
+- Lint & Type Check: ✅ Pass
+- Date: 2026-03-24
+
+## ✅ PHASE XV COMPLETE: SEO & Security Optimization
+- **SEO Dinâmico**: Integração do `react-helmet-async` em todas as rotas principais para metadados contextualizados.
+- **Segurança (Hardening)**: Adição de CSP rigorosa e headers de proteção contra Clickjacking e Sniffing no `index.html`.
+- **Auditoria Semântica**: Correção da estrutura `h1`-`h6` e adição de textos alternativos para melhoria de acessibilidade e indexação (E-E-A-T).
+- Lint & Type Check: ✅ Pass
+- Date: 2026-03-24
