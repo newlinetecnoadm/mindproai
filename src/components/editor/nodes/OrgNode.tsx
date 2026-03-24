@@ -28,8 +28,9 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   const labelRef = useRef<HTMLInputElement>(null);
   const roleRef = useRef<HTMLInputElement>(null);
   const depth = (data as any).depth ?? 0;
-  const style = (data as any).style;
-  const fillColor = style?.background && style?.background !== 'transparent' && style?.background !== 'none' ? style.background : undefined;
+  const style = (data as any).style || {};
+  const fillColor = style.background && style.background !== 'transparent' && style.background !== 'none' ? style.background : undefined;
+  const textColor = style.color || (fillColor ? "#ffffff" : "inherit");
 
 
   useEffect(() => { if (editingLabel && labelRef.current) { labelRef.current.focus(); labelRef.current.select(); } }, [editingLabel]);

@@ -133,7 +133,7 @@ export function buildNodeStyle(
 ): CSSProperties {
   let style: CSSProperties = {}
 
-  if (diagramType === 'mindmap') {
+  if (diagramType === 'mindmap' || diagramType === 'mindMap') {
     if (isRoot) {
       style = getNodeStyle('mindmap-root')
     } else if (level === 1) {
@@ -156,11 +156,25 @@ export function buildNodeStyle(
     }
   } else if (diagramType === 'flowchart') {
     style = getNodeStyle('flowchart-process')
-  } else if (diagramType === 'org' || diagramType === 'orgchart') {
+  } else if (diagramType === 'org' || diagramType === 'orgchart' || diagramType === 'org_mindmap' || diagramType === 'orgMindMap') {
     if (isRoot) style = getNodeStyle('orgchart-root')
     else {
-      style = { ...getNodeStyle('orgchart-child'), background: branchHex || '#ffffff' }
-      if (branchHex) style.color = '#ffffff'
+      // Org chart nodes at Level 1 are also filled by default in the mindmap-like system
+      const isFilled = level === 1;
+      if (isFilled) {
+        style = { 
+          ...getNodeStyle('orgchart-child'), 
+          background: branchHex || '#ffffff',
+          color: branchHex ? '#ffffff' : BRAND_GRAY 
+        }
+      } else {
+        style = { 
+          ...getNodeStyle('orgchart-child'), 
+          background: 'transparent',
+          border: 'none',
+          color: branchHex || BRAND_GRAY 
+        }
+      }
     }
   } else if (diagramType === 'timeline') {
     style = getNodeStyle('timeline-event')

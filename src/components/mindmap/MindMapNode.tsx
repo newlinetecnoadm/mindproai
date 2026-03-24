@@ -68,14 +68,16 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
 
-  // Colors and typography adapt to theme darkness (default gray)
+  // Colors and typography follow the pre-calculated style in data
+  const style = (data as any).style || {};
+  const isFilled = style.background && style.background !== 'transparent' && style.background !== 'none';
   const isDark = !!(data as any).isDark;
-  const style = (data as any).style; // Access style from data if available
-  const isFilled = style?.background && style?.background !== 'transparent' && style?.background !== 'none';
-  const textColor = isFilled ? "#ffffff" : (style?.color ?? (isDark ? "#f0f0f0" : BRAND_GRAY));
+  
+  // Use pre-calculated color from style, or fallback based on filled status/theme darkness
+  const textColor = style.color || (isFilled ? "#ffffff" : (isDark ? "#f0f0f0" : BRAND_GRAY));
 
-  const fontSize = style?.fontSize ?? (isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem");
-  const fontWeight = style?.fontWeight ?? (isRoot ? "700" : "400");
+  const fontSize = style.fontSize ?? (isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem");
+  const fontWeight = style.fontWeight ?? (isRoot ? "700" : "400");
 
 
   // Handles visible when selected — facilitate manual connections

@@ -137,7 +137,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     edgeType: diagramType === "orgchart" ? "square_mindmap" : "mindmap",
     isDefault: theme.id === "default",
     isDark: isColorDark(theme.bg),
-
+    diagramType,
   };
   const themeOptionsRef = useRef(themeOptions);
   themeOptionsRef.current = themeOptions;
@@ -404,6 +404,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         edgeType: diagramType === "orgchart" ? "orthogonal" : "mindmap",
         isDefault: newTheme.id === "default",
         isDark: isColorDark(newTheme.bg),
+        diagramType,
       };
       const currentNodes = nodesRef.current;
       const currentEdges = edgesRef.current;

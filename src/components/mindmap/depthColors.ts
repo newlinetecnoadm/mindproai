@@ -1,4 +1,5 @@
 import type { Node, Edge } from "@xyflow/react";
+import { buildNodeStyle } from "../../lib/nodeStyles";
 
 /**
  * Default branch color palette (used for the "default" / neutral theme).
@@ -162,16 +163,18 @@ export function buildDepthMap(nodes: Node[], edges: Edge[]): Map<string, number>
 }
 
 /**
- * Assign branch colors to all nodes.
+ * Assign branch colors and styles to all nodes.
  * When themeOptions is provided and not the default theme, branch colors
  * are derived as harmonious variants of the theme's base edgeColor.
  */
 export function assignDepthColors(
   nodes: Node[],
   edges: Edge[],
-  themeOptions?: { edgeColor?: string; isDefault?: boolean; isDark?: boolean }
+  themeOptions?: EdgeThemeOptions
 ): Node[] {
   const depthMap = buildDepthMap(nodes, edges);
+  const diagramType = themeOptions?.diagramType || "mindmap";
+  
   // CRITICAL: only hierarchical edges count for the collapse (hasChildren) button
   const sourceNodes = new Set(edges.filter(e => !(e.data as any)?.isCustom).map(e => e.source));
 
@@ -196,10 +199,19 @@ export function assignDepthColors(
     const isMainRoot = (node.data as any)?.isRoot && !(node.data as any)?.isIndependent;
 
     if (isMainRoot || (depth === 0 && !(node.data as any)?.isIndependent)) {
+      const style = buildNodeStyle(diagramType, true, 0);
       return {
         ...node,
         hidden: node.hidden,
-        data: { ...node.data, branchHex: undefined, color: "root", depth: 0, isDark: themeOptions?.isDark },
+        style,
+        data: { 
+          ...node.data, 
+          branchHex: undefined, 
+          color: "root", 
+          depth: 0, 
+          isDark: themeOptions?.isDark,
+          style
+        },
       };
     }
 
@@ -208,21 +220,27 @@ export function assignDepthColors(
     
     // Independent roots are their own branch ancestors
     const effectiveBranchHex = isIndependentRoot ? depth1HexMap.get(node.id) : (branchAncestorId ? depth1HexMap.get(branchAncestorId) : undefined);
+    const branchHex = effectiveBranchHex ?? (isIndependentRoot ? undefined : getBranchHex(getColorForDepth(depth)));
 
     const color = (isIndependentRoot || effectiveBranchHex) ? "branch" : getColorForDepth(depth);
     const hasChildren = sourceNodes.has(node.id);
+
+    // Rebuild style with the new branch color
+    const style = buildNodeStyle(diagramType, false, depth, branchHex);
 
     return {
       ...node,
       // CRITICAL: preserve node.hidden so collapsed subtrees stay hidden after theme/layout changes
       hidden: node.hidden,
+      style,
       data: { 
         ...node.data, 
         color, 
-        branchHex: effectiveBranchHex ?? (isIndependentRoot ? undefined : getBranchHex(color)), 
+        branchHex, 
         depth, 
         isDark: themeOptions?.isDark,
-        hasChildren
+        hasChildren,
+        style
       },
     };
   });
@@ -237,6 +255,7 @@ export type EdgeThemeOptions = {
   edgeType?: string;
   isDefault?: boolean;
   isDark?: boolean;
+  diagramType?: string;
 };
 
 /**

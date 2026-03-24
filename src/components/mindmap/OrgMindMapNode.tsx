@@ -92,11 +92,12 @@ function OrgMindMapNode({ data, id, selected }: NodeProps & { data: OrgMindMapNo
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
 
-  // Org Chart nodes: filled square with branch color + white text (depth 1 or independent root)
-  const isDepth1 = (!isRoot && depth === 1) || (!!(data as any).isIndependent && depth === 0);
-  const fillColor = isDepth1 ? (data.branchHex ?? undefined) : undefined;
+  // Colors and typography follow the pre-calculated style in data
+  const style = (data as any).style || {};
+  const isFilled = style.background && style.background !== 'transparent' && style.background !== 'none';
+  const fillColor = isFilled ? style.background : undefined;
   const isDark = !!(data as any).isDark;
-  const textColor = fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY;
+  const textColor = style.color || (fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY);
 
   const fontSize = isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem";
   const fontWeight = isRoot ? "700" : "400";
