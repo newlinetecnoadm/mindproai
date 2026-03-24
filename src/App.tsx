@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -34,42 +35,44 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <AuthProvider>
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/cadastro" element={<Cadastro />} />
-          <Route path="/esqueci-senha" element={<ForgotPassword />} />
-          <Route path="/redefinir-senha" element={<ResetPassword />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
-          <Route path="/diagramas/novo" element={<ProtectedRoute><NewDiagram /></ProtectedRoute>} />
-          <Route path="/diagramas/:id" element={<ProtectedRoute><DiagramEditor /></ProtectedRoute>} />
-          <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
-          <Route path="/boards/:id" element={<ProtectedRoute><BoardDetail /></ProtectedRoute>} />
-          <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
-          <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
-          <Route path="/planner" element={<ProtectedRoute><PlannerPage /></ProtectedRoute>} />
-          <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
-          <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
-          {/* Admin */}
-          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-          <Route path="/admin/planos" element={<AdminRoute><AdminPlans /></AdminRoute>} />
-          <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-          <Route path="/convite" element={<AcceptInvite />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <AIChatWidget />
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-  </AuthProvider>
+  <HelmetProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Cadastro />} />
+              <Route path="/esqueci-senha" element={<ForgotPassword />} />
+              <Route path="/redefinir-senha" element={<ResetPassword />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/diagramas" element={<ProtectedRoute><DiagramList /></ProtectedRoute>} />
+              <Route path="/diagramas/novo" element={<ProtectedRoute><NewDiagram /></ProtectedRoute>} />
+              <Route path="/diagramas/:id" element={<ProtectedRoute><DiagramEditor /></ProtectedRoute>} />
+              <Route path="/boards" element={<ProtectedRoute><WorkspaceList /></ProtectedRoute>} />
+              <Route path="/boards/:id" element={<ProtectedRoute><BoardDetail /></ProtectedRoute>} />
+              <Route path="/agenda" element={<ProtectedRoute><AgendaPage /></ProtectedRoute>} />
+              <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
+              <Route path="/planner" element={<ProtectedRoute><PlannerPage /></ProtectedRoute>} />
+              <Route path="/assinaturas" element={<ProtectedRoute><AssinaturasPage /></ProtectedRoute>} />
+              <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+              {/* Admin */}
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/admin/planos" element={<AdminRoute><AdminPlans /></AdminRoute>} />
+              <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+              <Route path="/convite" element={<AcceptInvite />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <AIChatWidget />
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AuthProvider>
+  </HelmetProvider>
 );
 
 export default App;

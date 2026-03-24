@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import SEO from "@/components/SEO";
 import { PageTransition } from "@/components/ui/transitions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,6 +169,7 @@ const Configuracoes = () => {
 
   return (
     <DashboardLayout>
+      <SEO title="Configurações" />
       <PageTransition className="p-6 lg:p-8 max-w-4xl mx-auto w-full">
         <h1 className="text-2xl font-display font-bold mb-1">Configurações</h1>
         <p className="text-muted-foreground mb-8">Gerencie sua conta e preferências</p>

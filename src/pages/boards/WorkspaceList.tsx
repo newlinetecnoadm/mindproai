@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import SEO from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -475,6 +476,7 @@ const WorkspaceList = () => {
 
   return (
     <DashboardLayout>
+      <SEO title="Meus Boards Kanban" description="Organize seus projetos e tarefas com boards Kanban no MindPro AI." />
       <PageTransition className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
         <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-stretch gap-4")}>
           <div className="flex items-center justify-between">

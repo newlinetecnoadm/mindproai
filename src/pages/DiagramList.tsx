@@ -18,12 +18,14 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import SEO from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
+import SEO from "@/components/SEO";
 import UpgradeModal from "@/components/UpgradeModal";
 import { cn } from "@/lib/utils";
 
@@ -399,6 +401,7 @@ const DiagramList = () => {
 
   return (
     <DashboardLayout>
+      <SEO title="Meus Diagramas" description="Gerencie seus mapas mentais e diagramas visuais no MindPro AI." />
       <PageTransition className="p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-stretch gap-4")}>
           <div className="flex items-center justify-between">

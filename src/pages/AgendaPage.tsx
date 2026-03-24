@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
+import SEO from "@/components/SEO";
 import { addMonths, subMonths, addWeeks, subWeeks, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
@@ -135,6 +136,7 @@ const AgendaPage = () => {
 
   return (
     <DashboardLayout>
+      <SEO title="Minha Agenda" description="Visualize seus compromissos e prazos integrados ao Kanban no MindPro AI." />
       <PageTransition className="p-4 lg:p-8 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">

@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import SEO from "@/components/SEO";
 import { Calendar, Plus, ArrowRight, Brain, Kanban, Clock, FileText, Layers, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -71,6 +72,7 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
+      <SEO title="Dashboard — Meu Painel" />
       <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

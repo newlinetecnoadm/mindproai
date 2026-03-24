@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import logoHorizontalColor from "@/assets/logo-horizontal-color.png";
+import SEO from "@/components/SEO";
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const fadeUp = {
@@ -140,6 +141,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEO />
 
       {/* ── Nav ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
