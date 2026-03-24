@@ -12,8 +12,7 @@ export type MindMapNodeData = {
   showHandles?: boolean;
 };
 
-// Brand identity dark gray — used for non-filled node text
-const BRAND_GRAY = "#3d3d3d";
+import { BRAND_GRAY } from "@/lib/nodeStyles";
 
 function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData }) {
   const userRole = useUserRole();
@@ -69,15 +68,14 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
 
-  // Depth-1 nodes OR Independent Roots: filled pill with branch color + white text
-  const isDepth1 = (!isRoot && depth === 1) || (!!(data as any).isIndependent && depth === 0);
-  const fillColor = isDepth1 ? (data.branchHex ?? undefined) : undefined;
+  // Colors and typography adapt to theme darkness (default gray)
   const isDark = !!(data as any).isDark;
-  // Filled nodes always white text; others adapt to theme darkness (default gray)
-  const textColor = fillColor ? "#ffffff" : isDark ? "#f0f0f0" : BRAND_GRAY;
+  const style = (data as any).style; // Access style from data if available
+  const isFilled = style?.background && style?.background !== 'transparent' && style?.background !== 'none';
+  const textColor = isFilled ? "#ffffff" : (style?.color ?? (isDark ? "#f0f0f0" : BRAND_GRAY));
 
-  const fontSize = isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem";
-  const fontWeight = isRoot ? "700" : "400";
+  const fontSize = style?.fontSize ?? (isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem");
+  const fontWeight = style?.fontWeight ?? (isRoot ? "700" : "400");
 
 
   // Handles visible when selected — facilitate manual connections
@@ -97,15 +95,11 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
         alignItems: "center",
         justifyContent: "center",
         whiteSpace: "nowrap",
-        // Depth-1: filled pill shape; others: plain
-        ...(fillColor ? {
-          backgroundColor: fillColor,
-          borderRadius: "8px",
-          padding: "6px 14px",
-        } : {
-          padding: "2px 6px",
-          minWidth: 40,
-        }),
+        width: "100%",
+        height: "100%",
+        cursor: "text",
+        userSelect: "none",
+        ...style,
       }}
       onDoubleClick={handleDoubleClick}
     >
@@ -166,19 +160,19 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
           className="collapse-button"
           style={{
             position: "absolute",
-            [(data as any).side === "left" ? "left" : "right"]: -6,
+            [(data as any).side === "left" ? "left" : "right"]: isFilled ? -14 : -10,
             top: "50%",
             transform: "translateY(-50%)",
             width: 12,
             height: 12,
             borderRadius: "50%",
             backgroundColor: "#ffffff",
-            border: `1.5px solid ${fillColor || data.branchHex || "#e5e7eb"}`,
+            border: `1.5px solid ${data.branchHex || "#e5e7eb"}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             zIndex: 10,
             transition: "all 0.2s ease",
           }}
@@ -189,7 +183,7 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
                 width: 4, 
                 height: 4, 
                 borderRadius: "2px", 
-                backgroundColor: fillColor || data.branchHex || "#6b7280" 
+                backgroundColor: data.branchHex || "#6b7280" 
               }} 
             />
           )}

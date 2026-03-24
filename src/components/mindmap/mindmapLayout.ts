@@ -1,27 +1,22 @@
 import type { Node, Edge } from "@xyflow/react";
+import { 
+  getNodeDimensions, 
+  ROOT_WIDTH, 
+  ROOT_HEIGHT, 
+  NODE_WIDTH, 
+  NODE_HEIGHT, 
+  ORG_H_GAP, 
+  ORG_V_GAP,
+  TL_GAP,
+  CONCEPT_RADIUS,
+  CONCEPT_NODE_WIDTH,
+  CONCEPT_NODE_HEIGHT,
+  TL_NODE_WIDTH,
+  TL_NODE_HEIGHT
+} from "@/lib/diagramUtils";
 
-const ROOT_WIDTH = 180;
-const ROOT_HEIGHT = 40;
-const NODE_WIDTH = 120;
-const NODE_HEIGHT = 28;
-const H_GAP = 72;
 const V_GAP = 32;
-
-// Org chart constants
-const ORG_NODE_WIDTH = 200;
-const ORG_NODE_HEIGHT = 60;
-const ORG_H_GAP = 60;
-const ORG_V_GAP = 70;
-
-// Timeline constants
-const TL_NODE_WIDTH = 180;
-const TL_NODE_HEIGHT = 70;
-const TL_GAP = 40;
-
-// Concept map constants
-const CONCEPT_NODE_WIDTH = 160;
-const CONCEPT_NODE_HEIGHT = 48;
-const CONCEPT_RADIUS = 220;
+const H_GAP = 72;
 
 interface TreeNode {
   id: string;
@@ -239,13 +234,13 @@ function layoutOrgTree(
   const gap = tree.childCenterGap || ORG_H_GAP;
   const numChildren = tree.children.length;
   
-  // Vertical step: use a more generous fixed gap for Orgs to ensure alignment
-  // even if node heights vary slightly (labels).
-  const verticalStep = 100;
+  // Dynamic vertical step: find the max height among all siblings at this level
+  // to ensure the next row starts at the same Y.
+  const maxChildHeight = Math.max(...tree.children.map(c => getNodeDimensions(c.node).h));
+  const verticalStep = Math.max(100, nodeH / 2 + ORG_V_GAP + maxChildHeight / 2);
 
   for (let i = 0; i < numChildren; i++) {
     const child = tree.children[i];
-    // Offset each child center from the parent center based on its index
     const childCenterX = parentCenterX + (i - (numChildren - 1) / 2) * gap;
     const childSubtreeX = childCenterX - child.subtreeWidth / 2;
     layoutOrgTree(child, childSubtreeX, y + verticalStep, positions);
@@ -486,29 +481,7 @@ export function autoLayoutDiagram(
   return applyPositions(nodes, edges, positions, diagramType);
 }
 
-function getNodeDimensions(node: Node): { w: number; h: number } {
-  const mw = (node as any).measured?.width;
-  const mh = (node as any).measured?.height;
-  
-  if (mw !== undefined && mh !== undefined) {
-    return { w: mw, h: mh };
-  }
- 
-  // Fallbacks if measured is not yet available — Estimate based on label
-  const label = (node.data as any)?.label || "";
-  const subLabel = (node.data as any)?.subLabel || "";
-  const estimatedW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
- 
-  const d = node.data as any;
-  if (d?.isRoot) return { w: Math.max(180, estimatedW), h: ROOT_HEIGHT };
-  
-  const type = node.type;
-  if (type === "org" || type === "org_mindmap") return { w: estimatedW, h: subLabel ? 54 : 40 };
-  if (type === "timeline") return { w: TL_NODE_WIDTH, h: TL_NODE_HEIGHT };
-  if (type === "concept") return { w: CONCEPT_NODE_WIDTH, h: CONCEPT_NODE_HEIGHT };
-  if (type === "mindmap") return { w: estimatedW, h: 28 };
-  return { w: NODE_WIDTH, h: NODE_HEIGHT };
-}
+//getNodeDimensions is now imported from diagramUtils.ts
 
 function getMindmapHandles(
   sourcePos: { x: number; y: number },

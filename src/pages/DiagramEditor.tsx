@@ -92,18 +92,29 @@ const DiagramEditor = () => {
       if (diagramData?.nodes?.length) {
         // 3C — Apply native style to legacy nodes loaded from the database
         const migratedNodes = diagramData.nodes.map((node: Node) => {
-          // Skip if already migrated (has boxSizing in style)
-          if ((node.style as any)?.boxSizing === 'border-box') return node;
-          // Infer styleKey if not present
-          const styleKey = (node.data as any)?.styleKey ?? inferStyleKey(node, data.type);
+          const d = node.data as any;
+          // Skip if already migrated to version 2
+          if (d?.styleVersion === 2) return node;
+
+          const styleKey = d?.styleKey ?? inferStyleKey(node, data.type);
+          const depth = d?.depth ?? (d?.level || 0);
+          const style = buildNodeStyle(
+            data.type,
+            Boolean(d?.isRoot),
+            depth,
+            d?.branchHex
+          );
+
           return {
             ...node,
-            data: { ...(node.data as object), styleKey },
-            style: buildNodeStyle(
-              data.type,
-              Boolean((node.data as any)?.isRoot),
-              (node.data as any)?.level ?? undefined,
-            ),
+            data: { 
+              ...(node.data as object), 
+              styleKey, 
+              style, 
+              styleVersion: 2,
+              depth 
+            },
+            style,
           };
         });
         setInitialNodes(migratedNodes);

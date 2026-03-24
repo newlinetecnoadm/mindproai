@@ -5,6 +5,8 @@ const BASE: CSSProperties = {
   boxSizing: 'border-box',
 }
 
+export const BRAND_GRAY = "#3d3d3d";
+
 export const NODE_STYLES: Record<string, CSSProperties> = {
   // ── Mind map — transparent, text-only, no borders ─────────
   'mindmap-root': {
@@ -68,7 +70,7 @@ export const NODE_STYLES: Record<string, CSSProperties> = {
     ...BASE,
     background: '#ffffff',
     border: '1px solid #b1b1b7',
-    borderRadius: '6px',
+    borderRadius: '12px', // Consistency with OrgNode
   },
 
   // ── Timeline ──────────────────────────────────────────────
@@ -98,6 +100,18 @@ export const NODE_STYLES: Record<string, CSSProperties> = {
   },
 
   // ── Default (swimlane, wireframe, fallback) ───────────────
+  'swimlane': {
+    ...BASE,
+    background: '#f8f9fa',
+    border: '1px solid #dee2e6',
+    borderRadius: '0',
+  },
+  'wireframe': {
+    ...BASE,
+    background: '#ffffff',
+    border: '1px dashed #6c757d',
+    borderRadius: '4px',
+  },
   'default': {
     ...BASE,
     background: '#ffffff',
@@ -114,22 +128,54 @@ export function getNodeStyle(styleKey: string | undefined): CSSProperties {
 export function buildNodeStyle(
   diagramType: string,
   isRoot: boolean,
-  level: number = 1
+  level: number = 1,
+  branchHex?: string
 ): CSSProperties {
+  let style: CSSProperties = {}
+
   if (diagramType === 'mindmap') {
-    if (isRoot) return getNodeStyle('mindmap-root')
-    if (level === 1) return getNodeStyle('mindmap-l1')
-    return getNodeStyle('mindmap-l2')
+    if (isRoot) {
+      style = getNodeStyle('mindmap-root')
+    } else if (level === 1) {
+      // Level 1: Filled pill with hierarchy color
+      style = { 
+        ...getNodeStyle('mindmap-l1'), 
+        background: branchHex || '#f3f4f6', 
+        color: '#ffffff', 
+        borderRadius: '20px', 
+        padding: '6px 16px',
+        fontWeight: '600'
+      }
+    } else {
+      // Level 2+: Transparent with hierarchy color in text
+      style = { 
+        ...getNodeStyle('mindmap-l2'), 
+        color: branchHex || BRAND_GRAY,
+        padding: '4px 8px' 
+      }
+    }
+  } else if (diagramType === 'flowchart') {
+    style = getNodeStyle('flowchart-process')
+  } else if (diagramType === 'org' || diagramType === 'orgchart') {
+    if (isRoot) style = getNodeStyle('orgchart-root')
+    else {
+      style = { ...getNodeStyle('orgchart-child'), background: branchHex || '#ffffff' }
+      if (branchHex) style.color = '#ffffff'
+    }
+  } else if (diagramType === 'timeline') {
+    style = getNodeStyle('timeline-event')
+  } else if (diagramType === 'concept' || diagramType === 'concept_map') {
+    style = isRoot ? getNodeStyle('concept-root') : { ...getNodeStyle('concept-child'), background: branchHex || '#ffffff' }
+    if (branchHex && !isRoot) style.color = '#ffffff'
+  } else if (diagramType === 'swimlane') {
+    style = getNodeStyle('swimlane')
+  } else if (diagramType === 'wireframe') {
+    style = getNodeStyle('wireframe')
+  } else {
+    style = getNodeStyle('default')
   }
-  if (diagramType === 'flowchart') return getNodeStyle('flowchart-process')
-  if (diagramType === 'org') {
-    return isRoot ? getNodeStyle('orgchart-root') : getNodeStyle('orgchart-child')
-  }
-  if (diagramType === 'timeline') return getNodeStyle('timeline-event')
-  if (diagramType === 'concept' || diagramType === 'concept_map') {
-    return isRoot ? getNodeStyle('concept-root') : getNodeStyle('concept-child')
-  }
-  return getNodeStyle('default')
+
+  return style
 }
 
 // Function backwards compatibility for nodes lacking a style or styleKey

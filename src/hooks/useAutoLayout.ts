@@ -3,24 +3,14 @@ import { useNodesInitialized, useReactFlow } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { autoLayoutDiagram } from '@/components/mindmap/mindmapLayout';
 import { assignDepthColors, assignEdgeColors, type EdgeThemeOptions } from '@/components/mindmap/depthColors';
+import { getNodeDimensions } from '@/lib/diagramUtils';
+import { buildNodeStyle } from '@/lib/nodeStyles';
 
-/** Inflate measured/estimated dimensions for layout calculation only. */
+/** Inflate dimensions for layout calculation. */
 function withMeasured(nodes: Node[]): Node[] {
   return nodes.map((n) => {
-    if (n.measured?.width !== undefined && n.measured?.height !== undefined) {
-      return n;
-    }
-    // Sync estimation logic with mindmapLayout.ts
-    const label = (n.data as any)?.label || "";
-    const subLabel = (n.data as any)?.subLabel || "";
-    const estW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
-    const isRoot = (n.data as any)?.isRoot;
-    
-    return {
-      ...n,
-      width: isRoot ? Math.max(180, estW) : estW,
-      height: isRoot ? 40 : (subLabel ? 54 : 40),
-    };
+    const { w, h } = getNodeDimensions(n);
+    return { ...n, width: w, height: h };
   });
 }
 
@@ -29,12 +19,34 @@ function withMeasured(nodes: Node[]): Node[] {
  * This prevents React Flow from emitting spurious 'dimensions' change events caused by
  * explicit width/height values diverging from actual DOM measurements.
  */
-function applyPositions(originalNodes: Node[], laidOutNodes: Node[]): Node[] {
-  const posMap = new Map(laidOutNodes.map((n) => [n.id, n.position]));
-  return originalNodes.map((n) => ({
-    ...n,
-    position: posMap.get(n.id) ?? n.position,
-  }));
+/**
+ * Apply computed positions and STYLES back to the ORIGINAL nodes.
+ */
+function applyResults(originalNodes: Node[], laidOutNodes: Node[], diagramType: string): Node[] {
+  const nodeMap = new Map(laidOutNodes.map((n) => [n.id, n]));
+  return originalNodes.map((n) => {
+    const updated = nodeMap.get(n.id);
+    if (!updated) return n;
+    
+    // Build style based on new data (depth, branchHex)
+    const style = buildNodeStyle(
+      diagramType,
+      Boolean((updated.data as any)?.isRoot),
+      (updated.data as any)?.depth ?? 1,
+      (updated.data as any)?.branchHex
+    );
+
+    return {
+      ...n,
+      position: updated.position ?? n.position,
+      data: { 
+        ...n.data, 
+        ...updated.data,
+        style, // Sync style to data for custom components
+      },
+      style, // Top-level style for React Flow wrapper
+    };
+  });
 }
 
 export function useAutoLayout(
@@ -73,19 +85,21 @@ export function useAutoLayout(
     hasLayouted.current = true;
 
     const laid = autoLayoutDiagram(withMeasured(nodes), edges, diagramType);
-    // Restore original nodes with updated positions only (don't pass explicit width/height)
-    const positioned = applyPositions(nodes, laid.nodes);
-
+    
+    let positioned = laid.nodes;
     if (diagramType === 'mindmap' || diagramType === 'orgchart') {
       const opts = themeRef.current;
-      const coloredNodes = assignDepthColors(positioned, laid.edges, opts);
-      const coloredEdges = assignEdgeColors(coloredNodes, laid.edges, opts);
-      setNodesRef.current(coloredNodes);
-      setEdgesRef.current(coloredEdges);
-    } else {
-      setNodesRef.current(positioned);
-      setEdgesRef.current(laid.edges);
+      positioned = assignDepthColors(laid.nodes, laid.edges, opts);
     }
+
+    const finalNodes = applyResults(nodes, positioned, diagramType);
+    const finalEdges = (diagramType === 'mindmap' || diagramType === 'orgchart') 
+      ? assignEdgeColors(finalNodes, laid.edges, themeRef.current) 
+      : laid.edges;
+
+    setNodesRef.current(finalNodes);
+    setEdgesRef.current(finalEdges);
+    
     setTimeout(() => { fitView({ padding: 0.2, duration: 300 }); }, 50);
   }, [nodesInitialized, diagramType, getNodes, getEdges, fitView]);
 
@@ -100,18 +114,20 @@ export function useAutoLayout(
     if (nodes.length === 0) return;
 
     const laid = autoLayoutDiagram(withMeasured(nodes), edges, diagramType);
-    const positioned = applyPositions(nodes, laid.nodes);
-
+    
+    let processedNodes = laid.nodes;
     if (diagramType === 'mindmap' || diagramType === 'orgchart') {
       const opts = themeRef.current;
-      const coloredNodes = assignDepthColors(positioned, laid.edges, opts);
-      const coloredEdges = assignEdgeColors(coloredNodes, laid.edges, opts);
-      setNodesRef.current(coloredNodes);
-      setEdgesRef.current(coloredEdges);
-    } else {
-      setNodesRef.current(positioned);
-      setEdgesRef.current(laid.edges);
+      processedNodes = assignDepthColors(laid.nodes, laid.edges, opts);
     }
+
+    const finalNodes = applyResults(nodes, processedNodes, diagramType);
+    const finalEdges = (diagramType === 'mindmap' || diagramType === 'orgchart')
+      ? assignEdgeColors(finalNodes, laid.edges, themeRef.current)
+      : laid.edges;
+
+    setNodesRef.current(finalNodes);
+    setEdgesRef.current(finalEdges);
   }, [getNodes, getEdges, diagramType]);
 
   return { triggerLayout };

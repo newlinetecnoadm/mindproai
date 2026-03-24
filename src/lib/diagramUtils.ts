@@ -1,5 +1,21 @@
 import type { Node, Edge } from "@xyflow/react";
 
+// Layout constants
+export const ROOT_WIDTH = 180;
+export const ROOT_HEIGHT = 40;
+export const NODE_WIDTH = 120;
+export const NODE_HEIGHT = 28;
+export const ORG_NODE_WIDTH = 200;
+export const ORG_NODE_HEIGHT = 60;
+export const TL_NODE_WIDTH = 180;
+export const TL_NODE_HEIGHT = 70;
+export const CONCEPT_NODE_WIDTH = 160;
+export const CONCEPT_NODE_HEIGHT = 48;
+export const ORG_H_GAP = 60;
+export const ORG_V_GAP = 70;
+export const TL_GAP = 40;
+export const CONCEPT_RADIUS = 220;
+
 /**
  * Returns all descendant node IDs for a given node using BFS.
  */
@@ -81,4 +97,51 @@ export function getVisibleGraph(nodes: Node[], edges: Edge[]): { visibleNodes: N
   }));
 
   return { visibleNodes, visibleEdges };
+}
+
+/**
+ * Returns the dimensions (width, height) of a node.
+ * Priorities:
+ * 1. node.measured (actual DOM measurement)
+ * 2. node.width/height (manually set dimensions)
+ * 3. Type-specific estimation based on content (label/subLabel)
+ */
+export function getNodeDimensions(node: Node): { w: number; h: number } {
+  // 1. React Flow measured dimensions (actual rendered size)
+  if (node.measured?.width !== undefined && node.measured?.height !== undefined) {
+    return { w: node.measured.width, h: node.measured.height };
+  }
+
+  // 2. Manually set width/height attributes
+  if (node.width !== undefined && node.height !== undefined) {
+    return { w: node.width, h: node.height };
+  }
+
+  // 3. Fallback: Estimation logic
+  const label = (node.data as any)?.label || "";
+  const subLabel = (node.data as any)?.subLabel || (node.data as any)?.role || "";
+  
+  // Base width estimation: 9px per char + padding
+  const estW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
+  const isRoot = (node.data as any)?.isRoot;
+  const isAltOrg = (node as any).type === "org" || (node as any).type === "org_mindmap";
+
+  if (isRoot) {
+    return { w: Math.max(ROOT_WIDTH, estW), h: ROOT_HEIGHT };
+  }
+  
+  // Specific node type overrides
+  switch (node.type) {
+    case "org":
+    case "org_mindmap":
+      return { w: estW, h: subLabel ? 54 : 40 };
+    case "timeline":
+      return { w: TL_NODE_WIDTH, h: TL_NODE_HEIGHT };
+    case "concept":
+      return { w: CONCEPT_NODE_WIDTH, h: CONCEPT_NODE_HEIGHT };
+    case "mindmap":
+      return { w: estW, h: NODE_HEIGHT };
+    default:
+      return { w: NODE_WIDTH, h: NODE_HEIGHT };
+  }
 }

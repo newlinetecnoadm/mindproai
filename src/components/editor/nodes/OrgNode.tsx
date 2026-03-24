@@ -27,10 +27,9 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
   const [role, setRole] = useState(data.role || "");
   const labelRef = useRef<HTMLInputElement>(null);
   const roleRef = useRef<HTMLInputElement>(null);
-  const isSimple = data.variant === "simple";
   const depth = (data as any).depth ?? 0;
-  const isDepth1 = !(data as any).isRoot && depth === 1;
-  const fillColor = isDepth1 ? ((data as any).branchHex as string | undefined) : undefined;
+  const style = (data as any).style;
+  const fillColor = style?.background && style?.background !== 'transparent' && style?.background !== 'none' ? style.background : undefined;
 
 
   useEffect(() => { if (editingLabel && labelRef.current) { labelRef.current.focus(); labelRef.current.select(); } }, [editingLabel]);
@@ -68,7 +67,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
     </>
   );
 
-  if (isSimple) {
+  if (data.variant === "simple") {
     return (
       <div
         style={{
@@ -81,9 +80,7 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: 12,
-          backgroundColor: fillColor,
-          color: fillColor ? '#ffffff' : undefined,
+          ...style,
         }}
         onDoubleClick={() => setEditingLabel(true)}
       >
@@ -119,7 +116,13 @@ function OrgNode({ data, selected, id }: NodeProps & { data: OrgNodeData }) {
     >
       {handles}
 
-      <div className="p-3 flex items-center gap-3 rounded-xl w-full" style={{ backgroundColor: fillColor }}>
+      <div 
+        className="p-3 flex items-center gap-3 rounded-xl w-full" 
+        style={{ 
+          backgroundColor: fillColor,
+          color: style?.color,
+        }}
+      >
         <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0", fillColor ? "bg-white/15" : "bg-muted")}>
           {data.avatarUrl ? (
             <img src={data.avatarUrl} className="w-9 h-9 rounded-full object-cover" alt="" />
