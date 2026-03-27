@@ -175,7 +175,7 @@ const AIChatWidget = () => {
           "fixed right-6 z-[60] shadow-lg flex items-center justify-center transition-all duration-300",
           "bg-primary text-primary-foreground hover:scale-105 active:scale-95",
           isMobile ? "w-12 h-12" : "w-14 h-14 rounded-full",
-          isMobile ? "bottom-24" : "bottom-6",
+          isMobile ? "bottom-36" : "bottom-6",
           isMobile ? "rounded-xl" : "rounded-full",
           open && "rotate-90"
         )}
@@ -186,7 +186,7 @@ const AIChatWidget = () => {
       {open && (
         <div className={cn(
           "fixed right-4 left-4 sm:left-auto sm:right-6 z-[60] sm:w-[380px] max-h-[80vh] sm:max-h-[520px] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300",
-          isMobile ? "bottom-40" : "bottom-24"
+          isMobile ? "bottom-52" : "bottom-24"
         )}>
           {/* Header */}
           <div className="px-4 py-3 border-b border-border bg-primary/5 flex items-center gap-3">

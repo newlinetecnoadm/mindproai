@@ -26,14 +26,25 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface ShareBoardDialogProps {
   boardId: string;
   boardTitle: string;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
+const ShareBoardDialog = ({ 
+  boardId, 
+  boardTitle,
+  trigger,
+  open: externalOpen,
+  onOpenChange: setExternalOpen
+}: ShareBoardDialogProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("member");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen !== undefined ? setExternalOpen : setInternalOpen;
 
   // Fetch board owner + members
   const { data: members } = useQuery({
@@ -255,10 +266,12 @@ const ShareBoardDialog = ({ boardId, boardTitle }: ShareBoardDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-          <Share2 className="w-4 h-4" />
-          Compartilhar
-        </Button>
+        {trigger || (
+          <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+            <Share2 className="w-4 h-4" />
+            Compartilhar
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

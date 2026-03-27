@@ -687,32 +687,40 @@ const BoardDetail = () => {
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <div className="flex items-center gap-2 w-full">
-                          <Palette className="w-4 h-4 mr-2" />
-                          <BoardThemePicker
-                            currentTheme={(board as any).theme || "default"}
-                            onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
-                          />
-                        </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <div className="flex items-center gap-2 w-full">
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          <ShareBoardDialog boardId={id!} boardTitle={board.title} />
-                        </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <div className="flex items-center gap-2 w-full">
-                          <ArchiveIcon className="w-4 h-4 mr-2" />
-                          <ArchivedCardsDialog
-                            boardId={id!}
-                            columns={columns}
-                            onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
-                          />
-                        </div>
-                      </DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="w-56 p-1">
+                      <BoardThemePicker
+                        currentTheme={(board as any).theme || "default"}
+                        onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
+                        trigger={
+                          <div className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-default hover:bg-accent rounded-md transition-colors">
+                            <Palette className="w-4 h-4 text-muted-foreground" />
+                            <span>Alterar Tema</span>
+                          </div>
+                        }
+                      />
+
+                      <ShareBoardDialog 
+                        boardId={id!} 
+                        boardTitle={board.title}
+                        trigger={
+                          <div className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-default hover:bg-accent rounded-md transition-colors">
+                            <UserPlus className="w-4 h-4 text-muted-foreground" />
+                            <span>Compartilhar</span>
+                          </div>
+                        }
+                      />
+
+                      <ArchivedCardsDialog
+                        boardId={id!}
+                        columns={columns}
+                        onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+                        trigger={
+                          <div className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-default hover:bg-accent rounded-md transition-colors text-destructive hover:text-destructive">
+                            <ArchiveIcon className="w-4 h-4" />
+                            <span>Ver Arquivados</span>
+                          </div>
+                        }
+                      />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

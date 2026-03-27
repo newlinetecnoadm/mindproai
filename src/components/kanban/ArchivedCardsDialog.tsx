@@ -4,16 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Archive, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, RotateCcw, Trash2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { motion } from "framer-motion";
 import type { ColumnData } from "./KanbanColumn";
 
 interface ArchivedCardsDialogProps {
   boardId: string;
   columns: ColumnData[];
   onCardRestored: () => void;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface ArchivedCard {
@@ -24,8 +29,17 @@ interface ArchivedCard {
   position: number;
 }
 
-const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCardsDialogProps) => {
-  const [open, setOpen] = useState(false);
+const ArchivedCardsDialog = ({ 
+  boardId, 
+  columns, 
+  onCardRestored,
+  trigger,
+  open: externalOpen,
+  onOpenChange: setExternalOpen 
+}: ArchivedCardsDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen !== undefined ? setExternalOpen : setInternalOpen;
   const queryClient = useQueryClient();
 
   const { data: archivedCards = [], isLoading } = useQuery({
@@ -83,9 +97,17 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
 
   // Group cards by archived date
   const grouped = archivedCards.reduce<Record<string, ArchivedCard[]>>((acc, card) => {
-    const dateKey = card.archived_at
-      ? format(new Date(card.archived_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-      : "Sem data";
+    const date = card.archived_at ? new Date(card.archived_at) : new Date();
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    let dateKey = "Antigos";
+    if (diffDays === 0) dateKey = "Hoje";
+    else if (diffDays === 1) dateKey = "Ontem";
+    else if (diffDays < 7) dateKey = "Últimos 7 dias";
+    else if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) dateKey = "Este Mês";
+    else dateKey = format(date, "MMMM 'de' yyyy", { locale: ptBR });
+
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(card);
     return acc;
@@ -95,12 +117,19 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
     columns.find((c) => c.id === columnId)?.title || "Coluna removida";
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Cards arquivados">
-          <Archive className="w-4 h-4" />
-        </Button>
-      </DialogTrigger>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="h-full"
+    >
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Cards arquivados">
+              <Archive className="w-4 h-4" />
+            </Button>
+          )}
+        </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
@@ -118,58 +147,73 @@ const ArchivedCardsDialog = ({ boardId, columns, onCardRestored }: ArchivedCards
               Nenhum card arquivado
             </p>
           ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <Accordion type="multiple" defaultValue={["Hoje", "Ontem", "Últimos 7 dias", "Este Mês"]} className="w-full">
               {Object.entries(grouped).map(([dateLabel, cards]) => (
-                <div key={dateLabel}>
-                  <p className="text-xs font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-1">
-                    {dateLabel}
-                  </p>
-                  <div className="space-y-1.5">
-                    {cards.map((card) => (
-                      <div
-                        key={card.id}
-                        className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{card.title}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            em {getColumnTitle(card.column_id)}
-                          </p>
+                <AccordionItem key={dateLabel} value={dateLabel} className="border-none">
+                  <AccordionTrigger className="hover:no-underline py-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Calendar className="w-3 h-3" />
+                      {dateLabel}
+                      <span className="ml-2 text-[10px] bg-muted px-1.5 py-0.5 rounded-full lowercase font-normal">
+                        {cards.length} {cards.length === 1 ? "card" : "cards"}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-1 pb-3">
+                    <div className="space-y-2">
+                      {cards.map((card) => (
+                        <div
+                          key={card.id}
+                          className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-card/50 hover:bg-accent/50 transition-colors group"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                              {card.title}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              em {getColumnTitle(card.column_id)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg"
+                              title="Restaurar"
+                              onClick={() => restoreMut.mutate(card.id)}
+                              disabled={restoreMut.isPending}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Excluir permanentemente"
+                              onClick={() => {
+                                if (confirm("Excluir permanentemente este card?")) {
+                                  deleteMut.mutate(card.id);
+                                }
+                              }}
+                              disabled={deleteMut.isPending}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0"
-                          title="Restaurar"
-                          onClick={() => restoreMut.mutate(card.id)}
-                          disabled={restoreMut.isPending}
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                          title="Excluir permanentemente"
-                          onClick={() => {
-                            if (confirm("Excluir permanentemente este card?")) {
-                              deleteMut.mutate(card.id);
-                            }
-                          }}
-                          disabled={deleteMut.isPending}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
-          )}
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+            </Accordion>
+          </div>
+        )}
+      </ScrollArea>
+    </DialogContent>
+  </Dialog>
+</motion.div>
   );
 };
 

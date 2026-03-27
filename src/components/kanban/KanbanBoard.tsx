@@ -12,6 +12,7 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import KanbanColumn, { type ColumnData } from "./KanbanColumn";
 import KanbanCard, { type CardData, type CardLabel, type CardMemberProfile } from "./KanbanCard";
@@ -236,32 +237,52 @@ const KanbanBoard = ({
     return (
       <div className="h-full flex flex-col w-full overflow-x-hidden">
         <Tabs value={activeTab || sortedColumns[0]?.id} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden px-4 pb-20"> {/* Margin for floating nav and bottom tabs */}
-            {sortedColumns.map((col) => (
-              <TabsContent key={col.id} value={col.id} className="h-full mt-0 focus-visible:ring-0">
-                <KanbanColumn
-                  column={col}
-                  cards={getColumnCards(col.id)}
-                  onAddCard={onAddCard}
-                  onCardClick={onCardClick}
-                  onDeleteColumn={onDeleteColumn}
-                  onRenameColumn={onRenameColumn}
-                  onDropInboxItem={onDropInboxItem}
-                  highlightedCardIds={highlightedCardIds}
-                  labelsMap={labelsMap}
-                  membersMap={membersMap}
-                />
-              </TabsContent>
-            ))}
+          <div className="flex-1 overflow-hidden relative">
+            <motion.div
+              key={activeTab || sortedColumns[0]?.id}
+              initial={{ x: 10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -10, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={(_e, info) => {
+                const threshold = 50;
+                const index = sortedColumns.findIndex(c => c.id === (activeTab || sortedColumns[0]?.id));
+                if (info.offset.x > threshold && index > 0) {
+                  setActiveTab(sortedColumns[index - 1].id);
+                } else if (info.offset.x < -threshold && index < sortedColumns.length - 1) {
+                  setActiveTab(sortedColumns[index + 1].id);
+                }
+              }}
+              className="h-full w-full px-4 pb-24"
+            >
+              {sortedColumns.map((col) => (
+                <TabsContent key={col.id} value={col.id} className="h-full mt-0 focus-visible:ring-0">
+                  <KanbanColumn
+                    column={col}
+                    cards={getColumnCards(col.id)}
+                    onAddCard={onAddCard}
+                    onCardClick={onCardClick}
+                    onDeleteColumn={onDeleteColumn}
+                    onRenameColumn={onRenameColumn}
+                    onDropInboxItem={onDropInboxItem}
+                    highlightedCardIds={highlightedCardIds}
+                    labelsMap={labelsMap}
+                    membersMap={membersMap}
+                  />
+                </TabsContent>
+              ))}
+            </motion.div>
           </div>
 
-          <div className="bg-background/80 backdrop-blur-xl border-t border-border/50 pb-safe z-40 shrink-0">
-            <TabsList className="bg-transparent justify-start px-4 h-16 overflow-x-auto overflow-y-hidden no-scrollbar gap-3 py-2">
+          <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-border/50 pb-safe z-40 shrink-0">
+            <TabsList className="bg-transparent flex items-center justify-start px-4 h-16 overflow-x-auto overflow-y-hidden gap-3 py-2 w-full flex-nowrap scrollbar-hide">
               {sortedColumns.map((col) => (
                 <TabsTrigger
                   key={col.id}
                   value={col.id}
-                  className="rounded-xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border/50 transition-all shadow-sm shrink-0 h-10 min-w-[90px]"
+                  className="rounded-xl px-5 py-2 text-[10px] font-bold uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-border/60 transition-all shadow-sm shrink-0 h-11 min-w-[110px] whitespace-nowrap"
                 >
                   {col.title}
                 </TabsTrigger>

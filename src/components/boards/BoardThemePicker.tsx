@@ -180,10 +180,21 @@ const SOLID_COLORS = [
 interface BoardThemePickerProps {
   currentTheme: string;
   onThemeChange: (themeId: string) => void;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps) => {
-  const [open, setOpen] = useState(false);
+const BoardThemePicker = ({ 
+  currentTheme, 
+  onThemeChange, 
+  trigger,
+  open: externalOpen,
+  onOpenChange: setExternalOpen 
+}: BoardThemePickerProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen !== undefined ? setExternalOpen : setInternalOpen;
 
   const pick = (themeId: string) => {
     onThemeChange(themeId);
@@ -193,10 +204,12 @@ const BoardThemePicker = ({ currentTheme, onThemeChange }: BoardThemePickerProps
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-          <Palette className="w-3.5 h-3.5" />
-          Tema
-        </Button>
+        {trigger || (
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <Palette className="w-3.5 h-3.5" />
+            Tema
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[304px] p-3 max-h-[480px] overflow-y-auto" align="end">
         {/* ── Gradient cards ── */}

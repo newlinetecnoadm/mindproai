@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Progress } from "@/components/ui/progress";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CardDetailModalProps {
@@ -129,8 +130,8 @@ const SortableChecklistItem = ({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
-          onClick={() => onDelete(item.id)}
+          className="h-6 w-6 p-0 sm:opacity-0 group-hover:opacity-100 text-destructive shrink-0 transition-opacity"
+          onClick={() => { if (confirm("Excluir item?")) onDelete(item.id); }}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </Button>
@@ -1020,7 +1021,15 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                         <span className="cursor-pointer hover:underline" onClick={() => { setEditingChecklistId(cl.id); setEditingChecklistTitle(cl.title); }}>{cl.title}</span>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteChecklist.mutate(cl.id)}>Excluir</Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 text-destructive sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1" 
+                      onClick={() => { if (confirm("Excluir esta lista de verificação?")) deleteChecklist.mutate(cl.id); }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Excluir
+                    </Button>
                   </div>
 
                   {(() => {
@@ -1268,25 +1277,45 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                           <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-64 p-3" align="start">
-                        <p className="text-xs font-medium mb-3">Mover card</p>
-                        <div className="space-y-2 mb-3">
-                          <Select value={moveTargetBoardId} onValueChange={loadTargetColumns}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Board..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allBoards.map((b: any) => (
-                                <SelectItem key={b.id} value={b.id} className="text-xs">
-                                  {b.id === boardId ? `${b.title} (Atual)` : b.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {moveTargetColumns.length > 0 && (
-                            <Select value={moveTargetColumnId} onValueChange={setMoveTargetColumnId}>
-                              <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="Coluna..." />
+                      <PopoverContent className="w-72 p-4" align="start">
+                        <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                          <ArrowRightLeft className="w-4 h-4 text-primary" />
+                          <p className="text-sm font-bold">Mover Card</p>
+                        </div>
+                        
+                        <div className="space-y-4 mb-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                              <LayoutGrid className="w-3 h-3" /> Tabuleiro
+                            </Label>
+                            <Select value={moveTargetBoardId} onValueChange={(val) => {
+                              setMoveTargetBoardId(val);
+                              loadTargetColumns(val);
+                            }}>
+                              <SelectTrigger className="h-10 text-xs bg-muted/30">
+                                <SelectValue placeholder="Selecione o Quadro..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allBoards.map((b: any) => (
+                                  <SelectItem key={b.id} value={b.id} className="text-xs">
+                                    {b.id === boardId ? `${b.title} (Atual)` : b.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                              <CheckSquare className="w-3 h-3" /> Lista (Destino)
+                            </Label>
+                            <Select 
+                              value={moveTargetColumnId} 
+                              onValueChange={setMoveTargetColumnId}
+                              disabled={!moveTargetBoardId}
+                            >
+                              <SelectTrigger className="h-10 text-xs bg-muted/30">
+                                <SelectValue placeholder={moveTargetBoardId ? "Selecione a Lista..." : "Aguardando quadro..."} />
                               </SelectTrigger>
                               <SelectContent>
                                 {moveTargetColumns.map((c) => (
@@ -1294,15 +1323,17 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                                 ))}
                               </SelectContent>
                             </Select>
-                          )}
+                          </div>
                         </div>
+
                         <Button
                           size="sm"
-                          className="w-full h-8 text-xs font-semibold"
+                          className="w-full h-10 text-xs font-bold gap-2"
                           disabled={!moveTargetColumnId || moveCardToBoardMut.isPending}
                           onClick={() => moveCardToBoardMut.mutate()}
                         >
-                          {moveCardToBoardMut.isPending ? "Movendo..." : "Mover agora"}
+                          <Check className="w-3.5 h-3.5" />
+                          {moveCardToBoardMut.isPending ? "Movendo..." : "Mover Card"}
                         </Button>
                       </PopoverContent>
                     </Popover>
