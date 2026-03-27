@@ -46,7 +46,7 @@ const PHOTO_THEMES: BoardTheme[] = [
   {
     id: "photo-stars",
     name: "Estrelas",
-    preview: unsplash("photo-1519681393784-d120267933ba"),
+    preview: unsplash("photo-1536746803623-cef87080bfc8"),
     bg: unsplash("photo-1536746803623-cef87080bfc8"),
     type: "image",
   },
@@ -67,8 +67,8 @@ const PHOTO_THEMES: BoardTheme[] = [
   {
     id: "photo-desert",
     name: "Deserto",
-    preview: unsplash("photo-1509316785289-025f5b846b35"),
-    bg: unsplash("photo-1509316785289-025f5b846b35"),
+    preview: unsplash("photo-1473580044384-7ba9967e16a0"),
+    bg: unsplash("photo-1473580044384-7ba9967e16a0"),
     type: "image",
   },
   {

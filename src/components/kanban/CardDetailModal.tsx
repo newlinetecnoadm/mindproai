@@ -730,7 +730,11 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
     setMoveTargetBoardId(targetBoardId);
     const { data } = await supabase.from("board_columns").select("id, title").eq("board_id", targetBoardId).order("position");
     setMoveTargetColumns(data || []);
-    setMoveTargetColumnId(data?.[0]?.id || "");
+    if (targetBoardId === boardId && card) {
+      setMoveTargetColumnId(card.column_id);
+    } else {
+      setMoveTargetColumnId(data?.[0]?.id || "");
+    }
   };
 
   const copyCardMut = useMutation({
@@ -1250,7 +1254,15 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                       </PopoverContent>
                     </Popover>
 
-                    <Popover open={showMoveCard} onOpenChange={(o) => { setShowMoveCard(o); if (!o) { setMoveTargetBoardId(""); setMoveTargetColumns([]); } }}>
+                    <Popover open={showMoveCard} onOpenChange={(o) => { 
+                      setShowMoveCard(o); 
+                      if (o) {
+                        loadTargetColumns(boardId);
+                      } else { 
+                        setMoveTargetBoardId(""); 
+                        setMoveTargetColumns([]); 
+                      } 
+                    }}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 justify-start text-xs gap-2">
                           <ArrowRightLeft className="w-3.5 h-3.5" /> Mover
@@ -1264,8 +1276,10 @@ const CardDetailModal = ({ cardId, boardId, open, onOpenChange, onCardUpdated }:
                               <SelectValue placeholder="Board..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {allBoards.filter((b: any) => b.id !== boardId).map((b: any) => (
-                                <SelectItem key={b.id} value={b.id} className="text-xs">{b.title}</SelectItem>
+                              {allBoards.map((b: any) => (
+                                <SelectItem key={b.id} value={b.id} className="text-xs">
+                                  {b.id === boardId ? `${b.title} (Atual)` : b.title}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>

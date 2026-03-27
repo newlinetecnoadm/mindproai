@@ -1631,7 +1631,8 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onOpenChange={setImportDialogOpen}
         onImport={handleImportOutline}
       />
-      {contextMenu && limits.aiGeneration && (
+      {/* Temporarily hidden AI menu */}
+      {false && contextMenu && limits.aiGeneration && (
         <NodeContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -1655,7 +1656,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
         onShapeChange={handleShapeChange}
         onVariantChange={handleVariantChange}
         onToggleConnectors={handleToggleConnectors}
-        onAIAssist={limits.aiGeneration ? () => {
+        onAIAssist={false && limits.aiGeneration ? () => {
           setContextMenu({ x: window.innerWidth / 2, y: window.innerHeight / 2, node: mobileDrawerNode! });
           setMobileDrawerNode(null);
         } : undefined}

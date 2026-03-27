@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import { AuthProvider } from "@/hooks/useAuth";
 import AIChatWidget from "@/components/chat/AIChatWidget";
+import { InvitationPopup } from "@/components/notifications/InvitationPopup";
 
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -42,6 +43,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <InvitationPopup />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />

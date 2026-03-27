@@ -26,6 +26,13 @@ import type { CardData } from "@/components/kanban/KanbanCard";
 import { AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Palette, UserPlus, Archive as ArchiveIcon } from "lucide-react";
 
 const BoardDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -643,7 +650,8 @@ const BoardDetail = () => {
                   <Search className="w-4 h-4" />
                 </Button>
               )}
-              {limits.aiGeneration && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
+              {/* Temporarily hidden AI button */}
+              {false && limits.aiGeneration && <AIBoardAssistDialog boardId={id!} onApply={handleAIApply} />}
               {!isMobile && (
                 <>
                   <BoardThemePicker
@@ -665,13 +673,49 @@ const BoardDetail = () => {
                 </>
               )}
               {isMobile && (
-                <BoardFilters
-                  filters={filters}
-                  onChange={setFilters}
-                  labels={boardLabels}
-                  members={boardMembers}
-                  hideSearch // We'll add this prop to hide the search input inside BoardFilters when on mobile header
-                />
+                <div className="flex items-center gap-1">
+                  <BoardFilters
+                    filters={filters}
+                    onChange={setFilters}
+                    labels={boardLabels}
+                    members={boardMembers}
+                    hideSearch
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <div className="flex items-center gap-2 w-full">
+                          <Palette className="w-4 h-4 mr-2" />
+                          <BoardThemePicker
+                            currentTheme={(board as any).theme || "default"}
+                            onThemeChange={(themeId) => updateThemeMut.mutate(themeId)}
+                          />
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <div className="flex items-center gap-2 w-full">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          <ShareBoardDialog boardId={id!} boardTitle={board.title} />
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <div className="flex items-center gap-2 w-full">
+                          <ArchiveIcon className="w-4 h-4 mr-2" />
+                          <ArchivedCardsDialog
+                            boardId={id!}
+                            columns={columns}
+                            onCardRestored={() => queryClient.invalidateQueries({ queryKey: ["board-cards", id] })}
+                          />
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
             </div>
           </>
