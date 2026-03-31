@@ -11,11 +11,13 @@ interface AutosaveOptions<T> {
 /**
  * useAutosave hook for "silent" persistence.
  * Maintains data in a ref to avoid re-renders and race conditions during save.
+ * Uses isDirtyRef to ensure unmount only persists genuinely unsaved changes.
  */
 export function useAutosave<T>(data: T, { onSave, debounceMs = 800, onStatusChange }: AutosaveOptions<T>) {
   const dataRef = useRef<T>(data);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const onSaveRef = useRef(onSave);
+  const isDirtyRef = useRef(false);
   onSaveRef.current = onSave;
 
   // Sync ref with incoming data, but don't trigger re-renders
@@ -27,16 +29,18 @@ export function useAutosave<T>(data: T, { onSave, debounceMs = 800, onStatusChan
     if (immediateData) {
       dataRef.current = immediateData;
     }
-    
+
+    // Mark as dirty — there is unsaved data
+    isDirtyRef.current = true;
+
     // Clear existing timer
     if (timerRef.current) clearTimeout(timerRef.current);
-    
-    // We don't immediately set status to idle to avoid flicker if it was already saved
-    
+
     timerRef.current = setTimeout(async () => {
       onStatusChange?.('saving');
       try {
         await onSaveRef.current(dataRef.current);
+        isDirtyRef.current = false;
         onStatusChange?.('saved');
       } catch (e) {
         console.error("Autosave internal error:", e);
@@ -45,15 +49,17 @@ export function useAutosave<T>(data: T, { onSave, debounceMs = 800, onStatusChan
     }, debounceMs);
   }, [debounceMs, onStatusChange]);
 
-  // Immediate save on unmount if there's a pending change
+  // On unmount: only save if there's a pending (dirty) change
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
-        // Important: this fire-and-forget save on unmount
-        onSaveRef.current(dataRef.current).catch(err => {
-          console.error("Final unmount save failed:", err);
-        });
+        // Only persist if data actually changed since last successful save
+        if (isDirtyRef.current) {
+          onSaveRef.current(dataRef.current).catch(err => {
+            console.error("Final unmount save failed:", err);
+          });
+        }
       }
     };
   }, []);

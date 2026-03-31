@@ -83,15 +83,16 @@ function layoutMindmapBranch(
   x: number,
   yStart: number,
   direction: 1 | -1,
-  positions: Map<string, { x: number; y: number }>
+  positions: Map<string, { x: number; y: number }>,
+  sideMap: Map<string, "left" | "right">
 ) {
   const { h: nodeH, w: nodeW } = getNodeDimensions(tree.node);
   const y = yStart + tree.subtreeHeight / 2 - nodeH / 2;
   positions.set(tree.id, { x, y });
 
-  // Set side for child nodes (root has no side)
+  // Record side for ALL nodes in the branch (root gets no side entry).
   if (!tree.isRoot) {
-    (tree.node.data as any).side = direction === 1 ? "right" : "left";
+    sideMap.set(tree.id, direction === 1 ? "right" : "left");
   }
 
   if (tree.children.length === 0) return;
@@ -99,9 +100,9 @@ function layoutMindmapBranch(
   let childY = yStart;
   for (const child of tree.children) {
     const { w: childW } = getNodeDimensions(child.node);
-    // x is the position of current node, childX should be offset by current node width
     const childX = direction === 1 ? x + nodeW + H_GAP : x - childW - H_GAP;
-    layoutMindmapBranch(child, childX, childY, direction, positions);
+    // direction propagates to ALL descendants
+    layoutMindmapBranch(child, childX, childY, direction, positions, sideMap);
     childY += child.subtreeHeight + V_GAP;
   }
 }
@@ -114,7 +115,7 @@ function countDescendants(tree: TreeNode): number {
   return count;
 }
 
-function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
+function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: number; y: number }>, sideMap: Map<string, "left" | "right">) {
   const { h: rootH, w: rootW } = getNodeDimensions(tree.node);
   positions.set(tree.id, { x: -rootW / 2, y: -rootH / 2 });
 
@@ -145,19 +146,19 @@ function layoutMindmapBalanced(tree: TreeNode, positions: Map<string, { x: numbe
 
   let rightY = -getGroupHeight(rightChildren) / 2;
   for (const child of rightChildren) {
-    layoutMindmapBranch(child, rootW / 2 + H_GAP, rightY, 1, positions);
+    layoutMindmapBranch(child, rootW / 2 + H_GAP, rightY, 1, positions, sideMap);
     rightY += child.subtreeHeight + V_GAP;
   }
 
   let leftY = -getGroupHeight(leftChildren) / 2;
   for (const child of leftChildren) {
     const { w: childW } = getNodeDimensions(child.node);
-    layoutMindmapBranch(child, -(rootW / 2 + H_GAP + childW), leftY, -1, positions);
+    layoutMindmapBranch(child, -(rootW / 2 + H_GAP + childW), leftY, -1, positions, sideMap);
     leftY += child.subtreeHeight + V_GAP;
   }
 }
 
-function layoutMindmapUnilateral(tree: TreeNode, positions: Map<string, { x: number; y: number }>) {
+function layoutMindmapUnilateral(tree: TreeNode, positions: Map<string, { x: number; y: number }>, sideMap: Map<string, "left" | "right">) {
   const { h: rootH, w: rootW } = getNodeDimensions(tree.node);
   positions.set(tree.id, { x: -rootW / 2, y: -rootH / 2 });
 
@@ -165,7 +166,7 @@ function layoutMindmapUnilateral(tree: TreeNode, positions: Map<string, { x: num
 
   let childY = -getGroupHeight(tree.children) / 2;
   for (const child of tree.children) {
-    layoutMindmapBranch(child, rootW / 2 + H_GAP, childY, 1, positions);
+    layoutMindmapBranch(child, rootW / 2 + H_GAP, childY, 1, positions, sideMap);
     childY += child.subtreeHeight + V_GAP;
   }
 }
@@ -415,29 +416,28 @@ export function autoLayoutMindMap(
   if (trees.length === 0) return { nodes, edges };
 
   const allPositions = new Map<string, { x: number; y: number }>();
+  const allSides = new Map<string, "left" | "right">();
   
   trees.forEach((tree) => {
     const isIndependent = !!(tree.node.data as any).isIndependent;
     const treePositions = new Map<string, { x: number; y: number }>();
     
     if (isIndependent) {
-      layoutMindmapUnilateral(tree, treePositions);
-      // Offset by current position
+      layoutMindmapUnilateral(tree, treePositions, allSides);
       const offsetX = tree.node.position.x + (tree.node.measured?.width ?? ROOT_WIDTH) / 2;
       const offsetY = tree.node.position.y + (tree.node.measured?.height ?? ROOT_HEIGHT) / 2;
       treePositions.forEach((pos, id) => {
         allPositions.set(id, { x: pos.x + offsetX, y: pos.y + offsetY });
       });
     } else {
-      layoutMindmapBalanced(tree, treePositions);
-      // Main root stays at 0,0 locally, but we still apply it to allPositions
+      layoutMindmapBalanced(tree, treePositions, allSides);
       treePositions.forEach((pos, id) => {
         allPositions.set(id, pos);
       });
     }
   });
 
-  return applyPositions(nodes, edges, allPositions, "mindmap");
+  return applyPositions(nodes, edges, allPositions, "mindmap", allSides);
 }
 
 export function autoLayoutDiagram(
@@ -536,11 +536,22 @@ function applyPositions(
   nodes: Node[],
   edges: Edge[],
   positions: Map<string, { x: number; y: number }>,
-  diagramType: string
+  diagramType: string,
+  sideMap?: Map<string, "left" | "right">
 ): { nodes: Node[]; edges: Edge[] } {
   const newNodes = nodes.map((node) => {
     const pos = positions.get(node.id);
-    return pos ? { ...node, position: pos } : node;
+    const side = sideMap?.get(node.id);
+    if (!pos && side === undefined) return node;
+    return {
+      ...node,
+      ...(pos ? { position: pos } : {}),
+      data: {
+        ...(node.data as object),
+        // Persist immutable side into data so React sees the update
+        ...(side !== undefined ? { side } : {}),
+      },
+    };
   });
 
   const newEdges = rerouteDiagramEdges(newNodes, edges, diagramType);

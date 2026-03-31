@@ -35,7 +35,7 @@ import DiamondNode from "./nodes/DiamondNode";
 import StickyNoteNode from "./nodes/StickyNoteNode";
 import OrgMindMapNode from "@/components/mindmap/OrgMindMapNode";
 import GhostNode from "@/components/mindmap/GhostNode";
-import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge, StraightMindMapEdge, SquareMindMapEdge } from "./edges/CustomEdges";
+import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge, StraightMindMapEdge, SquareMindMapEdge, SketchEdge } from "./edges/CustomEdges";
 import EditorToolbar from "./EditorToolbar";
 import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import EdgeFloatingToolbar from "./EdgeFloatingToolbar";
@@ -85,6 +85,7 @@ const edgeTypes = {
   hierarchy: HierarchyEdge as any,
   straight_mindmap: StraightMindMapEdge as any,
   square_mindmap: SquareMindMapEdge as any,
+  sketch: SketchEdge as any,
 };
 
 const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
@@ -259,7 +260,20 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const lastThumbnailTimeRef = useRef<number>(0);
   const idleThumbnailTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Function to flush all pending text changes to the global state immediately
+  // Synchronously merges any in-flight text edits into the current nodes snapshot.
+  // Use this BEFORE any operation that rebuilds the node list (Tab/Enter/delete/etc.)
+  // so the stale closure `nodes` doesn't overwrite the user's typed text.
+  const getLatestNodes = useCallback((): Node[] => {
+    const pending = pendingDataChangesRef.current;
+    if (pending.size === 0) return nodes;
+    return nodes.map(n => {
+      const fieldChanges = pending.get(n.id);
+      return fieldChanges ? { ...n, data: { ...n.data, ...fieldChanges } } : n;
+    });
+  }, [nodes]);
+
+  // Flushes pending changes via React state — safe for non-layout operations
+  // (e.g. color change, theme change) where we don't rebuild the full node array.
   const flushPendingDataChanges = useCallback(() => {
     if (pendingDataChangesRef.current.size === 0) return;
     
@@ -326,7 +340,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
   const handleEdgesChange = useCallback(
     (changes: Parameters<typeof onEdgesChange>[0]) => {
       onEdgesChange(changes);
-      if (!remoteUpdateRef.current) {
+      // Only trigger autosave on meaningful changes (not selection state)
+      const hasMeaningfulChange = changes.some(
+        (c) => c.type === "add" || c.type === "remove" || c.type === "replace"
+      );
+      if (!remoteUpdateRef.current && hasMeaningfulChange) {
         triggerSave();
       }
     },
@@ -517,11 +535,11 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       if (diagramType === "orgchart") return;
       takeSnapshot();
       setEdges((eds) => {
-        const nextEdges = addEdge({ ...params, type: currentEdgeType, data: { ...(params as any).data, isCustom: true } }, eds);
-        // Apply hierarchy colors and theme styles to all edges including the new one
+        // Manual connections in mindmap use the sketch style (dashed + arrow)
+        const edgeType = diagramType === "mindmap" ? "sketch" : currentEdgeType;
+        const nextEdges = addEdge({ ...params, type: edgeType, data: { ...(params as any).data, isCustom: true } }, eds);
         return assignEdgeColors(nodes, nextEdges, theme);
       });
-      // Hide handles after a successful connection to keep UI clean
       setNodes((nds) =>
         nds.map((n) =>
           n.id === params.source || n.id === params.target
@@ -531,7 +549,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       );
       triggerSave();
     },
-    [nodes, setEdges, setNodes, takeSnapshot, currentEdgeType, triggerSave, theme]
+    [nodes, setEdges, setNodes, takeSnapshot, currentEdgeType, triggerSave, theme, diagramType]
   );
 
   const selectedNodes = nodes.filter((n) => n.selected);
@@ -778,8 +796,12 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
-    // Flush any pending text changes before creating new nodes
-    flushPendingDataChanges();
+    // Synchronously merge any in-flight text edits into the node snapshot.
+    // Using getLatestNodes() instead of flushPendingDataChanges() avoids the race
+    // condition where applyAutoLayout's setNodes call overwrites the flush's setNodes.
+    const latestNodes = getLatestNodes();
+    pendingDataChangesRef.current.clear();
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
     takeSnapshot();
     const parentDepth = getNodeDepth(parent.id, edges);
@@ -809,7 +831,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const pos = { x: parent.position.x + 250, y: parent.position.y };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
-    const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
+    const nextNodes = [...latestNodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: defaultStructuredEdgeType }];
     const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
     const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
@@ -819,7 +841,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
     }, 150);
-  }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout, getBranchColor]);
+  }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout, getBranchColor, getLatestNodes]);
 
   // Add special node (diamond / sticky)
   const handleAddSpecialNode = useCallback((type: "diamond" | "sticky") => {
@@ -890,8 +912,10 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
       return;
     }
 
-    // Flush any pending text changes before creating new nodes
-    flushPendingDataChanges();
+    // Synchronously merge in-flight text edits — same race condition fix as handleAddChild
+    const latestNodes = getLatestNodes();
+    pendingDataChangesRef.current.clear();
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
     takeSnapshot();
     const parentId = parentEdge.source;
@@ -911,7 +935,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     const pos = { x: selected.position.x, y: selected.position.y + 80 };
 
     const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
-    const nextNodes = [...nodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
+    const nextNodes = [...latestNodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
     const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: defaultStructuredEdgeType }];
     const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
     const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
@@ -921,7 +945,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
     }, 150);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout, getBranchColor]);
+  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout, getBranchColor, getLatestNodes]);
 
   const handleDelete = useCallback((nodesToDelete?: Node[]) => {
     const selectedEdges = edges.filter((e) => e.selected);
@@ -938,6 +962,7 @@ function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialTh
     
     if (toDelete.size === 0 && selectedEdges.length === 0) return;
 
+    // Flush pending edits so undo restores the correct typed text
     flushPendingDataChanges();
     takeSnapshot();
     

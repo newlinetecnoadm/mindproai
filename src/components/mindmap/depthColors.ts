@@ -298,7 +298,8 @@ export function assignEdgeColors(
       ...edge,
       // CRITICAL: preserve edge.hidden so collapsed edges stay hidden after re-coloring
       hidden: edge.hidden,
-      type: theme?.edgeType ?? "mindmap",
+      // Preserve the original type for custom/manual edges (e.g. 'sketch'); only override structural edges
+      type: (edge.data as any)?.isCustom ? edge.type : (theme?.edgeType ?? "mindmap"),
       style: {
         stroke: branchHex,
         strokeWidth,

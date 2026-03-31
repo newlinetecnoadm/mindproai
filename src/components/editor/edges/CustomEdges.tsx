@@ -205,3 +205,67 @@ function SquareMindMapEdgeComponent(props: EdgeProps) {
   );
 }
 export const SquareMindMapEdge = memo(SquareMindMapEdgeComponent);
+
+// ── Sketch Edge (manual connector — dashed + arrow, hand-drawn feel) ─────────
+// Used for user-created cross-links. Uses BaseEdge with a dashed stroke and
+// React Flow's built-in marker for the arrowhead (avoids SVG defs-in-g issues).
+
+function SketchEdgeComponent(props: EdgeProps) {
+  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, selected } = props;
+
+  const [edgePath] = getBezierPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+    curvature: 0.25,
+  });
+
+  const color = (style as any)?.stroke || "#6b7280";
+  const strokeWidth = selected ? 2 : 1.5;
+
+  const edgeStyle: React.CSSProperties = {
+    stroke: color,
+    strokeWidth,
+    strokeDasharray: "7 4",
+    strokeLinecap: "round",
+    opacity: selected ? 1 : 0.8,
+    transition: "opacity 0.15s ease, stroke-width 0.15s ease",
+  };
+
+  return (
+    <g>
+      {/* Wide invisible hit area so the dashed line is easy to click/select */}
+      <path d={edgePath} fill="none" stroke="transparent" strokeWidth={14} />
+
+      {/* Visible dashed line — BaseEdge handles the markerEnd SVG injection via React Flow */}
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={edgeStyle}
+        markerEnd={props.markerEnd}
+      />
+
+      {/* Fallback arrowhead using a small inline triangle at the end of the path */}
+      <defs>
+        <marker
+          id={`sketch-arrow-${id}`}
+          viewBox="0 -4 8 8"
+          refX="7"
+          refY="0"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto-start-reverse"
+        >
+          <polyline points="0,-3.5 8,0 0,3.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+        </marker>
+      </defs>
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={0}
+        markerEnd={`url(#sketch-arrow-${id})`}
+      />
+    </g>
+  );
+}
+export const SketchEdge = memo(SketchEdgeComponent);

@@ -1,7 +1,6 @@
-import { memo, useState, useRef, useEffect } from "react";
+import React, { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useUserRole } from "../editor/UserRoleContext";
-import { cn } from "@/lib/utils";
 
 export type MindMapNodeData = {
   label: string;
@@ -61,12 +60,16 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { setEditing(false); data.label = label; window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } })); }
+    if (e.key === "Enter") {
+      setEditing(false);
+      window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } }));
+    }
     if (e.key === "Escape") { setLabel(data.label); setEditing(false); }
   };
 
   const isRoot = data.isRoot;
   const depth = data.depth ?? 0;
+  const side = (data as any).side as "left" | "right" | undefined;
 
   // Colors and typography follow the pre-calculated style in data
   const style = (data as any).style || {};
@@ -79,14 +82,18 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
   const fontSize = style.fontSize ?? (isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem");
   const fontWeight = style.fontWeight ?? (isRoot ? "700" : "400");
 
+  // Text alignment: left-side nodes → right-aligned (reads toward root)
+  //                 right-side nodes → left-aligned (reads away from root)
+  //                 root → centered
+  const textAlign: "left" | "right" | "center" =
+    isRoot ? "center" : side === "left" ? "right" : "left";
 
-  // Handles visible when selected — facilitate manual connections
-  const handleStyle = cn(
-    "!w-1.2 !h-1.2 !bg-muted-foreground/30 !border-none",
-    "!transition-opacity !duration-200",
-    !data.showHandles && "!opacity-0 !pointer-events-none",
-    data.showHandles && "!opacity-100 !pointer-events-auto hover:!bg-primary hover:!scale-150"
-  );
+  // Container justification mirrors text alignment
+  const justifyContent =
+    isRoot ? "center" : side === "left" ? "flex-end" : "flex-start";
+
+
+
 
   return (
     <div
@@ -95,7 +102,7 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
         position: "relative",
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent,
         whiteSpace: "nowrap",
         width: "100%",
         height: "100%",
@@ -105,14 +112,35 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
       }}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle type="source" position={Position.Top}    id="top"    className={handleStyle} />
-      <Handle type="source" position={Position.Bottom} id="bottom" className={handleStyle} />
-      <Handle type="source" position={Position.Left}   id="left"   className={handleStyle} />
-      <Handle type="source" position={Position.Right}  id="right"  className={handleStyle} />
-      <Handle type="target" position={Position.Top}    id="top"    className={handleStyle} />
-      <Handle type="target" position={Position.Bottom} id="bottom" className={handleStyle} />
-      <Handle type="target" position={Position.Left}   id="left"   className={handleStyle} />
-      <Handle type="target" position={Position.Right}  id="right"  className={handleStyle} />
+      {/* Handles: always connectable, visually hidden until showHandles=true */}
+      {(["Top","Bottom","Left","Right"] as const).map((pos) => {
+        const position = Position[pos];
+        // Always keep handles interactable so connection dragging works.
+        // Only change opacity for visual feedback — pointer events must remain active.
+        const handleStyle: React.CSSProperties = data.showHandles
+          ? {
+              opacity: 1,
+              width: 10,
+              height: 10,
+              background: "rgba(100,100,100,0.35)",
+              border: "none",
+              borderRadius: "50%",
+              cursor: "crosshair",
+              transition: "opacity 0.15s ease",
+            }
+          : {
+              opacity: 0,
+              width: 8,
+              height: 8,
+              transition: "opacity 0.15s ease",
+            };
+        return (
+          <React.Fragment key={pos}>
+            <Handle type="source" position={position} id={pos.toLowerCase()} style={handleStyle} />
+            <Handle type="target" position={position} id={pos.toLowerCase()} style={handleStyle} />
+          </React.Fragment>
+        );
+      })}
 
       {editing ? (
         <input
@@ -134,6 +162,7 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
             width: `${Math.max(60, label.length * 9)}px`,
             padding: 0,
             lineHeight: "1.4",
+            textAlign,
           }}
         />
       ) : (
@@ -145,8 +174,9 @@ function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData
               lineHeight: "1.4",
               letterSpacing: "-0.01em",
               userSelect: "none",
-              textAlign: "center",
+              textAlign,
               display: "block",
+              width: "100%",
             }}
           >
             {label}
