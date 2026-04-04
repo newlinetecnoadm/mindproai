@@ -228,24 +228,38 @@
   outline: none !important;
 }
 
-/* 4. Handles: escondidos por padrão, visíveis no hover e seleção */
-.react-flow__node .react-flow__handle {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
+/* 4. Handles do MindMap — invisíveis por padrão */
+.mindmap-handle {
+  width: 8px !important;
+  height: 8px !important;
+  border: none !important;
+  border-radius: 50% !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, transform 0.15s ease !important;
+  pointer-events: all !important;
+  z-index: 5;
 }
 
-.react-flow__node:hover .react-flow__handle,
-.react-flow__node.selected .react-flow__handle,
-.react-flow__handle.connectingto,
-.react-flow__handle.connectingfrom {
-  opacity: 1;
-  pointer-events: all;
+/* Visíveis no hover do nó */
+.react-flow__node:hover .mindmap-handle,
+.react-flow__node.selected .mindmap-handle {
+  opacity: 0.5 !important;
 }
 
-/* 5. Handles conectados são sempre visíveis (mas muito discretos) */
-.react-flow__handle.react-flow__handle-connected {
-  opacity: 0;
+/* Highlight no hover do próprio handle */
+.mindmap-handle:hover {
+  opacity: 1 !important;
+  transform: scale(1.5) !important;
+}
+
+/* 5. Animação de entrada dos nós */
+@keyframes nodeEnter {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.react-flow__node {
+  animation: nodeEnter 0.15s ease-out;
 }
 
 /* 6. Collapse/expand: agora renderizado como círculo SVG na edge (CustomEdges.tsx) */
@@ -331,3 +345,14 @@
 .is-dragging-column [data-type="card"] {
   pointer-events: none !important;
 }
+
+/* ── Mind Map: transição suave ao reposicionar pelo ELK ──────────────────── */
+/* Anima qualquer mudança de posição (layout automático, collapse, etc.) */
+.react-flow__node {
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sem transição durante drag — resposta imediata ao mouse */
+.react-flow__node.dragging {
+  transition: none !important;
+}

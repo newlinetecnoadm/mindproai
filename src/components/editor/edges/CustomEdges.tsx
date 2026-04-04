@@ -4,8 +4,11 @@ import {
   getBezierPath,
   getSmoothStepPath,
   getStraightPath,
+  Position,
+  useInternalNode,
   type EdgeProps,
 } from "@xyflow/react";
+
 
 // ── Animated edge CSS keyframes ───────────────────────────
 
@@ -67,47 +70,135 @@ function getAnimationStyle(style: React.CSSProperties | undefined): React.CSSPro
   }
 }
 
-// ── Mind Map Edge (Bezier + interactive collapse circle) ─────────────
+// ── Floating Edge Utilities ───────────────────────────────────────────────────
+type InternalNodeLike = {
+  internals: {
+    positionAbsolute: { x: number; y: number };
+  };
+  measured?: { width?: number; height?: number };
+};
 
-const CIRCLE_R = 6; // radius of the collapse circle in px
+/**
+ * Calcula o ponto de interseção no border de `node` olhando em direção a `targetNode`.
+ * Usado apenas para o TARGET (filho).
+ */
+function getNodeIntersection(node: InternalNodeLike, targetNode: InternalNodeLike) {
+  const { positionAbsolute } = node.internals;
+  const targetPos = targetNode.internals.positionAbsolute;
+
+  const w = (node.measured?.width ?? 150) / 2;
+  const h = (node.measured?.height ?? 40) / 2;
+  const cx = positionAbsolute.x + w;
+  const cy = positionAbsolute.y + h;
+  const tx = targetPos.x + (targetNode.measured?.width ?? 150) / 2;
+  const ty = targetPos.y + (targetNode.measured?.height ?? 40) / 2;
+
+  const xx1 = (tx - cx) / (2 * w) - (ty - cy) / (2 * h);
+  const yy1 = (tx - cx) / (2 * w) + (ty - cy) / (2 * h);
+  const a = 1 / (Math.abs(xx1) + Math.abs(yy1) || 1);
+  const xx3 = a * xx1;
+  const yy3 = a * yy1;
+
+  return {
+    x: w * (xx3 + yy3) + cx,
+    y: h * (-xx3 + yy3) + cy,
+  };
+}
+
+/**
+ * SOURCE: centro fixo da borda do lado do branch no nó PAI.
+ * TARGET: centro fixo da borda OPOSTA no nó FILHO.
+ *
+ * Ambos os pontos correspondem exatamente à posição do ReactFlow Handle
+ * (center of left/right edge), garantindo conexão pixel-perfect.
+ */
+function getEdgeParams(
+  source: InternalNodeLike,
+  target: InternalNodeLike,
+  sourceSide: "left" | "right"
+) {
+  const srcPos = source.internals.positionAbsolute;
+  const srcW = source.measured?.width ?? 150;
+  const srcH = source.measured?.height ?? 40;
+
+  // SOURCE: centro da borda do lado de saída (mesmo ponto para todos os filhos)
+  const sx = sourceSide === "right" ? srcPos.x + srcW : srcPos.x;
+  const sy = srcPos.y + srcH / 2;
+  const sourcePosition = sourceSide === "right" ? Position.Right : Position.Left;
+
+  // TARGET: centro da borda oposta (exatamente onde o handle "t-in" fica)
+  const tgtPos = target.internals.positionAbsolute;
+  const tgtW = target.measured?.width ?? 150;
+  const tgtH = target.measured?.height ?? 40;
+
+  const tx = sourceSide === "right" ? tgtPos.x : tgtPos.x + tgtW;
+  const ty = tgtPos.y + tgtH / 2;
+  const targetPosition = sourceSide === "right" ? Position.Left : Position.Right;
+
+  return { sx, sy, sourcePosition, tx, ty, targetPosition };
+}
+
+
+// ── Mind Map Edge (Source fixo + Target flutuante) ────────────────────────────
 
 function MindMapEdgeComponent(props: EdgeProps) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
+  const { id, source, target, style, data } = props;
+
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+
+  if (!sourceNode?.internals || !targetNode?.internals) return null;
+
+  // Determinar de qual lado o PAI emite a aresta.
+  // Prioridade: data.side (edge) → data.side (target node) → fallback por posição X
+  const childSide =
+    ((data as any)?.side as "left" | "right" | undefined) ??
+    ((targetNode as any).data?.side as "left" | "right" | undefined);
+
+  let sourceSide: "left" | "right";
+  if (childSide) {
+    sourceSide = childSide;
+  } else {
+    // Fallback posicional — usado apenas na raiz sem side definido
+    const srcCX = sourceNode.internals.positionAbsolute.x + (sourceNode.measured?.width ?? 150) / 2;
+    const tgtCX = targetNode.internals.positionAbsolute.x + (targetNode.measured?.width ?? 150) / 2;
+    sourceSide = tgtCX > srcCX ? "right" : "left";
+  }
+
+  const { sx, sy, tx, ty, sourcePosition, targetPosition } = getEdgeParams(
+    sourceNode as unknown as InternalNodeLike,
+    targetNode as unknown as InternalNodeLike,
+    sourceSide
+  );
 
   const [edgePath] = getBezierPath({
-    sourceX, sourceY, sourcePosition,
-    targetX, targetY, targetPosition,
-    curvature: 0.12,
+    sourceX: sx,
+    sourceY: sy,
+    sourcePosition,
+    targetX: tx,
+    targetY: ty,
+    targetPosition,
+    curvature: 0.35,
   });
 
-  const branchColor = (data as any)?.branchColor as string | undefined;
-  const isCollapseEdge = (data as any)?.isCollapseEdge as boolean | undefined;
-  const isCollapsed = (data as any)?.isCollapsed as boolean | undefined;
-  const sourceNodeId = (data as any)?.sourceNodeId as string | undefined;
-  const edgeStyle = getAnimationStyle(style);
-  // Ensure the stroke from style (which might be the custom color) is used if branchColor is not provided in data
-  // However, assignEdgeColors already puts the correct color in style.stroke, so we should rely on that.
-  
-  const handleCollapseClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    // Stop native event propagation to prevent React Flow's capture-phase handlers
-    e.nativeEvent.stopImmediatePropagation();
-    if (sourceNodeId) {
-      window.dispatchEvent(
-        new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: sourceNodeId } })
-      );
-    }
-  };
+  const branchColor =
+    ((data as any)?.branchColor as string | undefined) ??
+    (style?.stroke as string | undefined) ??
+    "#94a3b8";
 
   return (
-    <g>
-      <BaseEdge id={id} path={edgePath} style={edgeStyle} markerEnd={props.markerEnd} />
-    </g>
+    <path
+      id={id}
+      d={edgePath}
+      fill="none"
+      stroke={branchColor}
+      strokeWidth={2}
+      strokeLinecap="round"
+      style={{ transition: "d 0.25s cubic-bezier(0.4,0,0.2,1), stroke 0.2s ease" }}
+    />
   );
 }
 export const MindMapEdge = memo(MindMapEdgeComponent);
-
 
 // ── Curved (Bezier) Edge ──────────────────────────────────
 

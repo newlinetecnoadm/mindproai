@@ -1,228 +1,360 @@
-import React, { memo, useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { useUserRole } from "../editor/UserRoleContext";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
+import {
+  Handle, Position, NodeToolbar,
+  useNodeId, type NodeProps,
+} from "@xyflow/react";
+import { ChevronRight, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useMindMapStore, type MindMapNodeData } from "@/store/useMindMapStore";
+import { cn } from "@/lib/utils";
 
-export type MindMapNodeData = {
-  label: string;
-  color?: string;
-  branchHex?: string;
-  depth?: number;
-  isRoot?: boolean;
-  showHandles?: boolean;
-};
+// ─── Estilos por profundidade ─────────────────────────────────────────────────
 
-import { BRAND_GRAY } from "@/lib/nodeStyles";
+function getNodeStyle(
+  depth: number,
+  isRoot: boolean,
+  side: "left" | "right" | undefined,
+  branchColor: string | undefined,
+  selected: boolean
+): React.CSSProperties {
+  const color = branchColor ?? "#94a3b8";
 
-function MindMapNode({ data, id, selected }: NodeProps & { data: MindMapNodeData }) {
-  const userRole = useUserRole();
+  if (isRoot) {
+    return {
+      padding: "10px 22px",
+      borderRadius: 28,
+      background: "var(--background, #ffffff)",
+      border: "2.5px solid rgba(100,100,100,0.15)",
+      boxShadow: selected
+        ? `0 0 0 3px ${color}55, 0 8px 32px rgba(0,0,0,0.12)`
+        : "0 4px 24px rgba(0,0,0,0.1)",
+      transition: "box-shadow 0.2s ease",
+      cursor: "default",
+    };
+  }
+
+  if (depth === 1) {
+    // Branch principal — caixa colorida como na imagem de referência
+    return {
+      padding: "7px 16px",
+      borderRadius: 12,
+      background: color,
+      border: `2px solid ${color}`,
+      boxShadow: selected
+        ? `0 0 0 3px ${color}55, 0 4px 16px ${color}44`
+        : `0 2px 10px ${color}44`,
+      transition: "box-shadow 0.2s ease, transform 0.15s ease",
+      cursor: "default",
+    };
+  }
+
+  // Nós de texto (depth >= 2): largura baseada no conteúdo
+  // Não usar maxWidth aqui — o fit-content garante que o nó mede exatamente o texto
+  // e o alinhamento fica ancorado ao conector
+  if (depth === 2) {
+    return {
+      padding: "4px 10px",
+      borderRadius: 6,
+      background: "transparent",
+      borderBottom: `2px solid ${color}`,
+      boxShadow: selected ? `0 2px 0 0 ${color}` : "none",
+      transition: "box-shadow 0.15s ease",
+      cursor: "default",
+      width: "fit-content",
+    };
+  }
+
+  // depth >= 3 — folhas, só texto
+  return {
+    padding: "2px 6px",
+    background: "transparent",
+    cursor: "default",
+    width: "fit-content",
+  };
+}
+
+function getTextStyle(
+  depth: number,
+  isRoot: boolean,
+  branchColor: string | undefined,
+  side?: string
+): React.CSSProperties {
+  // Alinhamento: nós à esquerda escrevem da direita para esquerda (text-align: right)
+  const textAlign = side === "left" ? "right" : "left";
+
+  if (isRoot) {
+    return {
+      fontSize: "1.15rem",
+      fontWeight: 700,
+      color: "var(--foreground, #0f172a)",
+      letterSpacing: "-0.02em",
+      userSelect: "none",
+      whiteSpace: "pre-wrap",
+      maxWidth: 240,
+      outline: "none",
+      textAlign: "center",
+    };
+  }
+
+  if (depth === 1) {
+    return {
+      fontSize: "0.88rem",
+      fontWeight: 600,
+      color: "#ffffff",
+      userSelect: "none",
+      whiteSpace: "pre-wrap",
+      maxWidth: 220,
+      outline: "none",
+      textAlign,
+    };
+  }
+
+  if (depth === 2) {
+    return {
+      fontSize: "0.85rem",
+      fontWeight: 500,
+      color: "var(--foreground, #1e293b)",
+      userSelect: "none",
+      whiteSpace: "nowrap",
+      outline: "none",
+      textAlign,
+    };
+  }
+
+  return {
+    fontSize: "0.8rem",
+    fontWeight: 400,
+    color: "var(--muted-foreground, #64748b)",
+    userSelect: "none",
+    whiteSpace: "nowrap",
+    outline: "none",
+    textAlign,
+  };
+}
+
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+function MindMapNodeComponent({
+  data,
+  selected,
+  isConnectable,
+}: NodeProps & { data: MindMapNodeData }) {
+  const nodeId = useNodeId()!;
+  const toggleCollapse = useMindMapStore((s) => s.toggleCollapse);
+  const updateNodeLabel = useMindMapStore((s) => s.updateNodeLabel);
+  const addChild = useMindMapStore((s) => s.addChild);
+  const deleteNode = useMindMapStore((s) => s.deleteNode);
+
   const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(data.label);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [localLabel, setLocalLabel] = useState(data.label);
+  const inputRef = useRef<HTMLDivElement>(null);
 
+  // Sync label quando store muda externamente
+  useEffect(() => {
+    if (!editing) setLocalLabel(data.label);
+  }, [data.label, editing]);
+
+  // Auto-focus ao entrar em modo de edição: seleciona TODO o texto
   useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.select();
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(inputRef.current);
+      // Não colapsar — isso seleciona tudo automaticamente
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
   }, [editing]);
 
+  // Trigger de edição via evento global (teclado no DiagramEditorCore)
   useEffect(() => {
-    if (userRole === "viewer") return;
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.nodeId === id) {
-        if (detail?.replaceText) {
-          setLabel(detail.char ?? "");
-        }
+      const { nodeId: targetId, replaceText, char } = (e as CustomEvent).detail ?? {};
+      if (targetId === nodeId) {
+        if (replaceText) setLocalLabel(char ?? "");
         setEditing(true);
       }
     };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
-  }, [id, userRole]);
+  }, [nodeId]);
 
-  const handleDoubleClick = () => {
-    if (userRole !== "viewer") setEditing(true);
-  };
-
-  const handleBlur = () => {
+  const commitEdit = useCallback(() => {
     setEditing(false);
-    // Final sync on blur
-    window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } }));
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVal = e.target.value;
-    setLabel(newVal);
-    // Sync to global state during typing so manual node additions (Tab/Enter) 
-    // use the latest available text even before blur.
-    window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: newVal } }));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      setEditing(false);
-      window.dispatchEvent(new CustomEvent("node-data-changed", { detail: { nodeId: id, field: "label", value: label } }));
+    const text = inputRef.current?.textContent?.trim() ?? localLabel;
+    if (text && text !== data.label) {
+      updateNodeLabel(nodeId, text);
+    } else {
+      setLocalLabel(data.label);
     }
-    if (e.key === "Escape") { setLabel(data.label); setEditing(false); }
-  };
+  }, [nodeId, updateNodeLabel, data.label, localLabel]);
 
-  const isRoot = data.isRoot;
-  const depth = data.depth ?? 0;
-  const side = (data as any).side as "left" | "right" | undefined;
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      e.stopPropagation();
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        commitEdit();
+      }
+      if (e.key === "Escape") {
+        setLocalLabel(data.label);
+        setEditing(false);
+      }
+    },
+    [commitEdit, data.label]
+  );
 
-  // Colors and typography follow the pre-calculated style in data
-  const style = (data as any).style || {};
-  const isFilled = style.background && style.background !== 'transparent' && style.background !== 'none';
-  const isDark = !!(data as any).isDark;
-  
-  // Use pre-calculated color from style, or fallback based on filled status/theme darkness
-  const textColor = style.color || (isFilled ? "#ffffff" : (isDark ? "#f0f0f0" : BRAND_GRAY));
+  // ─── Props derivadas ────────────────────────────────────────────────────────
+  const { branchColor, depth = 0, isRoot = false, side, collapsed, hasChildren } = data;
 
-  const fontSize = style.fontSize ?? (isRoot ? "1.2rem" : depth === 1 ? "0.9375rem" : "0.875rem");
-  const fontWeight = style.fontWeight ?? (isRoot ? "700" : "400");
+  const wrapperStyle = getNodeStyle(depth, isRoot, side, branchColor, !!selected);
+  const textStyle = getTextStyle(depth, isRoot, branchColor, side);
 
-  // Text alignment: left-side nodes → right-aligned (reads toward root)
-  //                 right-side nodes → left-aligned (reads away from root)
-  //                 root → centered
-  const textAlign: "left" | "right" | "center" =
-    isRoot ? "center" : side === "left" ? "right" : "left";
+  // Handles direcionais baseados no lado
+  // Raiz: source nos dois lados  
+  // Side=right: source à direita, target à esquerda
+  // Side=left: source à esquerda, target à direita
+  const sourcePos = isRoot ? undefined : side === "left" ? Position.Left : Position.Right;
+  const targetPos = isRoot ? undefined : side === "left" ? Position.Right : Position.Left;
 
-  // Container justification mirrors text alignment
-  const justifyContent =
-    isRoot ? "center" : side === "left" ? "flex-end" : "flex-start";
-
-
-
+  // Posição do botão de colapso (do lado de saída dos filhos)
+  const collapseButtonSide = side === "left" ? "left" : "right";
 
   return (
-    <div
-      className="group relative"
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent,
-        whiteSpace: "nowrap",
-        width: "100%",
-        height: "100%",
-        cursor: "text",
-        userSelect: "none",
-        ...style,
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      {/* Handles: always connectable, visually hidden until showHandles=true */}
-      {(["Top","Bottom","Left","Right"] as const).map((pos) => {
-        const position = Position[pos];
-        // Always keep handles interactable so connection dragging works.
-        // Only change opacity for visual feedback — pointer events must remain active.
-        const handleStyle: React.CSSProperties = data.showHandles
-          ? {
-              opacity: 1,
-              width: 10,
-              height: 10,
-              background: "rgba(100,100,100,0.35)",
-              border: "none",
-              borderRadius: "50%",
-              cursor: "crosshair",
-              transition: "opacity 0.15s ease",
-            }
-          : {
-              opacity: 0,
-              width: 8,
-              height: 8,
-              transition: "opacity 0.15s ease",
-            };
-        return (
-          <React.Fragment key={pos}>
-            <Handle type="source" position={position} id={pos.toLowerCase()} style={handleStyle} />
-            <Handle type="target" position={position} id={pos.toLowerCase()} style={handleStyle} />
-          </React.Fragment>
-        );
-      })}
-
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={label}
-          onChange={handleTextChange}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "transparent",
-            outline: "none",
-            border: "none",
-            color: textColor,
-            fontSize,
-            fontWeight,
-            fontFamily: "inherit",
-            minWidth: "60px",
-            width: `${Math.max(60, label.length * 9)}px`,
-            padding: 0,
-            lineHeight: "1.4",
-            textAlign,
-          }}
-        />
-      ) : (
-          <span
-            style={{
-              color: textColor,
-              fontSize,
-              fontWeight,
-              lineHeight: "1.4",
-              letterSpacing: "-0.01em",
-              userSelect: "none",
-              textAlign,
-              display: "block",
-              width: "100%",
-            }}
+    <>
+      {/* Toolbar de ações */}
+      <NodeToolbar isVisible={selected && !isRoot} position={Position.Top} offset={6}>
+        <div className="flex items-center gap-1 bg-card/95 backdrop-blur border border-border rounded-lg px-1.5 py-1 shadow-lg">
+          <button
+            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            onClick={() => addChild(nodeId)}
+            title="Adicionar filho (Tab)"
           >
-            {label}
-          </span>
-      )}
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            onClick={() => setEditing(true)}
+            title="Editar texto"
+          >
+            ✏️
+          </button>
+          <button
+            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
+            onClick={() => deleteNode(nodeId)}
+            title="Excluir (Delete)"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </NodeToolbar>
 
-      {data.hasChildren && !isRoot && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            window.dispatchEvent(new CustomEvent("mindmap-toggle-collapse", { detail: { nodeId: id } }));
-          }}
-          className="collapse-button"
-          style={{
-            position: "absolute",
-            [(data as any).side === "left" ? "left" : "right"]: isFilled ? -14 : -10,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            backgroundColor: "#ffffff",
-            border: `1.5px solid ${data.branchHex || "#e5e7eb"}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            zIndex: 10,
-            transition: "all 0.2s ease",
-          }}
-        >
-          {data.isCollapsed && (
-            <div 
-              style={{ 
-                width: 4, 
-                height: 4, 
-                borderRadius: "2px", 
-                backgroundColor: data.branchHex || "#6b7280" 
-              }} 
+      {/* Handles: source apenas quando tem filhos, target sempre */}
+      {isRoot ? (
+        // Raiz tem handles nos dois lados para outputs
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="s-right"
+            className="mindmap-handle"
+            isConnectable={isConnectable}
+            style={{ background: "#94a3b8" }}
+          />
+          <Handle
+            type="source"
+            position={Position.Left}
+            id="s-left"
+            className="mindmap-handle"
+            isConnectable={isConnectable}
+            style={{ background: "#94a3b8" }}
+          />
+        </>
+      ) : (
+        <>
+          {/* Source: só renderiza quando o nó tem filhos (evita ponto extra em folhas) */}
+          {hasChildren && (
+            <Handle
+              type="source"
+              position={sourcePos!}
+              id="s-out"
+              className="mindmap-handle"
+              isConnectable={isConnectable}
+              style={{ background: branchColor ?? "#94a3b8", opacity: 0 }}
             />
           )}
-        </div>
+          {/* Target: sempre presente — ponto de chegada do pai */}
+          <Handle
+            type="target"
+            position={targetPos!}
+            id="t-in"
+            className="mindmap-handle"
+            isConnectable={isConnectable}
+            style={{ background: branchColor ?? "#94a3b8", opacity: 0 }}
+          />
+        </>
       )}
-    </div>
+
+      {/* Nó visual */}
+      <div
+        style={wrapperStyle}
+        onDoubleClick={() => !editing && setEditing(true)}
+        className={cn("relative group", {
+          "cursor-text": editing,
+        })}
+      >
+        {editing ? (
+          <div
+            ref={inputRef}
+            contentEditable
+            suppressContentEditableWarning
+            className="nodrag nopan nowheel outline-none"
+            style={{ ...textStyle, userSelect: "auto" }}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
+            dangerouslySetInnerHTML={{ __html: localLabel }}
+          />
+        ) : (
+          <span style={textStyle}>{localLabel}</span>
+        )}
+
+        {/* Botão de colapsar — aparece no lado dos filhos */}
+        {hasChildren && !editing && (
+          <button
+            className="nodrag nopan absolute opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              [collapseButtonSide]: "-12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 18,
+              height: 18,
+              borderRadius: "50%",
+              background: branchColor ?? "#94a3b8",
+              border: "2px solid #ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+              zIndex: 10,
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleCollapse(nodeId);
+            }}
+            title={collapsed ? "Expandir" : "Colapsar"}
+          >
+            {collapsed ? (
+              <ChevronRight className="w-2.5 h-2.5 text-white" />
+            ) : (
+              <ChevronDown className="w-2.5 h-2.5 text-white" />
+            )}
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 
-export default memo(MindMapNode);
+export const MindMapNode = memo(MindMapNodeComponent);
+export default MindMapNode;

@@ -1,17 +1,12 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
-import { autoLayoutDiagram } from "@/components/mindmap/mindmapLayout";
-import { getNodeDepth, getColorForDepth, assignDepthColors, assignEdgeColors, type EdgeThemeOptions } from "@/components/mindmap/depthColors";
-import { toggleNodeCollapse, getVisibleGraph } from "@/lib/diagramUtils";
 import {
   ReactFlow,
   addEdge,
-  useNodesState,
-  useEdgesState,
   useReactFlow,
   Controls,
   Background,
@@ -22,27 +17,17 @@ import {
   type Edge,
   ReactFlowProvider,
 } from "@xyflow/react";
-import { useAutoLayout } from "@/hooks/useAutoLayout";
 import { useAutosave, type AutosaveStatus } from "@/hooks/useAutosave";
-import { buildNodeStyle, inferStyleKey, getNodeStyle } from "@/lib/nodeStyles";
 import "@xyflow/react/dist/style.css";
+
 import MindMapNode from "@/components/mindmap/MindMapNode";
-import FlowchartNode from "./nodes/FlowchartNode";
-import OrgNode from "./nodes/OrgNode";
-import TimelineNode from "./nodes/TimelineNode";
-import ConceptNode from "./nodes/ConceptNode";
-import DiamondNode from "./nodes/DiamondNode";
-import StickyNoteNode from "./nodes/StickyNoteNode";
-import OrgMindMapNode from "@/components/mindmap/OrgMindMapNode";
 import GhostNode from "@/components/mindmap/GhostNode";
-import { CurvedEdge, OrthogonalEdge, StraightEdge, HierarchyEdge, AnimatedSmoothStepEdge, MindMapEdge, StraightMindMapEdge, SquareMindMapEdge, SketchEdge } from "./edges/CustomEdges";
+import { MindMapEdge, SketchEdge } from "./edges/CustomEdges";
+
 import EditorToolbar from "./EditorToolbar";
-import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import EdgeFloatingToolbar from "./EdgeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
-import AIMapAssistDialog from "./AIMapAssistDialog";
 import NodeContextMenu from "./NodeContextMenu";
-import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
 import { UserRoleProvider } from "./UserRoleContext";
 import { OutlineView } from "./OutlineView";
@@ -50,6 +35,8 @@ import { ImportOutlineDialog } from "./ImportOutlineDialog";
 import MobileNodeDrawer from "./MobileNodeDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+import { useMindMapStore } from "@/store/useMindMapStore";
+import { useElkLayout } from "@/hooks/useElkLayout";
 
 /** Derive UI chrome colors from a theme (bg + edge only) */
 function themeUI(t: EditorTheme) {
@@ -63,42 +50,17 @@ function themeUI(t: EditorTheme) {
   };
 }
 
-
 const nodeTypes = {
   mindmap: MindMapNode as any,
-  org_mindmap: OrgMindMapNode as any,
   ghost: GhostNode as any,
-  flowchart: FlowchartNode as any,
-  org: OrgNode as any,
-  timeline: TimelineNode as any,
-  concept: ConceptNode as any,
-  diamond: DiamondNode as any,
-  sticky: StickyNoteNode as any,
 };
 
 const edgeTypes = {
   mindmap: MindMapEdge as any,
-  smoothstep: AnimatedSmoothStepEdge as any,
-  curved: CurvedEdge as any,
-  orthogonal: OrthogonalEdge as any,
-  straight: StraightEdge as any,
-  hierarchy: HierarchyEdge as any,
-  straight_mindmap: StraightMindMapEdge as any,
-  square_mindmap: SquareMindMapEdge as any,
   sketch: SketchEdge as any,
 };
 
-const childColors = ["blue", "green", "purple", "red", "yellow", "orange"];
-
-const typeToNodeType: Record<string, string> = {
-  mindmap: "mindmap",
-  flowchart: "flowchart",
-  orgchart: "org_mindmap",
-  timeline: "timeline",
-  concept_map: "concept",
-  swimlane: "flowchart",
-  wireframe: "flowchart",
-};
+const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
 
 interface DiagramEditorCoreProps {
   diagramType: string;
@@ -113,1579 +75,520 @@ interface DiagramEditorCoreProps {
   userRole?: "owner" | "editor" | "viewer";
 }
 
-const PROXIMITY_THRESHOLD = 120; // px — distance to trigger reparent on drag
-
-/** Diagram types that share the mindmap color/edge/theme system */
-const isMindmapLike = (type: string) => type === "mindmap" || type === "orgchart";
-
-function DiagramEditorInner({ diagramType, initialNodes, initialEdges, initialThemeId, onSave, saving, remoteNodes, remoteEdges, remoteThemeId, userRole = "viewer" }: DiagramEditorCoreProps) {
+function DiagramEditorInner({ 
+  diagramType, initialNodes = [], initialEdges = [], initialThemeId, 
+  onSave, saving, remoteNodes, remoteEdges, remoteThemeId, userRole = "viewer" 
+}: DiagramEditorCoreProps) {
   const [viewMode, setViewMode] = useState<"graph" | "outline">("graph");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  // Drag state: which node is being dragged + its descendants
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  // Ghost node shown at original drag position
-  const [ghostNode, setGhostNode] = useState<Node | null>(null);
-  const [theme, setTheme] = useState<EditorTheme>(
-    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
-  );
-  // Derived theme options — used by assignDepthColors / assignEdgeColors for all mindmap paths
-  const themeOptions = {
-    edgeColor: theme.edgeColor,
-    edgeAnimation: theme.edgeAnimation,
-    edgeDashArray: theme.edgeDashArray,
-    edgeType: diagramType === "orgchart" ? "square_mindmap" : "mindmap",
-    isDefault: theme.id === "default",
-    isDark: isColorDark(theme.bg),
-    diagramType,
-  };
-  const themeOptionsRef = useRef(themeOptions);
-  themeOptionsRef.current = themeOptions;
-  const getInitialLayout = () => {
-    let n = initialNodes || [];
-    const e = initialEdges || [];
-    if (n.length > 0) {
-      if (["mindmap", "orgchart", "concept_map"].includes(diagramType)) {
-        const opts = themeOptionsRef.current;
-        n = assignDepthColors(n, e, opts);
-      }
-      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(n, e, themeOptionsRef.current) : e;
-      return { nodes: n, edges: coloredEdges };
-    }
-    return { nodes: n, edges: e };
-  };
-  const initialData = getInitialLayout();
-  const [nodes, setNodes, onNodesChangeCore] = useNodesState(initialData.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
-
-  const handleImportOutline = (text: string) => {
-    const lines = text.split("\n").filter(l => l.trim().length > 0);
-    if (lines.length === 0) return;
-
-    const newNodes: any[] = [];
-    const newEdges: any[] = [];
-    const stack: { id: string, indent: number }[] = [];
-
-    lines.forEach((line, index) => {
-      const indent = line.search(/\S/);
-      const label = line.trim();
-      const id = `node-${Date.now()}-${index}`;
-      
-      const isRoot = index === 0;
-      const node: any = {
-        id,
-        type: diagramType === "orgchart" ? "orgMindMap" : "mindMap",
-        position: { x: 0, y: 0 },
-        data: { 
-          label, 
-          isRoot,
-          depth: 0,
-          hasChildren: false,
-        },
-      };
-
-      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-        stack.pop();
-      }
-
-      if (stack.length > 0) {
-        const parentId = stack[stack.length - 1].id;
-        newEdges.push({
-          id: `edge-${parentId}-${id}`,
-          source: parentId,
-          target: id,
-          type: "mindmap", // default
-        });
-        const parentNode = newNodes.find(n => n.id === parentId);
-        if (parentNode) {
-          parentNode.data = { ...parentNode.data, hasChildren: true };
-        }
-      }
-
-      newNodes.push(node);
-      stack.push({ id, indent });
-    });
-
-    setNodes(newNodes);
-    setEdges(newEdges);
-    
-    setTimeout(() => {
-      handleReLayout();
-      if (userRole !== "viewer") {
-        triggerSave({ nodes: newNodes, edges: newEdges, themeId: theme.id });
-      }
-    }, 100);
-
-    toast.success("Esboço importado com sucesso!");
-  };
-
-  const handleNodeLabelChange = (nodeId: string, newLabel: string) => {
-    setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n));
-  };
-
-  // useAutoLayout MUST be after setNodes/setEdges so component-level setters can be passed
-  const { triggerLayout } = useAutoLayout(diagramType, themeOptions, setNodes, setEdges);
   const [exporting, setExporting] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const limits = usePlanLimits();
-  // theme state is now declared above near themeOptions
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const defaultStructuredEdgeType = diagramType === "orgchart" ? "orthogonal" : "smoothstep";
-  const [currentEdgeType, setCurrentEdgeType] = useState(defaultStructuredEdgeType);
-  const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [mobileDrawerNode, setMobileDrawerNode] = useState<Node | null>(null);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const isMobile = useIsMobile();
-  const lastPersistedSnapshot = useRef<string | null>(null);
-  const remoteUpdateRef = useRef(false);
-  const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
-  const edgesRef = useRef(edges);
-  edgesRef.current = edges;
-  const latestThemeIdRef = useRef(theme.id);
-  latestThemeIdRef.current = theme.id;
-  const initialFitDone = useRef(false);
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
-
-  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("idle");
-  const pendingDataChangesRef = useRef<Map<string, Record<string, any>>>(new Map());
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
-  const lastThumbnailTimeRef = useRef<number>(0);
-  const idleThumbnailTimeoutRef = useRef<NodeJS.Timeout>();
-
-  // Synchronously merges any in-flight text edits into the current nodes snapshot.
-  // Use this BEFORE any operation that rebuilds the node list (Tab/Enter/delete/etc.)
-  // so the stale closure `nodes` doesn't overwrite the user's typed text.
-  const getLatestNodes = useCallback((): Node[] => {
-    const pending = pendingDataChangesRef.current;
-    if (pending.size === 0) return nodes;
-    return nodes.map(n => {
-      const fieldChanges = pending.get(n.id);
-      return fieldChanges ? { ...n, data: { ...n.data, ...fieldChanges } } : n;
-    });
-  }, [nodes]);
-
-  // Flushes pending changes via React state — safe for non-layout operations
-  // (e.g. color change, theme change) where we don't rebuild the full node array.
-  const flushPendingDataChanges = useCallback(() => {
-    if (pendingDataChangesRef.current.size === 0) return;
-    
-    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-    
-    const changesCopy = new Map(pendingDataChangesRef.current);
-    pendingDataChangesRef.current.clear();
-    
-    setNodes((nds) => 
-      nds.map(n => {
-        const fieldChanges = changesCopy.get(n.id);
-        return fieldChanges ? { ...n, data: { ...n.data, ...fieldChanges } } : n;
-      })
-    );
-  }, [setNodes]);
-
-  // Silent Autosave Hook
-  const { triggerSave } = useAutosave(
-    { nodes, edges, themeId: theme.id },
-    {
-      debounceMs: 800,
-      onSave: async (data) => {
-        if (userRole === "viewer") return;
-        // Data-only save. Highly responsive.
-        await onSaveRef.current(data.nodes, data.edges, data.themeId, undefined, { silent: true });
-        
-        // Update snapshot after successful save to skip next reflected update
-        lastPersistedSnapshot.current = buildContentSnapshot(data.nodes, data.edges, data.themeId);
-        setLastSavedAt(new Date());
-      },
-      onStatusChange: (status) => {
-        setAutosaveStatus(status);
-      }
-    }
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  
+  const [theme, setTheme] = useState<EditorTheme>(
+    editorThemes.find((t) => t.id === initialThemeId) || editorThemes[0]
   );
+  
+  const limits = usePlanLimits();
+  const isMobile = useIsMobile();
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  
+  // ─── Zustand Store ────────────────────────────────────────────────────────
+  const visibleNodes = useMindMapStore(s => s.visibleNodes);
+  const visibleEdges = useMindMapStore(s => s.visibleEdges);
+  const allNodes = useMindMapStore(s => s.allNodes);
+  const allEdges = useMindMapStore(s => s.allEdges);
+  
+  const initDiagram = useMindMapStore(s => s.initDiagram);
+  const onNodesChange = useMindMapStore(s => s.onNodesChange);
+  const onEdgesChange = useMindMapStore(s => s.onEdgesChange);
+  const setNodesAndEdges = useMindMapStore(s => s.setNodesAndEdges);
+  const addChild = useMindMapStore(s => s.addChild);
+  const addSibling = useMindMapStore(s => s.addSibling);
+  const deleteNode = useMindMapStore(s => s.deleteNode);
+  const updateNodeLabel = useMindMapStore(s => s.updateNodeLabel);
+  const undo = useMindMapStore(s => s.undo);
+  const pendingEditNodeId = useMindMapStore(s => s.pendingEditNodeId);
+  const clearPendingEdit = useMindMapStore(s => s.clearPendingEdit);
 
+  // Ativa o auto-layout do ELK reagindo a mudanças em visibleNodes
+  useElkLayout();
+
+  // Initialization
+  const initialized = useRef(false);
   useEffect(() => {
-    setCurrentEdgeType(defaultStructuredEdgeType);
-  }, [defaultStructuredEdgeType]);
-
-  const handleNodesChange = useCallback(
-    (changes: Parameters<typeof onNodesChangeCore>[0]) => {
-      onNodesChangeCore(changes);
-
-      // Trigger silent autosave
-      if (!remoteUpdateRef.current) {
-        triggerSave();
-      }
-
-      // Only trigger auto-layout on node removal. 
-      // Dimension changes (typing) should NOT trigger layout to prevent jumping while editing.
-      const hasRemoval = changes.some((c) => c.type === 'remove');
-
-      if (hasRemoval && isMindmapLike(diagramType)) {
-        if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
-        layoutTimeoutRef.current = setTimeout(() => {
-          triggerLayout();
-        }, 200);
-      }
-    },
-    [onNodesChangeCore, triggerLayout, diagramType, triggerSave]
-  );
-
-  const handleEdgesChange = useCallback(
-    (changes: Parameters<typeof onEdgesChange>[0]) => {
-      onEdgesChange(changes);
-      // Only trigger autosave on meaningful changes (not selection state)
-      const hasMeaningfulChange = changes.some(
-        (c) => c.type === "add" || c.type === "remove" || c.type === "replace"
-      );
-      if (!remoteUpdateRef.current && hasMeaningfulChange) {
-        triggerSave();
-      }
-    },
-    [onEdgesChange, triggerSave]
-  );
-
-  const { takeSnapshot, undo, redo, canUndo, canRedo } = useUndoRedo(nodes, edges, setNodes, setEdges);
-
-  const buildContentSnapshot = useCallback((snapshotNodes: Node[], snapshotEdges: Edge[], themeId: string) => {
-    const round = (value: number) => Math.round(value * 100) / 100;
-
-    const normalizedNodes = snapshotNodes
-      .map((node) => ({
-        id: node.id,
-        type: node.type,
-        position: {
-          x: round(node.position.x),
-          y: round(node.position.y),
-        },
-        data: node.data,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id));
-
-    const normalizedEdges = snapshotEdges
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        type: edge.type || defaultStructuredEdgeType,
-        sourceHandle: edge.sourceHandle || null,
-        targetHandle: edge.targetHandle || null,
-        label: edge.label || null,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id));
-
-    return JSON.stringify({
-      themeId,
-      nodes: normalizedNodes,
-      edges: normalizedEdges,
-    });
-  }, []);
-
-  // Capture thumbnail from the ReactFlow viewport
-  const captureThumbnail = useCallback(async (): Promise<string | undefined> => {
-    const el = document.querySelector(".react-flow__viewport") as HTMLElement;
-    if (!el) return undefined;
-    try {
-      const dataUrl = await toPng(el, { 
-        width: 400, 
-        height: 240, 
-        quality: 0.5, 
-        pixelRatio: 0.5, // Faster capture
-        style: {
-          // Disable animations in the clone to avoid thread blocking / freezing
-          animation: 'none',
-          transition: 'none'
-        }
-      });
-      return dataUrl;
-    } catch {
-      return undefined;
+    if (!initialized.current && initialNodes.length > 0) {
+      initialized.current = true;
+      initDiagram(initialNodes as any[], initialEdges);
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
     }
-  }, []);
+  }, [initialNodes, initialEdges, initDiagram, fitView]);
 
-  // We no longer need the legacy watch useEffect for autosave
+  // ─── Drag to Reparent ─────────────────────────────────────────────────────
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [draggingDescendantIds, setDraggingDescendantIds] = useState<Set<string>>(new Set());
 
-  // handleThemeChange: sets the theme AND immediately reapplies edge colors/animations for mindmap
-  const handleThemeChange = useCallback((newTheme: EditorTheme) => {
-    setTheme(newTheme);
-    if (isMindmapLike(diagramType)) {
-      const opts: EdgeThemeOptions = {
-        edgeColor: newTheme.edgeColor,
-        edgeAnimation: newTheme.edgeAnimation,
-        edgeDashArray: newTheme.edgeDashArray,
-        edgeType: diagramType === "orgchart" ? "orthogonal" : "mindmap",
-        isDefault: newTheme.id === "default",
-        isDark: isColorDark(newTheme.bg),
-        diagramType,
-      };
-      const currentNodes = nodesRef.current;
-      const currentEdges = edgesRef.current;
-      const cn = assignDepthColors(currentNodes, currentEdges, opts);
-      const ce = assignEdgeColors(cn, currentEdges, opts);
-      setNodes(cn);
-      setEdges(ce);
-      triggerSave();
-    }
-  }, [diagramType, setNodes, setEdges, triggerSave]);
-
-  // Apply remote updates from other users
-  useEffect(() => {
-    if (remoteNodes && remoteNodes.length > 0) {
-      const nextRemoteEdges = remoteEdges || [];
-      const nextThemeId = remoteThemeId || theme.id;
-      
-      // 1. REFLECTION CHECK: If this update matches what we just saved, skip it entirely.
-      // This prevents the "refresh" sensation.
-      const incomingSnapshot = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
-      if (incomingSnapshot === lastPersistedSnapshot.current) {
-        return;
-      }
-
-      const currentNodes = nodesRef.current;
-      
-      // 2. SELECTIVE MERGING: Keep our local version if it's "fresher" or currently active.
-      const mergedNodes = remoteNodes.map((remoteNode) => {
-        const localNode = currentNodes.find((n) => n.id === remoteNode.id);
-        
-        if (!localNode) return remoteNode;
-
-        // If the node is selected, it's definitely being edited.
-        if (localNode.selected) return localNode;
-
-        // If data is identical, keep local to preserve React references
-        const localDataStr = JSON.stringify(localNode.data);
-        const remoteDataStr = JSON.stringify(remoteNode.data);
-        if (localDataStr === remoteDataStr && 
-            Math.abs(localNode.position.x - remoteNode.position.x) < 0.1 && 
-            Math.abs(localNode.position.y - remoteNode.position.y) < 0.1) {
-          return localNode;
-        }
-        
-        return remoteNode;
-      });
-
-      // Also ensure we don't lose local nodes that aren't yet in the remote update (rare but possible)
-      currentNodes.forEach(localNode => {
-        if (!remoteNodes.find(rn => rn.id === localNode.id)) {
-           mergedNodes.push(localNode);
-        }
-      });
-
-      // 3. EDGE MERGING: Keep local edges that connect nodes we still have locally
-      const currentEdges = edgesRef.current;
-      const mergedEdges = [...nextRemoteEdges];
-      currentEdges.forEach(localEdge => {
-        const alreadyInRemote = nextRemoteEdges.find(re => re.id === localEdge.id);
-        if (!alreadyInRemote) {
-          // If the edge involves a node that is "local only", keep the edge!
-          const sourceIsLocalOnly = !remoteNodes.find(rn => rn.id === localEdge.source);
-          const targetIsLocalOnly = !remoteNodes.find(rn => rn.id === localEdge.target);
-          if (sourceIsLocalOnly || targetIsLocalOnly) {
-            mergedEdges.push(localEdge);
-          }
-        }
-      });
-
-      // Apply mindmap styling immediately to prevent "gray edges" flash
-      let finalNodes = mergedNodes;
-      let finalEdges = mergedEdges;
-
-      if (isMindmapLike(diagramType)) {
-        const opts = themeOptionsRef.current;
-        finalNodes = assignDepthColors(mergedNodes, mergedEdges, opts);
-        finalEdges = assignEdgeColors(finalNodes, mergedEdges, opts);
-      }
-
-      remoteUpdateRef.current = true;
-      setNodes(finalNodes);
-      setEdges(finalEdges);
-      
-      // Update our snapshot tracker so we know what the server currently has
-      lastPersistedSnapshot.current = buildContentSnapshot(remoteNodes, nextRemoteEdges, nextThemeId);
-
-      if (remoteThemeId) {
-        const newTheme = editorThemes.find((t) => t.id === remoteThemeId);
-        if (newTheme) setTheme(newTheme);
-      }
-
-      // Reset flag after React processes the state update
-      requestAnimationFrame(() => {
-        remoteUpdateRef.current = false;
-      });
-    }
-  }, [remoteNodes, remoteEdges, remoteThemeId, theme.id, setNodes, setEdges, buildContentSnapshot, diagramType]);
-
-  const handleToggleConnectors = useCallback(() => {
-    if (diagramType === "orgchart") return;
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.selected ? { ...n, data: { ...n.data, showHandles: !(n.data as any).showHandles } } : n
-      )
-    );
-  }, [setNodes, diagramType]);
-
-  const onConnect = useCallback(
-    (params: Connection) => {
-      if (diagramType === "orgchart") return;
-      takeSnapshot();
-      setEdges((eds) => {
-        // Manual connections in mindmap use the sketch style (dashed + arrow)
-        const edgeType = diagramType === "mindmap" ? "sketch" : currentEdgeType;
-        const nextEdges = addEdge({ ...params, type: edgeType, data: { ...(params as any).data, isCustom: true } }, eds);
-        return assignEdgeColors(nodes, nextEdges, theme);
-      });
-      setNodes((nds) =>
-        nds.map((n) =>
-          n.id === params.source || n.id === params.target
-            ? { ...n, data: { ...n.data, showHandles: false } }
-            : n
-        )
-      );
-      triggerSave();
-    },
-    [nodes, setEdges, setNodes, takeSnapshot, currentEdgeType, triggerSave, theme, diagramType]
-  );
-
-  const selectedNodes = nodes.filter((n) => n.selected);
-  const nodeType = typeToNodeType[diagramType] || "mindmap";
-
-  // Auto-layout helper — always enforces standardized structure
-  // applyAutoLayout: always re-applies colors for mindmap
-  // Uses applyPositions to avoid dimension-change loops (preserves measured/width/height)
-  const applyAutoLayout = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
-    const nodesWithMeasured = nextNodes.map((n) => {
-      const mw = n.measured?.width;
-      const mh = n.measured?.height;
-      if (mw !== undefined && mh !== undefined) return { ...n, width: mw, height: mh };
-
-      const label = (n.data as any)?.label || "";
-      const subLabel = (n.data as any)?.subLabel || "";
-      const estW = Math.max(80, Math.max(label.length * 9, subLabel.length * 7) + 24);
-      const isRoot = (n.data as any)?.isRoot;
-
-      return {
-        ...n,
-        width: isRoot ? Math.max(180, estW) : (diagramType === "orgchart" ? estW : 120),
-        height: isRoot ? 40 : (diagramType === "orgchart" ? (subLabel ? 54 : 40) : 28),
-      };
-    });
-    const laid = autoLayoutDiagram(nodesWithMeasured, nextEdges, diagramType);
-    // Apply positions back to ORIGINAL nodes — preserves measured so no dimension events
-    const positioned = nextNodes.map((n) => {
-      const laidNode = laid.nodes.find((l) => l.id === n.id);
-      return laidNode ? { ...n, position: laidNode.position } : n;
-    });
-    if (isMindmapLike(diagramType)) {
-      const opts = themeOptionsRef.current;
-      const cn = assignDepthColors(positioned, laid.edges, opts);
-      const ce = assignEdgeColors(cn, laid.edges, opts);
-      setNodes(cn);
-      setEdges(ce);
-    } else {
-      setNodes(positioned);
-      setEdges(laid.edges);
-    }
-    
-    if (userRole !== "viewer") {
-      triggerSave({ nodes: positioned, edges: laid.edges, themeId: theme.id });
-    }
-    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [diagramType, setNodes, setEdges, fitView, triggerSave, theme.id]);
-
-  // Re-layout all nodes
-  const handleReLayout = useCallback(() => {
-    takeSnapshot();
-    const { visibleNodes, visibleEdges } = getVisibleGraph(nodesRef.current, edgesRef.current);
-    if (isMindmapLike(diagramType)) {
-      const opts = themeOptionsRef.current;
-      const coloredNodes = assignDepthColors(visibleNodes, visibleEdges, opts);
-      const coloredEdges = assignEdgeColors(coloredNodes, visibleEdges, opts);
-      applyAutoLayout(coloredNodes, coloredEdges);
-    } else {
-      applyAutoLayout(visibleNodes, visibleEdges);
-    }
-  }, [diagramType, applyAutoLayout, takeSnapshot]);
-
-  // Handle collapse/expand toggle dispatched from SVG edge circles
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const nodeId = (e as CustomEvent).detail?.nodeId;
-      if (!nodeId) return;
-      takeSnapshot();
-
-      const toggledNodes = toggleNodeCollapse(nodeId, nodesRef.current);
-      const { visibleNodes, visibleEdges } = getVisibleGraph(toggledNodes, edgesRef.current);
-
-      const opts = themeOptionsRef.current;
-      const coloredNodes = isMindmapLike(diagramType) ? assignDepthColors(visibleNodes, visibleEdges, opts) : visibleNodes;
-      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNodes, visibleEdges, opts) : visibleEdges;
-      
-      // Apply layout+setNodes atomically to avoid race condition with triggerLayout
-      applyAutoLayout(coloredNodes, coloredEdges);
-    };
-    window.addEventListener("mindmap-toggle-collapse", handler);
-    return () => window.removeEventListener("mindmap-toggle-collapse", handler);
-  }, [diagramType, applyAutoLayout, takeSnapshot]);
-
-  // Handle data changes from custom node editors (e.g. MindMapNode typing)
-  // Optimized: Throttle global state updates during typing to prevent "agarradas"
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.nodeId || !detail?.field) return;
-
-      const { nodeId, field, value } = detail;
-      
-      // Store in ref for immediate access (e.g. by Tab/Enter handlers)
-      const existing = pendingDataChangesRef.current.get(nodeId) || {};
-      pendingDataChangesRef.current.set(nodeId, { ...existing, [field]: value });
-
-      // Debounce the actual setNodes call to avoid blocking the main thread
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = setTimeout(() => {
-        flushPendingDataChanges();
-      }, 200);
-
-      // Trigger autosave timer (but this is already debounced in useAutosave)
-      triggerSave();
-    };
-
-    window.addEventListener("node-data-changed", handler);
-    return () => {
-      window.removeEventListener("node-data-changed", handler);
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-    };
-  }, [flushPendingDataChanges, triggerSave]);
-
-  // Collect descendants of a node
-  const collectDescendantIds = useCallback((nodeId: string, edgeList: Edge[]): Set<string> => {
+  const getDescendants = useCallback((nodeId: string, edgesList: Edge[]): Set<string> => {
     const ids = new Set<string>();
-    function walk(parentId: string) {
-      for (const e of edgeList) {
-        if (e.source === parentId && !ids.has(e.target)) {
+    const walk = (id: string) => {
+      edgesList.filter(e => e.source === id).forEach(e => {
+        if (!ids.has(e.target)) {
           ids.add(e.target);
           walk(e.target);
         }
-      }
-    }
+      });
+    };
     walk(nodeId);
     return ids;
   }, []);
 
-  // Drag start: record which node + subtree is being dragged, show ghost at original position
-  const handleNodeDragStart = useCallback((_event: any, draggedNode: Node) => {
-    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
-    if (isMainRoot) return;
-    const descIds = collectDescendantIds(draggedNode.id, edges);
-    setDraggingNodeId(draggedNode.id);
-    setDraggingDescendantIds(descIds);
-    setDropTargetId(null);
-    // No ghost node during drag — replaced by preview edge
-    setGhostNode(null);
-  }, [edges, collectDescendantIds, diagramType]);
+  const handleNodeDragStart = useCallback((_e: any, node: Node) => {
+    if ((node.data as any)?.isRoot) return;
+    setDraggingNodeId(node.id);
+    setDraggingDescendantIds(getDescendants(node.id, allEdges));
+  }, [allEdges, getDescendants]);
 
-  // Drag move: find closest candidate to highlight as drop target
-  const handleNodeDrag = useCallback((_event: any, draggedNode: Node) => {
-    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
-    if (isMainRoot) return;
-    const candidates = nodes.filter(
-      (n) => n.id !== draggedNode.id && !draggingDescendantIds.has(n.id)
-    );
+  const handleNodeDrag = useCallback((_e: any, node: Node) => {
+    if (!draggingNodeId || (node.data as any)?.isRoot) return;
+    const candidates = visibleNodes.filter(n => n.id !== node.id && !draggingDescendantIds.has(n.id));
     let closest: Node | null = null;
     let minDist = Infinity;
-    for (const n of candidates) {
-      const dx = n.position.x - draggedNode.position.x;
-      const dy = n.position.y - draggedNode.position.y;
+    for (const c of candidates) {
+      const dx = c.position.x - node.position.x;
+      const dy = c.position.y - node.position.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < minDist) { minDist = dist; closest = n; }
+      if (dist < minDist) { minDist = dist; closest = c; }
     }
     setDropTargetId(minDist < PROXIMITY_THRESHOLD && closest ? closest.id : null);
-  }, [nodes, draggingDescendantIds]);
+  }, [draggingNodeId, draggingDescendantIds, visibleNodes]);
 
-  // Drag stop: proximity reparent + always snap back to structured layout
-  const handleNodeDragStop = useCallback((_event: any, draggedNode: Node) => {
-    // Clear drag visual state + ghost placeholder
+  const handleNodeDragStop = useCallback((_e: any, node: Node) => {
     setDraggingNodeId(null);
-    setDraggingDescendantIds(new Set());
     setDropTargetId(null);
-    setGhostNode(null);
+    setDraggingDescendantIds(new Set());
 
-    // Don't reparent the root node
-    const isMainRoot = (draggedNode.data as any).isRoot && !(draggedNode.data as any).isIndependent;
-    const isIndependentRoot = (draggedNode.data as any).isIndependent && !edges.find(e => e.target === draggedNode.id);
-
-    if (isMainRoot || isIndependentRoot) {
-      applyAutoLayout(nodes, edges);
-      return;
-    }
-
-    const descendantIds = collectDescendantIds(draggedNode.id, edges);
-    const candidates = nodes.filter(
-      (n) => n.id !== draggedNode.id && !descendantIds.has(n.id)
-    );
-
-    let closest: Node | null = null;
-    let minDist = Infinity;
-    for (const n of candidates) {
-      const dx = n.position.x - draggedNode.position.x;
-      const dy = n.position.y - draggedNode.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < minDist) { minDist = dist; closest = n; }
-    }
-
-    const currentParentEdge = edges.find((e) => e.target === draggedNode.id);
-    const currentParentId = currentParentEdge?.source;
-
-    let newParentId: string | null = null;
-    if (minDist < PROXIMITY_THRESHOLD && closest) {
-      if (closest.id !== currentParentId) newParentId = closest.id;
-    } else {
-      const rootNode = nodes.find((n) => (n.data as any).isRoot);
-      if (rootNode && rootNode.id !== currentParentId) newParentId = rootNode.id;
-    }
-
-    if (newParentId) {
-      takeSnapshot();
-      const nextEdges = edges.filter((e) => e.target !== draggedNode.id);
-      nextEdges.push({
-        id: `e-${newParentId}-${draggedNode.id}`,
-        source: newParentId,
-        target: draggedNode.id,
-        type: currentParentEdge?.type || defaultStructuredEdgeType,
-      });
-      const coloredNodes = assignDepthColors(nodes, nextEdges, themeOptionsRef.current);
-      const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNodes, nextEdges, themeOptionsRef.current) : nextEdges;
-      applyAutoLayout(coloredNodes, coloredEdges);
-      toast.info("Nó movido para nova ramificação");
-    } else {
-      applyAutoLayout(nodes, edges);
-    }
-  }, [nodes, edges, applyAutoLayout, takeSnapshot, collectDescendantIds]);
-
-  // Find the branch color (depth-1 ancestor's color) for a node
-  const getBranchColor = useCallback((nodeId: string): string => {
-    let current = nodeId;
-    const chain: string[] = [];
-    const visited = new Set<string>();
-    while (true) {
-      if (visited.has(current)) break;
-      visited.add(current);
-      chain.unshift(current);
-      const parentEdge = edges.find((e) => e.target === current);
-      if (!parentEdge) break;
-      current = parentEdge.source;
-    }
-    // chain[0] = root, chain[1] = depth-1 node
-    if (chain.length >= 2) {
-      const depth1Node = nodes.find((n) => n.id === chain[1]);
-      return (depth1Node?.data as any)?.color || "blue";
-    }
-    return "blue";
-  }, [nodes, edges]);
-
-  const handleAddChild = useCallback(() => {
-    const parent = selectedNodes[0];
-    if (!parent) {
-      toast.info("Selecione um nó para adicionar um filho.");
-      return;
-    }
-
-    // Synchronously merge any in-flight text edits into the node snapshot.
-    // Using getLatestNodes() instead of flushPendingDataChanges() avoids the race
-    // condition where applyAutoLayout's setNodes call overwrites the flush's setNodes.
-    const latestNodes = getLatestNodes();
-    pendingDataChangesRef.current.clear();
-    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-
-    takeSnapshot();
-    const parentDepth = getNodeDepth(parent.id, edges);
-    const childDepth = parentDepth + 1;
-    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-
-    // Determine color: depth-1 children get rotating colors, depth-2+ inherit branch color
-    let childColor: string;
-    let variant: string | undefined;
-    if (parentDepth === 0) {
-      // Adding a direct child of root — assign next rotating color
-      const existingSiblings = edges.filter((e) => e.source === parent.id).length;
-      const branchColors = ["blue", "green", "purple", "red", "yellow", "orange"];
-      childColor = branchColors[existingSiblings % branchColors.length];
-    } else {
-      // Adding grandchild+ — inherit branch color, use branch variant
-      childColor = getBranchColor(parent.id);
-      variant = "branch";
-    }
-
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: childColor, ...(variant ? { variant } : {}) };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: childColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: childColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: childColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: childColor, ...(variant ? { variant } : {}) };
-
-    const pos = { x: parent.position.x + 250, y: parent.position.y };
-
-    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, childDepth) };
-    const nextNodes = [...latestNodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdgeBase = [...edges, { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId, type: defaultStructuredEdgeType }];
-    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
-    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
-
-    applyAutoLayout(coloredNextNodes, nextEdges);
-
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
-    }, 150);
-  }, [nodes, edges, selectedNodes, nodeType, takeSnapshot, applyAutoLayout, getBranchColor, getLatestNodes]);
-
-  // Add special node (diamond / sticky)
-  const handleAddSpecialNode = useCallback((type: "diamond" | "sticky") => {
-    takeSnapshot();
-    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const centerX = 300 + Math.random() * 200;
-    const centerY = 200 + Math.random() * 200;
-
-    const newNode: Node = {
-      id: newId,
-      type,
-      position: { x: centerX, y: centerY },
-      data: {
-        label: type === "diamond" ? "Sim / Não?" : "Nota...",
-        color: type === "diamond" ? "default" : "default",
-      },
-      selected: true,
-      style: type === "diamond" ? getNodeStyle("flowchart-decision") : getNodeStyle("default"),
-    };
-
-    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
-
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
-    }, 150);
-  }, [takeSnapshot, setNodes]);
-
-  const handleAddIndependentNode = useCallback(() => {
-    takeSnapshot();
-    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const centerX = Math.random() * 100 - 50;
-    const centerY = Math.random() * 100 - 50;
-
-    const newNode: Node = {
-      id: newId,
-      type: nodeType,
-      position: { x: centerX, y: centerY },
-      data: {
-        label: "Novo Tópico",
-        isIndependent: true,
-      },
-      selected: true,
-      style: buildNodeStyle(nodeType || "mindmap", false, 1),
-    };
-
-    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
-
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
-    }, 150);
-  }, [nodeType, takeSnapshot, setNodes]);
-
-  // Change default edge type for new connections
-  const handleEdgeTypeChange = useCallback((type: string) => {
-    setCurrentEdgeType(type);
-    // Also update all existing edges
-    setEdges((eds) => eds.map((e) => ({ ...e, type })));
-  }, [setEdges]);
-
-  // Add sibling node (Enter) — creates a node with the same parent as the selected node
-  const handleAddSibling = useCallback(() => {
-    const selected = selectedNodes[0];
-    if (!selected) return;
-
-    const parentEdge = edges.find((e) => e.target === selected.id);
-    if (!parentEdge) {
-      handleAddChild();
-      return;
-    }
-
-    // Synchronously merge in-flight text edits — same race condition fix as handleAddChild
-    const latestNodes = getLatestNodes();
-    pendingDataChangesRef.current.clear();
-    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-
-    takeSnapshot();
-    const parentId = parentEdge.source;
-    const parentDepth = getNodeDepth(parentId, edges);
-    const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-
-    // Sibling gets same color & variant as selected node
-    const siblingColor = (selected.data as any)?.color || getBranchColor(selected.id);
-    const variant = parentDepth >= 1 ? "branch" : undefined;
-
-    let newData: Record<string, unknown> = { label: "Novo tópico", color: siblingColor, ...(variant ? { variant } : {}) };
-    if (nodeType === "org") newData = { label: "Novo membro", role: "Cargo", color: siblingColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "timeline") newData = { label: "Novo marco", date: "", color: siblingColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "flowchart") newData = { label: "Novo passo", shape: "rectangle", color: siblingColor, ...(variant ? { variant } : {}) };
-    else if (nodeType === "concept") newData = { label: "Novo conceito", color: siblingColor, ...(variant ? { variant } : {}) };
-
-    const pos = { x: selected.position.x, y: selected.position.y + 80 };
-
-    const newNode: Node = { id: newId, type: nodeType, position: pos, data: newData, style: buildNodeStyle(nodeType || "mindmap", false, parentDepth + 1) };
-    const nextNodes = [...latestNodes.map((n) => ({ ...n, selected: false })), { ...newNode, selected: true }];
-    const nextEdgeBase = [...edges, { id: `e-${parentId}-${newId}`, source: parentId, target: newId, type: defaultStructuredEdgeType }];
-    const coloredNextNodes = isMindmapLike(diagramType) ? assignDepthColors(nextNodes, nextEdgeBase, themeOptionsRef.current) : nextNodes;
-    const nextEdges = isMindmapLike(diagramType) ? assignEdgeColors(coloredNextNodes, nextEdgeBase, themeOptionsRef.current) : nextEdgeBase;
-
-    applyAutoLayout(coloredNextNodes, nextEdges);
-
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: newId } }));
-    }, 150);
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, fitView, nodeType, takeSnapshot, handleAddChild, applyAutoLayout, getBranchColor, getLatestNodes]);
-
-  const handleDelete = useCallback((nodesToDelete?: Node[]) => {
-    const selectedEdges = edges.filter((e) => e.selected);
-    const targets = nodesToDelete || selectedNodes;
-    const toDelete = new Set(targets.map((n) => n.id));
+    if ((node.data as any)?.isRoot) return;
+    const currentEdge = allEdges.find(e => e.target === node.id && e.type === "mindmap");
     
-    // Don't allow deleting the root node
-    for (const id of [...toDelete]) {
-      const node = nodes.find(n => n.id === id);
-      if (node?.data && (node.data as any).isRoot) {
-        toDelete.delete(id);
-      }
-    }
-    
-    if (toDelete.size === 0 && selectedEdges.length === 0) return;
-
-    // Flush pending edits so undo restores the correct typed text
-    flushPendingDataChanges();
-    takeSnapshot();
-    
-    const childMap = new Map<string, string[]>();
-    for (const e of edges) {
-      const arr = childMap.get(e.source) || [];
-      arr.push(e.target);
-      childMap.set(e.source, arr);
-    }
-    
-    function addDescendants(id: string) {
-      for (const c of childMap.get(id) || []) {
-        if (!toDelete.has(c)) {
-          toDelete.add(c);
-          addDescendants(c);
-        }
-      }
-    }
-    
-    for (const id of [...toDelete]) {
-      addDescendants(id);
+    let newParentId = dropTargetId;
+    if (!newParentId) {
+      // Snap back to structured layout by just re-running layout (state didn't change edge)
+      setNodesAndEdges([...allNodes], [...allEdges]); // Triggers re-render to erase drag position
+      return; 
     }
 
-    const nextNodes = nodes.filter((n) => !toDelete.has(n.id));
-    const nextEdges = edges.filter((e) => !toDelete.has(e.source) && !toDelete.has(e.target) && !e.selected);
-    
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    applyAutoLayout(nextNodes, nextEdges);
-    
-    if (userRole !== "viewer") {
-      triggerSave({ nodes: nextNodes, edges: nextEdges, themeId: theme.id });
+    if (newParentId && newParentId !== currentEdge?.source) {
+       // Reparent!
+       const nextEdges = allEdges.filter(e => e.id !== currentEdge?.id);
+       nextEdges.push({
+         id: `e-${newParentId}-${node.id}`,
+         source: newParentId,
+         target: node.id,
+         type: "mindmap"
+       });
+       setNodesAndEdges([...allNodes], nextEdges);
+       toast.info("Nó conectado a nova ramificação");
     }
-  }, [nodes, edges, selectedNodes, setNodes, setEdges, takeSnapshot, applyAutoLayout, userRole, triggerSave, theme.id, flushPendingDataChanges]);
+  }, [allEdges, allNodes, dropTargetId, setNodesAndEdges]);
 
-  const handleColorChange = useCallback(
-    (color: string) => {
-      flushPendingDataChanges();
-      takeSnapshot();
-      const ids = new Set(selectedNodes.map((n) => n.id));
-      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, color } } : n));
-      triggerSave();
-    },
-    [selectedNodes, setNodes, takeSnapshot, triggerSave]
-  );
+  // ─── Save & Sync ──────────────────────────────────────────────────────────
   
-  const handleEdgeColorChange = useCallback((edgeId: string, customColor: string | undefined) => {
-    takeSnapshot();
-    setEdges((eds) => {
-      const nextEdges = eds.map((e) => e.id === edgeId ? { ...e, data: { ...e.data, customColor } } : e);
-      return assignEdgeColors(nodesRef.current, nextEdges, themeOptionsRef.current);
-    });
-    triggerSave();
-  }, [takeSnapshot, triggerSave, setEdges]);
-
-  const handleEdgeDelete = useCallback((edgeId: string) => {
-    takeSnapshot();
-    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-    triggerSave();
-    setSelectedEdgeId(null);
-  }, [setEdges, takeSnapshot, triggerSave]);
-
-  const onPaneClick = useCallback(() => {
-    setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, showHandles: false } })));
-    setContextMenu(null);
-    setSelectedEdgeId(null);
-  }, [setNodes]);
-
-  const onEdgeClick = useCallback((_e: React.MouseEvent, edge: Edge) => {
-    if (isMindmapLike(diagramType) && !edge.data?.isCustom) return;
-    setSelectedEdgeId(edge.id);
-  }, [diagramType]);
-
-  const handleShapeChange = useCallback(
-    (shape: string) => {
-      flushPendingDataChanges();
-      takeSnapshot();
-      const ids = new Set(selectedNodes.map((n) => n.id));
-      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, shape } } : n));
-      triggerSave();
-    },
-    [selectedNodes, setNodes, takeSnapshot, triggerSave]
+  const lastPersistedRef = useRef("");
+  
+  // Debounce the autosave hook
+  const { triggerSave } = useAutosave(
+    { themeId: theme.id },
+    {
+      debounceMs: 1000,
+      onSave: async (meta) => {
+        if (userRole === "viewer") return;
+        
+        // Always grab latest from store
+        const { allNodes: currentNodes, allEdges: currentEdges } = useMindMapStore.getState();
+        
+        await onSave(currentNodes, currentEdges, meta.themeId, undefined, { silent: true });
+        lastPersistedRef.current = JSON.stringify({ nodes: currentNodes, edges: currentEdges });
+        setLastSavedAt(new Date());
+      },
+      onStatusChange: setAutosaveStatus
+    }
   );
 
-  const handleVariantChange = useCallback(
-    (variant: string) => {
-      flushPendingDataChanges();
-      takeSnapshot();
-      const ids = new Set(selectedNodes.map((n) => n.id));
-      setNodes((nds) => nds.map((n) => ids.has(n.id) ? { ...n, data: { ...n.data, variant } } : n));
-      triggerSave();
-    },
-    [selectedNodes, setNodes, takeSnapshot, triggerSave]
-  );
+  // Subscribe to all changes in the store to trigger saves
+  useEffect(() => {
+    if (userRole === "viewer") return;
+    const unsub = useMindMapStore.subscribe(
+      state => ({ nodes: state.allNodes, edges: state.allEdges }),
+      () => triggerSave()
+    );
+    return unsub;
+  }, [triggerSave, userRole]);
 
-  const handleDuplicate = useCallback(() => {
-    if (selectedNodes.length === 0) return;
-    flushPendingDataChanges();
-    takeSnapshot();
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
-
-    for (const node of selectedNodes) {
-      const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      newNodes.push({
-        ...node,
-        id: newId,
-        position: { x: node.position.x + 40, y: node.position.y + 40 },
-        selected: true,
-        data: { ...node.data },
-      });
-      // Copy edges from this node's parent
-      const parentEdge = edges.find((e) => e.target === node.id);
-      if (parentEdge) {
-        newEdges.push({
-          id: `e-${parentEdge.source}-${newId}`,
-          source: parentEdge.source,
-          target: newId,
-          type: parentEdge.type || defaultStructuredEdgeType,
-        });
+  // Handle remote updates easily!
+  useEffect(() => {
+    if (remoteNodes && remoteNodes.length > 0) {
+      const incomingStateStr = JSON.stringify({ nodes: remoteNodes, edges: remoteEdges });
+      if (incomingStateStr === lastPersistedRef.current) return;
+      
+      // Merge logic: keep local if selected, etc. (Simplified for this rewrite)
+      const currentLocalId = useMindMapStore.getState().visibleNodes.find(n => n.selected)?.id;
+      
+      let mergedNodes = [...remoteNodes];
+      if (currentLocalId) {
+         const localEdited = useMindMapStore.getState().allNodes.find(n => n.id === currentLocalId);
+         if (localEdited) {
+            mergedNodes = mergedNodes.map(rn => rn.id === currentLocalId ? localEdited : rn);
+         }
+      }
+      
+      setNodesAndEdges(mergedNodes as any[], remoteEdges || []);
+      lastPersistedRef.current = incomingStateStr;
+      
+      if (remoteThemeId) {
+        const t = editorThemes.find(x => x.id === remoteThemeId);
+        if (t) setTheme(t);
       }
     }
+  }, [remoteNodes, remoteEdges, remoteThemeId, setNodesAndEdges]);
 
-    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
-    setEdges((eds) => [...eds, ...newEdges]);
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+  const handleThemeChange = useCallback((newTheme: EditorTheme) => {
+    setTheme(newTheme);
     triggerSave();
-  }, [selectedNodes, edges, setNodes, setEdges, takeSnapshot, triggerSave]);
-
-  // handleSave was unused as everything is autosaved
-
-  const getFlowElement = useCallback(() => {
-    return document.querySelector(".react-flow__viewport") as HTMLElement | null;
-  }, []);
+  }, [triggerSave]);
 
   const handleExportPng = useCallback(async () => {
-    const el = getFlowElement();
+    const el = document.querySelector(".react-flow__viewport") as HTMLElement;
     if (!el) return;
     setExporting(true);
     try {
       const dataUrl = await toPng(el, {
-        backgroundColor: "white",
+        backgroundColor: theme.bg,
         pixelRatio: 2,
-        filter: (node) => !node.classList?.contains("react-flow__minimap") && !node.classList?.contains("react-flow__controls"),
+        filter: (node) => !node.classList?.contains("react-flow__minimap"),
       });
       const link = document.createElement("a");
-      link.download = "diagrama.png";
+      link.download = "mapa-mental.png";
       link.href = dataUrl;
       link.click();
-      toast.success("PNG exportado com sucesso!");
+      toast.success("PNG exportado!");
     } catch {
       toast.error("Erro ao exportar PNG");
     } finally {
       setExporting(false);
     }
-  }, [getFlowElement]);
+  }, [theme.bg]);
 
-  const handleExportPdf = useCallback(async () => {
-    if (!limits.exportPdf) {
-      setUpgradeOpen(true);
-      return;
-    }
-    const el = getFlowElement();
-    if (!el) return;
-    setExporting(true);
-    try {
-      const dataUrl = await toPng(el, {
-        backgroundColor: "white",
-        pixelRatio: 2,
-        filter: (node) => !node.classList?.contains("react-flow__minimap") && !node.classList?.contains("react-flow__controls"),
-      });
-      const img = new window.Image();
-      img.src = dataUrl;
-      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
-      const landscape = img.width > img.height;
-      const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "px", format: [img.width / 2, img.height / 2] });
-      pdf.addImage(dataUrl, "PNG", 0, 0, img.width / 2, img.height / 2);
-      pdf.save("diagrama.pdf");
-      toast.success("PDF exportado com sucesso!");
-    } catch {
-      toast.error("Erro ao exportar PDF");
-    } finally {
-      setExporting(false);
-    }
-  }, [getFlowElement, limits.exportPdf]);
+  // Sketch edges for manual connections
+  const onConnect = useCallback((params: Connection) => {
+    const { allNodes, allEdges } = useMindMapStore.getState();
+    const nextEdges = addEdge({ ...params, type: "sketch", data: { isCustom: true } }, allEdges);
+    setNodesAndEdges(allNodes, nextEdges);
+    triggerSave();
+  }, [setNodesAndEdges, triggerSave]);
 
-  // Arrow key navigation between nodes
-  const handleArrowNav = useCallback((direction: "up" | "down" | "left" | "right") => {
-    const selected = selectedNodes[0];
-    if (!selected) return;
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    const { allNodes, allEdges } = useMindMapStore.getState();
+    setNodesAndEdges(allNodes, allEdges.filter(e => e.id !== edgeId));
+    setSelectedEdgeId(null);
+  }, [setNodesAndEdges]);
 
-    const parentEdge = edges.find((e) => e.target === selected.id);
-    const childEdges = edges.filter((e) => e.source === selected.id);
+  // ─── Auto-edit: seleciona e abre edição quando um nó novo é criado ──────────
+  useEffect(() => {
+    if (!pendingEditNodeId) return;
 
-    let targetId: string | null = null;
+    // Pequeno delay para o ReactFlow renderizar e medir o nó
+    const timer = setTimeout(() => {
+      // Selecionar o nó via ReactFlow
+      onNodesChange([{ type: "select", id: pendingEditNodeId, selected: true }]);
 
-    if (direction === "left") {
-      if (parentEdge) targetId = parentEdge.source;
-    } else if (direction === "right") {
-      if (childEdges.length > 0) {
-        const children = childEdges
-          .map((e) => nodes.find((n) => n.id === e.target))
-          .filter(Boolean) as Node[];
-        children.sort((a, b) => a.position.y - b.position.y);
-        targetId = children[0]?.id || null;
-      }
-    } else if (direction === "up" || direction === "down") {
-      if (parentEdge) {
-        const siblingEdges = edges.filter((e) => e.source === parentEdge.source);
-        const siblings = siblingEdges
-          .map((e) => nodes.find((n) => n.id === e.target))
-          .filter(Boolean) as Node[];
-        siblings.sort((a, b) => a.position.y - b.position.y);
-        const idx = siblings.findIndex((n) => n.id === selected.id);
-        if (direction === "up" && idx > 0) targetId = siblings[idx - 1].id;
-        if (direction === "down" && idx < siblings.length - 1) targetId = siblings[idx + 1].id;
-      }
-    }
+      // Deselecionar todos os outros
+      const others = useMindMapStore.getState().visibleNodes
+        .filter((n) => n.id !== pendingEditNodeId)
+        .map((n) => ({ type: "select" as const, id: n.id, selected: false }));
+      if (others.length) onNodesChange(others);
 
-    if (targetId) {
-      setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === targetId })));
-      const targetNode = nodes.find((n) => n.id === targetId);
-      if (targetNode) {
-        setTimeout(() => fitView({ nodes: [{ id: targetId! }], padding: 0.5, duration: 250 }), 10);
-      }
-    }
-  }, [nodes, edges, selectedNodes, setNodes, fitView]);
+      // Disparar evento de edição para o MindMapNode
+      window.dispatchEvent(
+        new CustomEvent("mindmap-edit-node", {
+          detail: { nodeId: pendingEditNodeId },
+        })
+      );
 
-  // Move node between branches (Alt+Arrow)
-  const handleMoveNode = useCallback((direction: "up" | "down" | "left" | "right") => {
-    const selected = selectedNodes[0];
-    if (!selected || (selected.data as any).isRoot) return;
+      clearPendingEdit();
+    }, 120);
 
-    const parentEdge = edges.find((e) => e.target === selected.id);
-    if (!parentEdge) return;
+    return () => clearTimeout(timer);
+  }, [pendingEditNodeId, clearPendingEdit, onNodesChange]);
 
-    const parentId = parentEdge.source;
-
-    if (direction === "up" || direction === "down") {
-      // Reorder among siblings: swap edge order
-      const siblingEdges = edges.filter((e) => e.source === parentId);
-      const siblings = siblingEdges
-        .map((e) => nodes.find((n) => n.id === e.target))
-        .filter(Boolean) as Node[];
-      siblings.sort((a, b) => a.position.y - b.position.y);
-      const idx = siblings.findIndex((n) => n.id === selected.id);
-      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= siblings.length) return;
-
-      takeSnapshot();
-      // Swap positions in edges array to affect layout order
-      const swapNodeId = siblings[swapIdx].id;
-      const reorderedEdges = edges.map((e) => {
-        if (e.source === parentId && e.target === selected.id) return { ...e, target: swapNodeId };
-        if (e.source === parentId && e.target === swapNodeId) return { ...e, target: selected.id };
-        return e;
-      });
-      // Fix edge IDs after swap
-      const fixedEdges = reorderedEdges.map((e) => {
-        if (e.source === parentId && (e.target === selected.id || e.target === swapNodeId)) {
-          return { ...e, id: `e-${e.source}-${e.target}` };
-        }
-        return e;
-      });
-      applyAutoLayout(nodes, fixedEdges);
-      toast.info(direction === "up" ? "Movido para cima" : "Movido para baixo");
-    } else if (direction === "left") {
-      // Promote: move to grandparent (become sibling of current parent)
-      const grandparentEdge = edges.find((e) => e.target === parentId);
-      if (!grandparentEdge) {
-        toast.info("Não é possível promover — o pai é a raiz.");
-        return;
-      }
-
-      takeSnapshot();
-      const grandparentId = grandparentEdge.source;
-      const nextEdges = edges.map((e) => {
-        if (e.target === selected.id && e.source === parentId) {
-          return { ...e, id: `e-${grandparentId}-${selected.id}`, source: grandparentId };
-        }
-        return e;
-      });
-      applyAutoLayout(nodes, nextEdges);
-      toast.info("Nó promovido ao nível superior");
-    } else if (direction === "right") {
-      // Demote: move under previous sibling
-      const siblingEdges = edges.filter((e) => e.source === parentId);
-      const siblings = siblingEdges
-        .map((e) => nodes.find((n) => n.id === e.target))
-        .filter(Boolean) as Node[];
-      siblings.sort((a, b) => a.position.y - b.position.y);
-      const idx = siblings.findIndex((n) => n.id === selected.id);
-      // Find the previous sibling to become the new parent
-      const newParent = idx > 0 ? siblings[idx - 1] : (idx < siblings.length - 1 ? siblings[idx + 1] : null);
-      if (!newParent) {
-        toast.info("Não há irmão disponível para rebaixar.");
-        return;
-      }
-
-      takeSnapshot();
-      const nextEdges = edges.map((e) => {
-        if (e.target === selected.id && e.source === parentId) {
-          return { ...e, id: `e-${newParent.id}-${selected.id}`, source: newParent.id };
-        }
-        return e;
-      });
-      applyAutoLayout(nodes, nextEdges);
-      toast.info(`Nó movido para dentro de "${(newParent.data as any).label}"`);
-    }
-  }, [nodes, edges, selectedNodes, takeSnapshot, applyAutoLayout]);
-
-  // Select and focus a node by ID (used by search)
-  const handleSearchSelect = useCallback((nodeId: string) => {
-    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
-    setTimeout(() => fitView({ nodes: [{ id: nodeId }], padding: 0.5, duration: 250 }), 10);
-  }, [setNodes, fitView]);
-
-  // Keyboard shortcuts
+  // ─── Keyboard & Hotkeys ─────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ctrl+F always works, even in inputs
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        e.preventDefault();
-        setSearchOpen(true);
-        return;
-      }
-      if (e.key === "Escape" && searchOpen) {
-        setSearchOpen(false);
-        return;
-      }
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "Tab") { e.preventDefault(); handleAddChild(); }
-      if (e.key === "Enter") { e.preventDefault(); handleAddSibling(); }
-      if (e.key === "Delete" || e.key === "Backspace") handleDelete();
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); triggerSave(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "d") { e.preventDefault(); handleDuplicate(); }
-      // Ctrl+Shift+L: reorganize layout
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "L") { e.preventDefault(); handleReLayout(); toast.info("Layout reorganizado"); }
-      // Alt+Arrow: move node between branches
-      if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); handleMoveNode("up"); return; }
-      if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); handleMoveNode("down"); return; }
-      if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); handleMoveNode("left"); return; }
-      if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); handleMoveNode("right"); return; }
-      // Arrow navigation
-      if (e.key === "ArrowUp") { e.preventDefault(); handleArrowNav("up"); }
-      if (e.key === "ArrowDown") { e.preventDefault(); handleArrowNav("down"); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); handleArrowNav("left"); }
-      if (e.key === "ArrowRight") { e.preventDefault(); handleArrowNav("right"); }
-      // F2 to edit selected node
-      if (e.key === "F2" && selectedNodes.length === 1) {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id } }));
-        return;
-      }
-      // Type-to-edit: printable character starts editing the selected node
+      // Ignorar quando foco está em input/textarea/contenteditable
       if (
-        selectedNodes.length === 1 &&
-        !e.ctrlKey && !e.metaKey && !e.altKey &&
-        e.key.length === 1
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) return;
+
+      const state = useMindMapStore.getState();
+      const selectedNode = state.visibleNodes.find((n) => n.selected);
+
+      // ── Tab: adicionar filho ─────────────────────────────────────────────────
+      if (e.key === "Tab" && !e.shiftKey && selectedNode) {
+        e.preventDefault();
+        addChild(selectedNode.id);
+        return;
+      }
+
+      // ── Enter: adicionar irmão (mesmo pai) ──────────────────────────────────
+      if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && selectedNode) {
+        e.preventDefault();
+        addSibling(selectedNode.id);
+        return;
+      }
+
+      // ── Delete/Backspace: excluir nó selecionado ────────────────────────────
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedNode) {
+        if (!(selectedNode.data as any)?.isRoot) {
+          // Selecionar o pai antes de deletar
+          const parentEdge = state.allEdges.find(
+            (ed) => ed.target === selectedNode.id && ed.type === "mindmap"
+          );
+          deleteNode(selectedNode.id);
+          if (parentEdge) {
+            onNodesChange([{ type: "select", id: parentEdge.source, selected: true }]);
+          }
+        }
+        return;
+      }
+
+      // ── F2 ou qualquer char imprimível: entrar em modo de edição ────────────
+      if (e.key === "F2" && selectedNode) {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNode.id } })
+        );
+        return;
+      }
+
+      // Tecla imprimível comum: substituir texto e entrar em edição
+      if (
+        selectedNode &&
+        e.key.length === 1 &&
+        !e.ctrlKey && !e.metaKey && !e.altKey
       ) {
-        window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: selectedNodes[0].id, replaceText: true } }));
+        window.dispatchEvent(
+          new CustomEvent("mindmap-edit-node", {
+            detail: { nodeId: selectedNode.id, replaceText: true, char: e.key },
+          })
+        );
+        return;
+      }
+
+      // ── Arrow Keys: navegar entre nós ──────────────────────────────────────
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && selectedNode) {
+        e.preventDefault();
+        const { visibleNodes, visibleEdges } = state;
+        const selectedId = selectedNode.id;
+        const side = (selectedNode.data as any)?.side as "left" | "right" | undefined;
+        const depth = (selectedNode.data as any)?.depth ?? 0;
+
+        let targetId: string | null = null;
+
+        if (e.key === "ArrowRight") {
+          // Para nós da direita ou raiz: ir para o FILHO (primeiro filho)
+          // Para nós da esquerda: ir para o PAI
+          if (side === "left" && depth > 0) {
+            // Pai
+            const parentEdge = visibleEdges.find((ed) => ed.target === selectedId);
+            targetId = parentEdge?.source ?? null;
+          } else {
+            // Primeiro filho do lado direito (ou qualquer filho da raiz)
+            const children = visibleEdges
+              .filter((ed) => ed.source === selectedId)
+              .map((ed) => visibleNodes.find((n) => n.id === ed.target))
+              .filter(Boolean)
+              .filter((n) => side !== "left" ? true : (n!.data as any)?.side === "left");
+            targetId = children[0]?.id ?? null;
+          }
+        }
+
+        if (e.key === "ArrowLeft") {
+          if (side === "right" && depth > 0) {
+            const parentEdge = visibleEdges.find((ed) => ed.target === selectedId);
+            targetId = parentEdge?.source ?? null;
+          } else {
+            const children = visibleEdges
+              .filter((ed) => ed.source === selectedId)
+              .map((ed) => visibleNodes.find((n) => n.id === ed.target))
+              .filter(Boolean)
+              .filter((n) => side !== "right" ? true : (n!.data as any)?.side === "right");
+            targetId = children[0]?.id ?? null;
+          }
+        }
+
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          // Navegar entre irmãos pelo eixo Y
+          const parentEdge = visibleEdges.find((ed) => ed.target === selectedId);
+          if (parentEdge) {
+            const siblings = visibleEdges
+              .filter((ed) => ed.source === parentEdge.source)
+              .map((ed) => visibleNodes.find((n) => n.id === ed.target))
+              .filter(Boolean)
+              .sort((a, b) => (a!.position?.y ?? 0) - (b!.position?.y ?? 0));
+            const currentIdx = siblings.findIndex((n) => n!.id === selectedId);
+            if (e.key === "ArrowUp" && currentIdx > 0) {
+              targetId = siblings[currentIdx - 1]!.id;
+            } else if (e.key === "ArrowDown" && currentIdx < siblings.length - 1) {
+              targetId = siblings[currentIdx + 1]!.id;
+            }
+          }
+        }
+
+        if (targetId) {
+          // Deselecionar atual, selecionar alvo
+          onNodesChange([
+            { type: "select", id: selectedId, selected: false },
+            { type: "select", id: targetId, selected: true },
+          ]);
+        }
+        return;
+      }
+
+      // ── Ctrl+S: salvar ──────────────────────────────────────────────────────
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        triggerSave();
+      }
+
+      // ── Escape: desselecionar ───────────────────────────────────────────────
+      if (e.key === "Escape" && selectedNode) {
+        onNodesChange([{ type: "select", id: selectedNode.id, selected: false }]);
       }
     };
+
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleAddChild, handleAddSibling, handleDelete, triggerSave, undo, redo, handleDuplicate, handleArrowNav, handleMoveNode, handleReLayout, searchOpen, selectedNodes]);
+  }, [addChild, addSibling, deleteNode, triggerSave, onNodesChange]);
 
-  // AI: apply generated map
-  const handleApplyGenerated = useCallback((genNodes: { id: string; label: string; isRoot?: boolean }[], genEdges: { source: string; target: string }[]) => {
-    takeSnapshot();
+  const selectedNodes = visibleNodes.filter(n => n.selected);
 
-    // Build temp edges to compute depth
-    const tempEdges: Edge[] = genEdges.map((e) => ({
-      id: `e-${e.source}-${e.target}`,
-      source: e.source,
-      target: e.target,
-      type: defaultStructuredEdgeType,
-    }));
-
-    const newNodes: Node[] = genNodes.map((n) => {
-      const depth = getNodeDepth(n.id, tempEdges);
-      return {
-        id: n.id,
-        type: nodeType,
-        position: { x: 0, y: 0 },
-        data: {
-          label: n.label,
-          color: n.isRoot ? "orange" : getColorForDepth(depth),
-          depth,
-          ...(n.isRoot ? { isRoot: true } : {}),
-        },
-      };
-    });
-
-    const coloredEdges = isMindmapLike(diagramType) ? assignEdgeColors(newNodes, tempEdges, themeOptionsRef.current) : tempEdges;
-    applyAutoLayout(newNodes, coloredEdges);
-  }, [nodeType, takeSnapshot, applyAutoLayout]);
-
-  // AI: apply suggestion
-  const handleApplySuggestion = useCallback((suggestion: { type: string; parentId?: string; nodeId?: string; label?: string; newLabel?: string }) => {
-    takeSnapshot();
-    if (suggestion.type === "add" && suggestion.parentId && suggestion.label) {
-      const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      const colorIdx = nodes.length % childColors.length;
-      const newNode: Node = {
-        id: newId,
-        type: nodeType,
-        position: { x: 0, y: 0 },
-        data: { label: suggestion.label, color: childColors[colorIdx] },
-      };
-      const nextNodes = [...nodes, newNode];
-      const nextEdges = [...edges, { id: `e-${suggestion.parentId}-${newId}`, source: suggestion.parentId, target: newId, type: defaultStructuredEdgeType }];
-      applyAutoLayout(nextNodes, nextEdges);
-    } else if (suggestion.type === "rename" && suggestion.nodeId && suggestion.newLabel) {
-      setNodes((nds) => nds.map((n) => n.id === suggestion.nodeId ? { ...n, data: { ...n.data, label: suggestion.newLabel } } : n));
-    }
-  }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout, setNodes]);
-
-  // Right-click on node
-  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
-    event.preventDefault();
-    setContextMenu({ x: event.clientX, y: event.clientY, node });
-  }, []);
-
-  // AI expand: add generated children to existing node
-  const handleExpandComplete = useCallback((parentId: string, newNodes: { id: string; label: string }[], newEdges: { source: string; target: string }[]) => {
-    takeSnapshot();
-
-    const allEdges = [...edges, ...newEdges.map((e) => ({
-      id: `e-${e.source}-${e.target}`,
-      source: e.source,
-      target: e.target,
-      type: defaultStructuredEdgeType as any,
-    }))];
-
-    const addedNodes: Node[] = newNodes.map((n) => {
-      const depth = getNodeDepth(n.id, allEdges);
-      return {
-        id: n.id,
-        type: nodeType,
-        position: { x: 0, y: 0 },
-        data: { label: n.label, color: getColorForDepth(depth), depth },
-      };
-    });
-
-    const addedEdges: Edge[] = newEdges.map((e) => ({
-      id: `e-${e.source}-${e.target}`,
-      source: e.source,
-      target: e.target,
-      type: defaultStructuredEdgeType,
-    }));
-
-    const allNodes = [...nodes, ...addedNodes];
-    const allEdgesFinal = [...edges, ...addedEdges];
-    const coloredEdgesFinal = isMindmapLike(diagramType) ? assignEdgeColors(allNodes, allEdgesFinal, themeOptionsRef.current) : allEdgesFinal;
-    applyAutoLayout(allNodes, coloredEdgesFinal);
-  }, [nodes, edges, nodeType, takeSnapshot, applyAutoLayout]);
-
-  // Generate thumbnail only after 30 seconds of idleness to prevent lagginess
-  useEffect(() => {
-    if (idleThumbnailTimeoutRef.current) clearTimeout(idleThumbnailTimeoutRef.current);
-    
-    idleThumbnailTimeoutRef.current = setTimeout(async () => {
-      if (nodes.length === 0) return;
-      
-      const capture = async () => {
-        const thumb = await captureThumbnail();
-        lastThumbnailTimeRef.current = Date.now();
-        await onSaveRef.current(nodesRef.current, edgesRef.current, latestThemeIdRef.current, thumb, { silent: true });
-      };
-
-      // Wrap in requestIdleCallback to avoid blocking UI animations
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(() => capture(), { timeout: 2000 });
-      } else {
-        capture();
-      }
-    }, 30000); // 30 seconds of idleness
-    
-    return () => {
-      if (idleThumbnailTimeoutRef.current) clearTimeout(idleThumbnailTimeoutRef.current);
-    };
-  }, [nodes, edges, captureThumbnail]); 
-
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
       <EditorToolbar
-        onAddNode={handleAddChild}
-        onAddSpecialNode={handleAddSpecialNode}
-        onDelete={handleDelete}
-        onSave={() => userRole !== "viewer" && triggerSave({ nodes, edges, themeId: theme.id })}
+        onAddNode={() => selectedNodes.length > 0 && addChild(selectedNodes[0].id)}
+        onAddSpecialNode={() => {}} // Removed
+        onDelete={() => selectedNodes.length > 0 && deleteNode(selectedNodes[0].id)}
+        onSave={() => userRole !== "viewer" && triggerSave({ force: true } as any)}
         onZoomIn={() => zoomIn()}
         onZoomOut={() => zoomOut()}
         onFitView={() => fitView({ padding: 0.2, duration: 300 })}
-        onUndo={undo}
-        onRedo={redo}
+        onUndo={() => {}} // Custom undo disabled temporarily
+        onRedo={() => {}}
         onExportPng={handleExportPng}
-        onExportPdf={handleExportPdf}
+        onExportPdf={() => {}}
         canExportPdf={limits.exportPdf}
         onThemeChange={handleThemeChange}
-        onReLayout={handleReLayout}
-        onAddIndependentNode={userRole !== "viewer" ? handleAddIndependentNode : undefined}
+        onReLayout={() => {}} // ELK is automatic
         currentThemeId={theme.id}
-        canUndo={canUndo && userRole !== "viewer"}
-        canRedo={canRedo && userRole !== "viewer"}
+        canUndo={false}
+        canRedo={false}
         saving={saving}
         exporting={exporting}
         hasSelection={selectedNodes.length > 0 && userRole !== "viewer"}
-        diagramType={diagramType}
+        diagramType="mindmap"
         userRole={userRole}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onImportSketch={() => setImportDialogOpen(true)}
       />
+      
       {(() => { const ui = themeUI(theme); return (<>
-      <NodeSearchBar
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        nodes={nodes}
-        onSelectNode={handleSearchSelect}
-        themeCardBg={ui.cardBg}
-        themeCardBorder={ui.cardBorder}
-        themeCardText={ui.cardText}
-      />
-      {/* Autosave indicator - hide on mobile since it's in the header */}
-      {!isMobile && (saving || autosaveStatus === "saving") && (
-        <div
-          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
-          style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
-        >
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ui.accentColor }} />
-          Salvando...
-        </div>
-      )}
-      {!isMobile && !(saving || autosaveStatus === "saving") && lastSavedAt && (
-        <div
-          className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
-          style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
-        >
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
-          Salvo às {lastSavedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-        </div>
-      )}
+        {!isMobile && (saving || autosaveStatus === "saving") && (
+          <div
+            className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
+            style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
+          >
+            <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ui.accentColor }} />
+            Salvando...
+          </div>
+        )}
       </>); })()}
-      <NodeFloatingToolbar
-        selectedNodes={userRole === "viewer" ? [] : selectedNodes}
-        diagramType={diagramType}
-        onShapeChange={handleShapeChange}
-        onDuplicate={handleDuplicate}
-        onDelete={handleDelete}
-        onAddChild={handleAddChild}
-        onAddSibling={handleAddSibling}
-        onVariantChange={handleVariantChange}
-        onToggleConnectors={handleToggleConnectors}
-      />
+
       <EdgeFloatingToolbar
-        selectedEdge={edges.find(e => e.id === selectedEdgeId) || null}
+        selectedEdge={visibleEdges.find(e => e.id === selectedEdgeId) || null}
         onDelete={handleEdgeDelete}
-        onColorChange={handleEdgeColorChange}
+        onColorChange={() => {}}
       />
-      {/* Keyboard shortcut legend — bottom-left, mindmap only - hide on mobile */}
-      {!isMobile && isMindmapLike(diagramType) && selectedNodes.length > 0 && (() => { const ui = themeUI(theme); return (
-        <div
-          className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg px-3 py-2 text-xs backdrop-blur-sm shadow-md"
-          style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.cardBorder}`, color: ui.cardText }}
-        >
-          <div className="flex items-center gap-2">
-            <kbd style={{ background: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}`, borderRadius: 4, padding: '1px 6px', fontFamily: 'inherit', fontSize: 10, fontWeight: 600 }}>Tab</kbd>
-            <span style={{ opacity: 0.75 }}>para criar tópico filho</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <kbd style={{ background: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}`, borderRadius: 4, padding: '1px 6px', fontFamily: 'inherit', fontSize: 10, fontWeight: 600 }}>Enter</kbd>
-            <span style={{ opacity: 0.75 }}>para criar tópico irmão</span>
-          </div>
-        </div>
-      ); })()}
+
       {viewMode === "graph" ? (
         <ReactFlow
-          nodes={[
-            ...nodes.map((n) => {
-              if (!draggingNodeId) return n;
-              const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
-              const isDropTarget = n.id === dropTargetId;
-              return {
+          nodes={visibleNodes.map(n => {
+             if (!draggingNodeId) return n;
+             const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
+             return {
                 ...n,
                 style: {
-                  ...n.style,
-                  opacity: isDragged ? 0.45 : 1,
-                  transition: 'opacity 0.15s ease',
-                  ...(isDropTarget ? { outline: '2px dashed #E9853A', outlineOffset: '4px', borderRadius: 8 } : {}),
-                },
-              };
-            }),
-            ...(ghostNode ? [] : []), // ghost disabled — using preview edge instead
-          ]}
-          edges={(() => {
-            const baseEdges = draggingNodeId
-              ? edges.filter((e) => e.target !== draggingNodeId && e.source !== draggingNodeId && !draggingDescendantIds.has(e.target) && !draggingDescendantIds.has(e.source))
-              : edges;
-            // Preview edge: shows dashed orange connection to the potential new parent
-            if (draggingNodeId && dropTargetId) {
-              baseEdges.push({
-                id: "__preview__",
-                source: dropTargetId,
-                target: draggingNodeId,
-                type: defaultStructuredEdgeType,
-                style: {
-                  stroke: "#E9853A",
-                  strokeWidth: 1.5,
-                  strokeDasharray: "6 3",
-                  opacity: 0.75,
-                } as React.CSSProperties,
-                animated: false,
-                data: { isCollapseEdge: false, isPreview: true },
-              } as any);
+                   ...n.style,
+                   opacity: isDragged ? 0.45 : 1,
+                   ...(n.id === dropTargetId ? { outline: '2px dashed #E9853A', outlineOffset: '4px', borderRadius: 8 } : {})
+                }
+             };
+          })}
+          edges={visibleEdges.map(e => {
+            if (draggingNodeId && dropTargetId && e.id === `e-${dropTargetId}-${draggingNodeId}`) {
+               return { ...e, style: { stroke: "#E9853A", strokeDasharray: "5 5" } };
             }
-            return baseEdges;
-          })()}
-          onNodesChange={handleNodesChange}
+            return e;
+          })}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onPaneClick={onPaneClick}
-          onEdgeClick={userRole === "viewer" ? undefined : onEdgeClick}
+          onPaneClick={() => setSelectedEdgeId(null)}
+          onEdgeClick={(_e, edge) => edge.data?.isCustom && setSelectedEdgeId(edge.id)}
           onConnect={userRole === "viewer" ? undefined : onConnect}
+          
           onNodeDragStart={userRole === "viewer" ? undefined : handleNodeDragStart}
           onNodeDrag={userRole === "viewer" ? undefined : handleNodeDrag}
           onNodeDragStop={userRole === "viewer" ? undefined : handleNodeDragStop}
-          onNodeContextMenu={handleNodeContextMenu}
-          onNodeClick={(_e, node) => {
-            if (isMobile && userRole !== "viewer") {
-              setMobileDrawerNode(node);
-            }
-          }}
+          
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView={!initialFitDone.current}
-          onInit={() => {
-            if (!initialFitDone.current) {
-              initialFitDone.current = true;
-            }
+          minZoom={0.1}
+          
+          defaultEdgeOptions={{ 
+             type: "mindmap", 
+             style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any 
           }}
-          fitViewOptions={{ padding: 0.3 }}
-          snapToGrid={true}
-          snapGrid={[20, 20]}
-          defaultEdgeOptions={{ type: defaultStructuredEdgeType, style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any }}
           proOptions={{ hideAttribution: true }}
           style={{ backgroundColor: theme.bg }}
-          deleteKeyCode={null}
-          onNodesDelete={userRole === "viewer" ? undefined : handleDelete}
+          deleteKeyCode={null} // Default delete key logic disabled in favor of our custom hotkeys
           nodesDraggable={userRole !== "viewer"}
           nodesConnectable={userRole !== "viewer"}
           elementsSelectable={true} 
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
-          <Controls
-            showInteractive={false}
-            style={{ 
-              backgroundColor: themeUI(theme).cardBg, 
-              borderColor: themeUI(theme).cardBorder, 
-              borderRadius: 12,
-              bottom: isMobile ? 120 : undefined
-            }}
-            className="!rounded-xl !shadow-md [&>button]:!border-0"
-          />
-          <MiniMap
-            style={{ backgroundColor: theme.minimapBg, borderColor: themeUI(theme).cardBorder, borderRadius: 12 }}
-            className="!rounded-xl !shadow-md"
-            position={isMobile ? "bottom-left" : "bottom-right"}
-            maskColor={theme.minimapMask}
-            nodeColor={themeUI(theme).minimapNode}
-          />
+          <Controls showInteractive={false} className="!rounded-xl !shadow-md [&>button]:!border-0" />
+          <MiniMap position="bottom-right" className="!rounded-xl !shadow-md" maskColor={theme.minimapMask} nodeColor={themeUI(theme).minimapNode} />
         </ReactFlow>
       ) : (
         <OutlineView 
-          nodes={nodes} 
-          edges={edges} 
-          onNodeChange={handleNodeLabelChange}
+          nodes={allNodes as any} 
+          edges={allEdges} 
+          onNodeChange={(id, label) => updateNodeLabel(id, label)}
           readOnly={userRole === "viewer"}
         />
       )}
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        resource="feature"
-        featureLabel="Exportação para PDF"
-        planName={limits.displayName}
-      />
-      <ImportOutlineDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
-        onImport={handleImportOutline}
-      />
-      {/* Temporarily hidden AI menu */}
-      {false && contextMenu && limits.aiGeneration && (
-        <NodeContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          node={contextMenu.node}
-          diagramType={diagramType}
-          onClose={() => setContextMenu(null)}
-          onExpandComplete={handleExpandComplete}
-          userRole={userRole}
-        />
-      )}
-      <MobileNodeDrawer
-        isOpen={!!mobileDrawerNode}
-        onClose={() => setMobileDrawerNode(null)}
-        node={mobileDrawerNode}
-        diagramType={diagramType}
-        onDelete={handleDelete}
-        onDuplicate={handleDuplicate}
-        onAddChild={handleAddChild}
-        onAddSibling={handleAddSibling}
-        onColorChange={handleColorChange}
-        onShapeChange={handleShapeChange}
-        onVariantChange={handleVariantChange}
-        onToggleConnectors={handleToggleConnectors}
-        onAIAssist={false && limits.aiGeneration ? () => {
-          setContextMenu({ x: window.innerWidth / 2, y: window.innerHeight / 2, node: mobileDrawerNode! });
-          setMobileDrawerNode(null);
-        } : undefined}
-      />
+
+      <ImportOutlineDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} onImport={() => {}} />
     </div>
   );
 }
