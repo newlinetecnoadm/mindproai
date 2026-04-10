@@ -5,6 +5,7 @@ export interface DiagramTemplate {
   id: string;
   name: string;
   description: string;
+  icon?: string;
   type: string;
   category?: string;
   nodes: Node[];
@@ -34,6 +35,7 @@ const blankMindmap: DiagramTemplate = {
   id: "mm-blank",
   name: "Em branco",
   description: "Comece do zero com um mapa mental",
+  icon: "🧠",
   type: "mindmap",
   category: "mindmap",
   nodes: [n("root", "Ideia Central", 0, 0, { isRoot: true, depth: 0 })],
@@ -46,6 +48,7 @@ const brainstorming: DiagramTemplate = {
   id: "mm-brainstorm",
   name: "Brainstorming",
   description: "Expanda ideias em todas as direções",
+  icon: "💡",
   type: "mindmap",
   category: "mindmap",
   nodes: [
@@ -82,6 +85,7 @@ const projetoPlano: DiagramTemplate = {
   id: "mm-projeto",
   name: "Planejamento de Projeto",
   description: "Organize fases, tarefas e responsáveis",
+  icon: "📋",
   type: "mindmap",
   category: "mindmap",
   nodes: [
@@ -121,6 +125,7 @@ const swotAnalysis: DiagramTemplate = {
   id: "mm-swot",
   name: "Análise SWOT",
   description: "Forças, fraquezas, oportunidades e ameaças",
+  icon: "📊",
   type: "mindmap",
   category: "mindmap",
   nodes: [
@@ -157,6 +162,7 @@ const okrTemplate: DiagramTemplate = {
   id: "mm-okr",
   name: "OKR",
   description: "Objetivos e resultados-chave",
+  icon: "🎯",
   type: "mindmap",
   category: "mindmap",
   nodes: [
@@ -188,6 +194,7 @@ const empatiaMap: DiagramTemplate = {
   id: "mm-empatia",
   name: "Mapa de Empatia",
   description: "Entenda o seu usuário de forma profunda",
+  icon: "👤",
   type: "mindmap",
   category: "mindmap",
   nodes: [

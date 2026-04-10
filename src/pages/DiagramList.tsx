@@ -30,7 +30,7 @@ import UpgradeModal from "@/components/UpgradeModal";
 import { cn } from "@/lib/utils";
 
 const typeIcons: Record<string, React.ReactNode> = {
-  mindmap: <Brain className="w-5 h-5" />,
+  mindmap: <Brain className="w-5 h-5 text-primary/70" />,
 };
 
 const typeLabels: Record<string, string> = {
@@ -344,56 +344,41 @@ const DiagramList = () => {
         }}
         onDragEnd={() => { if (!isMobile) { setDragDiagramId(null); setDragOverWsId(null); } }}
         className={cn(
-          "group rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer overflow-hidden",
+          "group flex items-center gap-3 p-3 rounded-xl border bg-card hover:border-primary/30 hover:shadow-md transition-all cursor-pointer",
           dragDiagramId === d.id ? "opacity-50 border-primary/40" : "border-border",
-          isMobile ? "flex h-24" : "flex flex-col"
         )}
         onClick={() => navigate(`/diagramas/${d.id}`)}
       >
-        <div className={cn(
-          "bg-muted flex items-center justify-center text-muted-foreground/30 overflow-hidden relative shrink-0",
-          isMobile ? "w-24 h-24" : "h-32 w-full"
-        )}>
-          {isOwner && !isMobile && (
-            <GripVertical className="w-4 h-4 text-muted-foreground/40 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-          )}
-          {d.thumbnail ? (
-            <img src={d.thumbnail} alt={d.title} className="w-full h-full object-cover" loading="lazy" />
-          ) : (
-            typeIcons[d.type] || <Brain className="w-10 h-10" />
-          )}
+        <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
+          {typeIcons[d.type] || <Brain className="w-5 h-5 text-primary/70" />}
         </div>
-        <div className={cn("p-3 flex-1 flex flex-col justify-center", isMobile ? "min-w-0" : "")}>
-          <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
             <h3 className="font-semibold text-sm truncate flex-1">{d.title}</h3>
-            {!isOwner && !isMobile && (
-              <Badge variant="secondary" className="text-[10px] shrink-0">Comp.</Badge>
-            )}
-            {!isMobile && (
-              <Badge variant="outline" className="text-[10px] shrink-0">
-                {typeLabels[d.type] || d.type}
-              </Badge>
-            )}
+            {!isOwner && <Badge variant="secondary" className="text-[10px] shrink-0">Comp.</Badge>}
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatDistanceToNow(new Date(d.updated_at!), { addSuffix: true, locale: ptBR })}
-            </span>
-            {isOwner && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn("h-8 w-8", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm("Excluir este diagrama?")) deleteMutation.mutate(d.id);
-                }}
-              >
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </Button>
-            )}
-          </div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatDistanceToNow(new Date(d.updated_at!), { addSuffix: true, locale: ptBR })}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {isOwner && !isMobile && (
+            <GripVertical className="w-4 h-4 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+          )}
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm("Excluir este diagrama?")) deleteMutation.mutate(d.id);
+              }}
+            >
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          )}
         </div>
       </div>
     </StaggerItem>
@@ -562,10 +547,7 @@ const DiagramList = () => {
                         wsDiagrams.length === 0 ? (
                           <p className="text-xs text-muted-foreground ml-6 sm:ml-6">Nenhum diagrama neste workspace</p>
                         ) : (
-                          <StaggerContainer className={cn(
-                            "grid gap-4 ml-0 sm:ml-6",
-                            isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                          )}>
+                          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-0 sm:ml-6">
                             {wsDiagrams.map((d: any) => renderDiagramCard(d, true))}
                           </StaggerContainer>
                         )
@@ -578,7 +560,7 @@ const DiagramList = () => {
                 {diagramsByWs.unassigned.length > 0 && (
                   <div className="space-y-3">
                     <h2 className="text-sm font-semibold text-foreground/80">Sem workspace</h2>
-                    <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {diagramsByWs.unassigned.map((d: any) => renderDiagramCard(d, true))}
                     </StaggerContainer>
                   </div>
@@ -594,7 +576,7 @@ const DiagramList = () => {
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
                   <span className="text-xs text-muted-foreground">{sharedDiagrams.length}</span>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {sharedDiagrams.map((d: any) => renderDiagramCard(d, false))}
                 </div>
               </div>

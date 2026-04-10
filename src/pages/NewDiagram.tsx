@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
-import TemplateThumbnail from "@/components/editor/TemplateThumbnail";
 
 const NewDiagram = () => {
   const navigate = useNavigate();
@@ -135,7 +134,7 @@ const NewDiagram = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
             {templates.map((tpl) => (
               <Card
                 key={tpl.id}
@@ -145,17 +144,14 @@ const NewDiagram = () => {
                 )}
                 onClick={() => handleSelectTemplate(tpl)}
               >
-                <CardContent className="p-4 sm:p-5">
-                  <div className="h-20 sm:h-24 bg-muted/50 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
-                    <TemplateThumbnail template={tpl} />
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/8 flex items-center justify-center text-2xl shrink-0">
+                    {tpl.icon || "🧠"}
                   </div>
-                  <h3 className="font-semibold text-sm mb-1">{tpl.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
-                  {tpl.category && (
-                    <span className="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                      {templateCategories.find(c => (c as any).id === tpl.category)?.name || tpl.category}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm mb-0.5">{tpl.name}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
