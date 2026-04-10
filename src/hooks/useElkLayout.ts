@@ -65,6 +65,9 @@ export function useElkLayout() {
       if (!root) return;
 
       // ─── Layout DOWN para orgchart/flowchart ────────────────────────────────
+      // Sketch edges are visual-only drafts — exclude from layout computation
+      const layoutEdges = visibleEdges.filter((e) => e.type !== "sketch");
+
       if (diagramType === "orgchart" || diagramType === "flowchart") {
         const downGraph = {
           id: "down",
@@ -74,7 +77,7 @@ export function useElkLayout() {
             width: (n as any).measured?.width ?? 150,
             height: (n as any).measured?.height ?? 40,
           })),
-          edges: visibleEdges.map((e) => ({
+          edges: layoutEdges.map((e) => ({
             id: e.id,
             sources: [e.source],
             targets: [e.target],
@@ -112,10 +115,10 @@ export function useElkLayout() {
       const rightNodeIds = new Set(rightNodes.map((n) => n.id));
       const leftNodeIds = new Set([root.id, ...leftNodes.map((n) => n.id)]);
 
-      const rightEdges = visibleEdges.filter(
+      const rightEdges = layoutEdges.filter(
         (e) => rightNodeIds.has(e.source) && rightNodeIds.has(e.target)
       );
-      const leftEdges = visibleEdges.filter(
+      const leftEdges = layoutEdges.filter(
         (e) => leftNodeIds.has(e.source) && leftNodeIds.has(e.target)
       );
 

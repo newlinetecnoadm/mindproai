@@ -160,6 +160,8 @@ function DiagramEditorInner({
   const clearPendingEdit = useMindMapStore(s => s.clearPendingEdit);
   const updateEdgeData = useMindMapStore(s => s.updateEdgeData);
   const addSketchEdge = useMindMapStore(s => s.addSketchEdge);
+  const pendingSketchSource = useMindMapStore(s => s.pendingSketchSource);
+  const setPendingSketchSource = useMindMapStore(s => s.setPendingSketchSource);
 
   useElkLayout();
 
@@ -401,6 +403,14 @@ function DiagramEditorInner({
     setNodesAndEdges(allNodes, allEdges.filter(e => e.id !== edgeId));
     setSelectedEdgeId(null);
   }, [setNodesAndEdges]);
+
+  const handleNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
+    if (pendingSketchSource && node.id !== pendingSketchSource) {
+      addSketchEdge(pendingSketchSource, node.id);
+      setPendingSketchSource(null);
+      triggerSave();
+    }
+  }, [pendingSketchSource, addSketchEdge, setPendingSketchSource, triggerSave]);
 
   const handleEdgeDataChange = useCallback((edgeId: string, data: Record<string, unknown>) => {
     if (data._swapDirection) {
@@ -682,8 +692,9 @@ function DiagramEditorInner({
           })}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onPaneClick={() => setSelectedEdgeId(null)}
-          onEdgeClick={(_e, edge) => edge.data?.isCustom && setSelectedEdgeId(edge.id)}
+          onPaneClick={() => { setSelectedEdgeId(null); setPendingSketchSource(null); }}
+          onEdgeClick={(_e, edge) => { if (edge.data?.isCustom || edge.type === "sketch") setSelectedEdgeId(edge.id); }}
+          onNodeClick={userRole !== "viewer" ? handleNodeClick : undefined}
           onConnect={userRole === "viewer" ? undefined : onConnect}
           onNodeDragStart={userRole === "viewer" ? undefined : handleNodeDragStart}
           onNodeDrag={userRole === "viewer" ? undefined : handleNodeDrag}
@@ -698,7 +709,7 @@ function DiagramEditorInner({
             style: { stroke: theme.edgeColor, strokeWidth: theme.edgeStrokeWidth, opacity: theme.edgeOpacity ?? 1, _animation: theme.edgeAnimation, _dashArray: theme.edgeDashArray } as any
           }}
           proOptions={{ hideAttribution: true }}
-          style={{ backgroundColor: theme.bg }}
+          style={{ backgroundColor: theme.bg, cursor: pendingSketchSource ? "crosshair" : undefined }}
           deleteKeyCode={null}
           nodesDraggable={userRole !== "viewer"}
           nodesConnectable={userRole !== "viewer"}

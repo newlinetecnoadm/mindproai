@@ -72,6 +72,8 @@ type MindMapStore = {
   setDiagramType: (type: string) => void;
   updateEdgeData: (edgeId: string, data: Record<string, unknown>) => void;
   addSketchEdge: (source: string, target: string, sourceHandle?: string, targetHandle?: string) => void;
+  pendingSketchSource: string | null;
+  setPendingSketchSource: (id: string | null) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -205,6 +207,7 @@ export const useMindMapStore = create<MindMapStore>()(
     currentThemeEdgeColor: null,
     currentIsDark: false,
     diagramType: "mindmap",
+    pendingSketchSource: null,
 
     _pushHistory: () => {
       const { allNodes, allEdges, past } = get();
@@ -561,6 +564,7 @@ export const useMindMapStore = create<MindMapStore>()(
     setVisible: (nodes, edges) => set({ visibleNodes: nodes, visibleEdges: edges }),
     setIsLayouting: (v) => set({ isLayouting: v }),
     setDiagramType: (type) => set({ diagramType: type }),
+    setPendingSketchSource: (id) => set({ pendingSketchSource: id }),
 
     updateEdgeData: (edgeId, data) => {
       set((state) => ({

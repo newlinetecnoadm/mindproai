@@ -10,6 +10,7 @@ import {
   MarkerType,
   type EdgeProps,
 } from "@xyflow/react";
+import { useMindMapStore } from "@/store/useMindMapStore";
 
 
 // ── Animated edge CSS keyframes ───────────────────────────
@@ -314,7 +315,7 @@ export const SquareMindMapEdge = memo(SquareMindMapEdgeComponent);
 
 function SketchEdgeComponent(props: EdgeProps) {
   const { id, sourceX, sourceY, targetX, targetY, selected, data } = props;
-  const { setEdges, screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
   const color: string = (data as any)?.color ?? "#22c55e";
   const lineType: string = (data as any)?.lineType ?? "dashed";
@@ -338,21 +339,18 @@ function SketchEdgeComponent(props: EdgeProps) {
   // Drag control point using pointer events + screenToFlowPosition
   const onCpPointerDown = useCallback((e: React.PointerEvent<SVGCircleElement>) => {
     e.stopPropagation();
+    e.preventDefault();
+    (e.target as Element).setPointerCapture(e.pointerId);
     const startScreen = { x: e.clientX, y: e.clientY };
     const startFlow = screenToFlowPosition(startScreen);
     const startCp = { x: cpX, y: cpY };
 
     const onMove = (ev: PointerEvent) => {
+      ev.stopPropagation();
       const curFlow = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
       const newCpX = startCp.x + (curFlow.x - startFlow.x);
       const newCpY = startCp.y + (curFlow.y - startFlow.y);
-      setEdges((eds) =>
-        eds.map((edge) =>
-          edge.id === id
-            ? { ...edge, data: { ...(edge.data ?? {}), cpX: newCpX, cpY: newCpY } }
-            : edge
-        )
-      );
+      useMindMapStore.getState().updateEdgeData(id, { cpX: newCpX, cpY: newCpY });
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -360,7 +358,7 @@ function SketchEdgeComponent(props: EdgeProps) {
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [id, cpX, cpY, setEdges, screenToFlowPosition]);
+  }, [id, cpX, cpY, screenToFlowPosition]);
 
   return (
     <g>

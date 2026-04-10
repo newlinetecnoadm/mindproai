@@ -3,7 +3,7 @@ import {
   Handle, Position, NodeToolbar,
   useNodeId, type NodeProps,
 } from "@xyflow/react";
-import { ChevronRight, ChevronDown, Plus, Trash2, StickyNote, Smile, Square, Circle, RectangleHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Trash2, StickyNote, Smile, Square, Circle, RectangleHorizontal, PenLine } from "lucide-react";
 import { useMindMapStore, type MindMapNodeData, type NodeShape } from "@/store/useMindMapStore";
 import { cn } from "@/lib/utils";
 import {
@@ -223,6 +223,8 @@ function MindMapNodeComponent({
   const addChild = useMindMapStore((s) => s.addChild);
   const deleteNode = useMindMapStore((s) => s.deleteNode);
   const diagramType = useMindMapStore((s) => s.diagramType);
+  const pendingSketchSource = useMindMapStore((s) => s.pendingSketchSource);
+  const setPendingSketchSource = useMindMapStore((s) => s.setPendingSketchSource);
 
   const [editing, setEditing] = useState(false);
   const [localLabel, setLocalLabel] = useState(data.label);
@@ -421,6 +423,20 @@ function MindMapNodeComponent({
               <ShapeIcon className="w-3 h-3" />
             </button>
           )}
+
+          {/* Seta rascunho */}
+          <button
+            className={cn(
+              "nodrag nopan flex items-center justify-center w-6 h-6 rounded transition-colors",
+              pendingSketchSource === nodeId
+                ? "bg-green-500/20 text-green-600 ring-1 ring-green-500"
+                : "hover:bg-muted text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setPendingSketchSource(pendingSketchSource === nodeId ? null : nodeId)}
+            title="Adicionar seta rascunho"
+          >
+            <PenLine className="w-3.5 h-3.5" />
+          </button>
 
           {/* Separador */}
           <div className="w-px h-4 bg-border mx-0.5" />
