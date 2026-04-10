@@ -393,14 +393,16 @@ function MindMapNodeComponent({
             </PopoverContent>
           </Popover>
 
-          {/* Forma do nó */}
-          <button
-            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            onClick={cycleShape}
-            title={`Forma: ${shapeTitle} (clique para alternar)`}
-          >
-            <ShapeIcon className="w-3 h-3" />
-          </button>
+          {/* Forma do nó — apenas no fluxograma */}
+          {diagramType === "flowchart" && (
+            <button
+              className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              onClick={cycleShape}
+              title={`Forma: ${shapeTitle} (clique para alternar)`}
+            >
+              <ShapeIcon className="w-3 h-3" />
+            </button>
+          )}
 
           {/* Separador */}
           <div className="w-px h-4 bg-border mx-0.5" />

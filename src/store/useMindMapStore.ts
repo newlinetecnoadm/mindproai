@@ -421,11 +421,13 @@ export const useMindMapStore = create<MindMapStore>()(
 
     addChild: (parentId, label = "Novo tópico") => {
       get()._pushHistory();
-      const { allNodes, allEdges, collapsedIds, currentThemeEdgeColor, currentIsDark } = get();
+      const { allNodes, allEdges, collapsedIds, currentThemeEdgeColor, currentIsDark, diagramType } = get();
       const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
       const parentNode = allNodes.find((n) => n.id === parentId);
       const parentDepth = parentNode?.data?.depth ?? 0;
+
+      const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
 
       const isDefaultColor = !currentThemeEdgeColor || currentThemeEdgeColor === "#a3a3a3";
       const palette = isDefaultColor ? BRANCH_COLORS : generateThemeBranchColors(currentThemeEdgeColor!, 8);
@@ -434,36 +436,61 @@ export const useMindMapStore = create<MindMapStore>()(
       let branchIndex = 0;
       let branchColor = palette[0];
 
-      if (parentDepth === 0) {
-        const existingRootChildren = allEdges.filter((e) => e.source === parentId);
-        const idx = existingRootChildren.length;
-        side = idx % 2 === 0 ? "right" : "left";
-        branchIndex = idx;
-        branchColor = palette[idx % palette.length];
+      if (isFlowDiagram) {
+        // Sem divisão esquerda/direita — herda cor do pai ou atribui pela posição
+        if (parentDepth === 0) {
+          const idx = allEdges.filter((e) => e.source === parentId).length;
+          branchIndex = idx;
+          branchColor = palette[idx % palette.length];
+        } else {
+          branchIndex = (parentNode?.data?.branchIndex as number) ?? 0;
+          branchColor = (parentNode?.data?.branchColor as string) ?? palette[0];
+        }
       } else {
-        side = (parentNode?.data?.side as "left" | "right") ?? "right";
-        branchIndex = parentNode?.data?.branchIndex ?? 0;
-        branchColor = (parentNode?.data?.branchColor as string) ?? palette[0];
+        // Mindmap: alterna esquerda/direita nos filhos da raiz
+        if (parentDepth === 0) {
+          const existingRootChildren = allEdges.filter((e) => e.source === parentId);
+          const idx = existingRootChildren.length;
+          side = idx % 2 === 0 ? "right" : "left";
+          branchIndex = idx;
+          branchColor = palette[idx % palette.length];
+        } else {
+          side = (parentNode?.data?.side as "left" | "right") ?? "right";
+          branchIndex = (parentNode?.data?.branchIndex as number) ?? 0;
+          branchColor = (parentNode?.data?.branchColor as string) ?? palette[0];
+        }
       }
 
       const parentPos = parentNode?.position ?? { x: 0, y: 0 };
       const parentW = (parentNode as any)?.measured?.width ?? 150;
-      const initialX = side === "right" ? parentPos.x + parentW + 40 : parentPos.x - 190;
-      const initialY = parentPos.y;
+      const parentH = (parentNode as any)?.measured?.height ?? 40;
+
+      // Para flow: posiciona abaixo. Para mindmap: posiciona à direita/esquerda.
+      const initialX = isFlowDiagram ? parentPos.x : (side === "right" ? parentPos.x + parentW + 40 : parentPos.x - 190);
+      const initialY = isFlowDiagram ? parentPos.y + parentH + 80 : parentPos.y;
 
       const newNode: MindMapNode = {
         id: newId,
         type: "mindmap",
         position: { x: initialX, y: initialY },
-        data: { label, depth: parentDepth + 1, side, branchIndex, branchColor, isDark: currentIsDark },
+        data: {
+          label,
+          depth: parentDepth + 1,
+          side: isFlowDiagram ? undefined : side,
+          branchIndex,
+          branchColor,
+          isDark: currentIsDark,
+          // Flowchart herda retângulo como padrão; orgchart também
+          shape: isFlowDiagram ? "rectangle" : undefined,
+        },
       };
 
       const newEdge: Edge = {
         id: `e-${parentId}-${newId}`,
         source: parentId,
         target: newId,
-        type: "mindmap",
-        data: { branchColor, side },
+        type: isFlowDiagram ? "flow" : "mindmap",
+        data: { branchColor, side: isFlowDiagram ? undefined : side },
       };
 
       const nextCollapsed = new Set(collapsedIds);
@@ -486,8 +513,9 @@ export const useMindMapStore = create<MindMapStore>()(
     },
 
     addSibling: (nodeId, label = "Novo tópico") => {
-      const { allEdges, allNodes } = get();
-      const parentEdge = allEdges.find((e) => e.target === nodeId && e.type === "mindmap");
+      const { allEdges } = get();
+      // Busca o pai independente do tipo de aresta (mindmap ou flow)
+      const parentEdge = allEdges.find((e) => e.target === nodeId);
       const parentId = parentEdge?.source;
 
       if (!parentId) return get().addChild(nodeId, label);
