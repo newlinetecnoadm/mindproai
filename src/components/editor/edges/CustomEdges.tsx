@@ -6,6 +6,7 @@ import {
   getStraightPath,
   Position,
   useInternalNode,
+  MarkerType,
   type EdgeProps,
 } from "@xyflow/react";
 
@@ -371,3 +372,51 @@ function SketchEdgeComponent(props: EdgeProps) {
   );
 }
 export const SketchEdge = memo(SketchEdgeComponent);
+
+// ── Flow Edge (SmoothStep with arrowhead — for orgchart/flowchart) ────────────
+
+function FlowEdgeComponent(props: EdgeProps) {
+  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
+
+  const [edgePath] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+    borderRadius: 6,
+  });
+
+  const branchColor =
+    ((data as any)?.branchColor as string | undefined) ??
+    (style?.stroke as string | undefined) ??
+    "#94a3b8";
+
+  const animStyle = getAnimationStyle(style);
+
+  return (
+    <g>
+      <defs>
+        <marker
+          id={`flow-arrow-${id}`}
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="16"
+          markerHeight="16"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={branchColor} />
+        </marker>
+      </defs>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          ...animStyle,
+          stroke: branchColor,
+          strokeWidth: 2,
+        }}
+        markerEnd={`url(#flow-arrow-${id})`}
+      />
+    </g>
+  );
+}
+export const FlowEdge = memo(FlowEdgeComponent);

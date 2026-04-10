@@ -9,7 +9,7 @@ export const BRANCH_COLORS = [
   "#2ECC71", "#1ABC9C", "#E67E22", "#3498DB",
 ];
 
-export type NodeShape = "rounded" | "rectangle" | "oval";
+export type NodeShape = "rounded" | "rectangle" | "oval" | "diamond";
 
 export type MindMapNodeData = {
   label: string;
@@ -44,6 +44,7 @@ type MindMapStore = {
   clipboard: ClipboardData | null;
   currentThemeEdgeColor: string | null;
   currentIsDark: boolean;
+  diagramType: string;
 
   initDiagram: (nodes: MindMapNode[], edges: Edge[]) => void;
   setNodesAndEdges: (nodes: MindMapNode[], edges: Edge[]) => void;
@@ -68,6 +69,7 @@ type MindMapStore = {
   applyTheme: (edgeColor: string, isDark: boolean) => void;
   copySelection: (nodeIds: string[]) => void;
   pasteSelection: () => void;
+  setDiagramType: (type: string) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -200,6 +202,7 @@ export const useMindMapStore = create<MindMapStore>()(
     clipboard: null,
     currentThemeEdgeColor: null,
     currentIsDark: false,
+    diagramType: "mindmap",
 
     _pushHistory: () => {
       const { allNodes, allEdges, past } = get();
@@ -527,5 +530,6 @@ export const useMindMapStore = create<MindMapStore>()(
 
     setVisible: (nodes, edges) => set({ visibleNodes: nodes, visibleEdges: edges }),
     setIsLayouting: (v) => set({ isLayouting: v }),
+    setDiagramType: (type) => set({ diagramType: type }),
   }))
 );

@@ -22,7 +22,7 @@ import "@xyflow/react/dist/style.css";
 
 import MindMapNode from "@/components/mindmap/MindMapNode";
 import GhostNode from "@/components/mindmap/GhostNode";
-import { MindMapEdge, SketchEdge } from "./edges/CustomEdges";
+import { MindMapEdge, SketchEdge, FlowEdge } from "./edges/CustomEdges";
 
 import EditorToolbar from "./EditorToolbar";
 import EdgeFloatingToolbar from "./EdgeFloatingToolbar";
@@ -58,6 +58,7 @@ const nodeTypes = {
 const edgeTypes = {
   mindmap: MindMapEdge as any,
   sketch: SketchEdge as any,
+  flow: FlowEdge as any,
 };
 
 const PROXIMITY_THRESHOLD = 120;
@@ -141,6 +142,7 @@ function DiagramEditorInner({
   const future = useMindMapStore(s => s.future);
 
   const initDiagram = useMindMapStore(s => s.initDiagram);
+  const setDiagramType = useMindMapStore(s => s.setDiagramType);
   const onNodesChange = useMindMapStore(s => s.onNodesChange);
   const onEdgesChange = useMindMapStore(s => s.onEdgesChange);
   const setNodesAndEdges = useMindMapStore(s => s.setNodesAndEdges);
@@ -167,10 +169,11 @@ function DiagramEditorInner({
       // Aplica tema antes de inicializar para que as cores já sejam derivadas do tema
       const isDark = isColorDark(theme.bg);
       useMindMapStore.getState().applyTheme(theme.edgeColor, isDark);
+      setDiagramType(diagramType);
       initDiagram(initialNodes as any[], initialEdges);
       setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
     }
-  }, [initialNodes, initialEdges, initDiagram, fitView, theme]);
+  }, [initialNodes, initialEdges, initDiagram, fitView, theme, setDiagramType, diagramType]);
 
   // ─── Drag to Reparent ─────────────────────────────────────────────────────
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);

@@ -27,6 +27,21 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
 }
 
 
+// Opções ELK para layout vertical (orgchart/flowchart)
+function elkOptionsDown() {
+  return {
+    "elk.algorithm": "layered",
+    "elk.direction": "DOWN",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+    "elk.spacing.nodeNode": "50",
+    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+    "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
+    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    "elk.edgeRouting": "ORTHOGONAL",
+    "elk.padding": "[top=40, left=60, bottom=40, right=60]",
+  };
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useElkLayout() {
@@ -34,6 +49,7 @@ export function useElkLayout() {
   const nodesInitialized = useNodesInitialized();
   const visibleEdges = useMindMapStore((s) => s.visibleEdges);
   const visibleNodes = useMindMapStore((s) => s.visibleNodes);
+  const diagramType = useMindMapStore((s) => s.diagramType);
   const isRunning = useRef(false);
 
   // Chave de estrutura — muda quando collapse/expand ou nós são adicionados/removidos
@@ -47,6 +63,45 @@ export function useElkLayout() {
     try {
       const root = nodes.find((n) => (n.data as any).isRoot);
       if (!root) return;
+
+      // ─── Layout DOWN para orgchart/flowchart ────────────────────────────────
+      if (diagramType === "orgchart" || diagramType === "flowchart") {
+        const downGraph = {
+          id: "down",
+          layoutOptions: elkOptionsDown(),
+          children: nodes.map((n) => ({
+            id: n.id,
+            width: (n as any).measured?.width ?? 150,
+            height: (n as any).measured?.height ?? 40,
+          })),
+          edges: visibleEdges.map((e) => ({
+            id: e.id,
+            sources: [e.source],
+            targets: [e.target],
+          })),
+        };
+
+        const downResult = await elk.layout(downGraph);
+        const positionMap = new Map<string, { x: number; y: number }>();
+        downResult.children?.forEach((n) => {
+          positionMap.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
+        });
+
+        setNodes(
+          nodes.map((node) => {
+            const pos = positionMap.get(node.id);
+            if (!pos) return node;
+            return { ...node, position: pos };
+          })
+        );
+
+        setTimeout(() => {
+          fitView({ duration: 500, padding: 0.15 });
+        }, 80);
+        return;
+      }
+
+      // ─── Layout bifurcado LEFT/RIGHT para mindmap ───────────────────────────
 
       // Separar nós por lado
       const rightNodes = nodes.filter(
@@ -149,7 +204,7 @@ export function useElkLayout() {
     } finally {
       isRunning.current = false;
     }
-  }, [getNodes, setNodes, fitView, visibleEdges]);
+  }, [getNodes, setNodes, fitView, visibleEdges, diagramType]);
 
   // Gatilho: nós renderizados E estrutura mudou
   // eslint-disable-next-line react-hooks/exhaustive-deps

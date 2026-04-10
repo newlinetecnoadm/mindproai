@@ -26,6 +26,7 @@ const QUICK_EMOJIS = [
 function getBorderRadius(depth: number, shape: NodeShape | undefined): number | string {
   if (shape === "rectangle") return 4;
   if (shape === "oval") return 999;
+  if (shape === "diamond") return 4;
   // default: rounded
   if (depth === 0) return 28;
   if (depth === 1) return 12;
@@ -41,6 +42,7 @@ function getNodeStyle(
   selected: boolean,
   shape?: NodeShape,
   isDark?: boolean,
+  flowStyle?: boolean,
 ): React.CSSProperties {
   const color = branchColor ?? "#94a3b8";
   const radius = getBorderRadius(depth, shape);
@@ -58,6 +60,20 @@ function getNodeStyle(
           : "0 4px 24px rgba(0,0,0,0.1)",
       transition: "box-shadow 0.2s ease",
       cursor: "default",
+    };
+  }
+
+  // Flow diagram style: always render a box regardless of depth
+  if (flowStyle) {
+    return {
+      padding: depth <= 1 ? "8px 18px" : "6px 14px",
+      borderRadius: shape === "diamond" ? 4 : radius,
+      background: shape === "diamond" ? `${color}20` : depth === 0 ? "var(--background, #fff)" : depth === 1 ? color : `${color}18`,
+      border: depth === 0 ? "2.5px solid rgba(100,100,100,0.15)" : depth === 1 ? `2px solid ${color}` : `2px solid ${color}80`,
+      boxShadow: selected ? `0 0 0 3px ${color}40` : depth === 1 ? `0 2px 8px ${color}40` : "none",
+      transition: "box-shadow 0.2s ease",
+      cursor: "default",
+      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140 } : {}),
     };
   }
 
@@ -106,6 +122,7 @@ function getTextStyle(
   branchColor: string | undefined,
   side?: string,
   isDark?: boolean,
+  flowStyle?: boolean,
 ): React.CSSProperties {
   const textAlign = side === "left" ? "right" : "left";
 
@@ -118,6 +135,19 @@ function getTextStyle(
       userSelect: "none",
       whiteSpace: "pre-wrap",
       maxWidth: 240,
+      outline: "none",
+      textAlign: "center",
+    };
+  }
+
+  if (flowStyle) {
+    return {
+      fontSize: depth <= 1 ? "0.88rem" : "0.85rem",
+      fontWeight: depth <= 1 ? 600 : 500,
+      color: depth === 1 ? "#ffffff" : isDark ? "rgba(255,255,255,0.88)" : "var(--foreground, #1e293b)",
+      userSelect: "none",
+      whiteSpace: "pre-wrap",
+      maxWidth: 220,
       outline: "none",
       textAlign: "center",
     };
@@ -174,6 +204,7 @@ function MindMapNodeComponent({
   const updateNodeShape = useMindMapStore((s) => s.updateNodeShape);
   const addChild = useMindMapStore((s) => s.addChild);
   const deleteNode = useMindMapStore((s) => s.deleteNode);
+  const diagramType = useMindMapStore((s) => s.diagramType);
 
   const [editing, setEditing] = useState(false);
   const [localLabel, setLocalLabel] = useState(data.label);
@@ -243,7 +274,7 @@ function MindMapNodeComponent({
   );
 
   const cycleShape = useCallback(() => {
-    const shapes: NodeShape[] = ["rounded", "rectangle", "oval"];
+    const shapes: NodeShape[] = ["rounded", "rectangle", "oval", "diamond"];
     const current = data.shape ?? "rounded";
     const next = shapes[(shapes.indexOf(current) + 1) % shapes.length];
     updateNodeShape(nodeId, next);
@@ -252,11 +283,18 @@ function MindMapNodeComponent({
   // ─── Props derivadas ────────────────────────────────────────────────────────
   const { branchColor, depth = 0, isRoot = false, side, collapsed, hasChildren, icon, notes, shape, isDark } = data;
 
-  const wrapperStyle = getNodeStyle(depth, isRoot, side, branchColor, !!selected, shape, isDark);
-  const textStyle = getTextStyle(depth, isRoot, branchColor, side, isDark);
+  const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
 
-  const sourcePos = isRoot ? undefined : side === "left" ? Position.Left : Position.Right;
-  const targetPos = isRoot ? undefined : side === "left" ? Position.Right : Position.Left;
+  const wrapperStyle = getNodeStyle(depth, isRoot, side, branchColor, !!selected, shape, isDark, isFlowDiagram && !isRoot);
+  const textStyle = getTextStyle(depth, isRoot, branchColor, side, isDark, isFlowDiagram && !isRoot);
+
+  // Handles direction: flow diagrams use TOP/BOTTOM, mindmap uses LEFT/RIGHT
+  const sourcePos = isFlowDiagram
+    ? Position.Bottom
+    : isRoot ? undefined : side === "left" ? Position.Left : Position.Right;
+  const targetPos = isFlowDiagram
+    ? Position.Top
+    : isRoot ? undefined : side === "left" ? Position.Right : Position.Left;
   const collapseButtonSide = side === "left" ? "left" : "right";
 
   const ShapeIcon = shape === "rectangle" ? Square : shape === "oval" ? Circle : RectangleHorizontal;
@@ -379,7 +417,21 @@ function MindMapNodeComponent({
       </NodeToolbar>
 
       {/* Handles */}
-      {isRoot ? (
+      {isFlowDiagram ? (
+        <>
+          {/* Flow diagram: root only has source bottom; non-root has target top + optional source bottom */}
+          {isRoot ? (
+            <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8", opacity: 0 }} />
+          ) : (
+            <>
+              <Handle type="target" position={Position.Top} id="t-top" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
+              {hasChildren && (
+                <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
+              )}
+            </>
+          )}
+        </>
+      ) : isRoot ? (
         <>
           <Handle type="source" position={Position.Right} id="s-right" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8" }} />
           <Handle type="source" position={Position.Left} id="s-left" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8" }} />

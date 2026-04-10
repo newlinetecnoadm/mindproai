@@ -233,6 +233,91 @@ const empatiaMap: DiagramTemplate = {
   ],
 };
 
+// ─── Template: Organograma ────────────────────────────────────────────────────
+
+function orgNode(id: string, label: string, x: number, y: number, depth: number): Node {
+  return {
+    id,
+    type: "mindmap",
+    position: { x, y },
+    data: { label, depth, shape: "rectangle", isRoot: depth === 0 },
+    style: buildNodeStyle("mindmap", depth === 0, depth),
+  };
+}
+
+function flowEdge(id: string, source: string, target: string): Edge {
+  return { id, source, target, type: "flow" };
+}
+
+const orgTemplate: DiagramTemplate = {
+  id: "org-blank",
+  name: "Organograma",
+  description: "Hierarquia organizacional vertical.",
+  icon: "🏢",
+  type: "orgchart",
+  category: "orgchart",
+  nodes: [
+    orgNode("ceo", "CEO", 0, 0, 0),
+    orgNode("cto", "CTO", -300, 150, 1),
+    orgNode("cfo", "CFO", 0, 150, 1),
+    orgNode("cmo", "CMO", 300, 150, 1),
+    orgNode("eng1", "Engenheiro Sr.", -400, 310, 2),
+    orgNode("eng2", "Engenheiro Jr.", -200, 310, 2),
+    orgNode("fin1", "Analista Financeiro", -100, 310, 2),
+    orgNode("fin2", "Contador", 100, 310, 2),
+    orgNode("mkt1", "Designer", 200, 310, 2),
+    orgNode("mkt2", "Analista de Marketing", 400, 310, 2),
+  ],
+  edges: [
+    flowEdge("e-ceo-cto", "ceo", "cto"),
+    flowEdge("e-ceo-cfo", "ceo", "cfo"),
+    flowEdge("e-ceo-cmo", "ceo", "cmo"),
+    flowEdge("e-cto-eng1", "cto", "eng1"),
+    flowEdge("e-cto-eng2", "cto", "eng2"),
+    flowEdge("e-cfo-fin1", "cfo", "fin1"),
+    flowEdge("e-cfo-fin2", "cfo", "fin2"),
+    flowEdge("e-cmo-mkt1", "cmo", "mkt1"),
+    flowEdge("e-cmo-mkt2", "cmo", "mkt2"),
+  ],
+};
+
+// ─── Template: Fluxograma ─────────────────────────────────────────────────────
+
+function flowNode(id: string, label: string, x: number, y: number, depth: number, shape: string): Node {
+  return {
+    id,
+    type: "mindmap",
+    position: { x, y },
+    data: { label, depth, shape, isRoot: depth === 0 },
+    style: buildNodeStyle("mindmap", depth === 0, depth),
+  };
+}
+
+const flowTemplate: DiagramTemplate = {
+  id: "flow-blank",
+  name: "Fluxograma",
+  description: "Processos e tomadas de decisão.",
+  icon: "🔄",
+  type: "flowchart",
+  category: "flowchart",
+  nodes: [
+    flowNode("start", "Início", 0, 0, 0, "oval"),
+    flowNode("process1", "Processar dados", 0, 130, 1, "rectangle"),
+    flowNode("decision", "Válido?", 0, 260, 1, "diamond"),
+    flowNode("yes-process", "Salvar resultado", -150, 390, 2, "rectangle"),
+    flowNode("no-process", "Corrigir erro", 150, 390, 2, "rectangle"),
+    flowNode("end", "Fim", 0, 520, 2, "oval"),
+  ],
+  edges: [
+    flowEdge("e-start-p1", "start", "process1"),
+    flowEdge("e-p1-dec", "process1", "decision"),
+    flowEdge("e-dec-yes", "decision", "yes-process"),
+    flowEdge("e-dec-no", "decision", "no-process"),
+    flowEdge("e-yes-end", "yes-process", "end"),
+    flowEdge("e-no-end", "no-process", "end"),
+  ],
+};
+
 // ─── All templates ─────────────────────────────────────────────────────────────
 
 export const allTemplates: DiagramTemplate[] = [
@@ -242,6 +327,8 @@ export const allTemplates: DiagramTemplate[] = [
   swotAnalysis,
   okrTemplate,
   empatiaMap,
+  orgTemplate,
+  flowTemplate,
 ];
 
 export function getTemplatesByType(type: string): DiagramTemplate[] {
@@ -251,8 +338,12 @@ export function getTemplatesByType(type: string): DiagramTemplate[] {
 export const templateCategories = [
   { id: "all", name: "Todos", emoji: "📁" },
   { id: "mindmap", name: "Mapa Mental", emoji: "🧠" },
+  { id: "orgchart", name: "Organograma", emoji: "🏢" },
+  { id: "flowchart", name: "Fluxograma", emoji: "🔄" },
 ] as const;
 
 export const diagramTypes = [
   { slug: "mindmap", name: "Mapa Mental", icon: "🧠", description: "Crie ideias que se organizam radialmente." },
+  { slug: "orgchart", name: "Organograma", icon: "🏢", description: "Hierarquia organizacional vertical." },
+  { slug: "flowchart", name: "Fluxograma", icon: "🔄", description: "Processos e tomadas de decisão." },
 ] as const;

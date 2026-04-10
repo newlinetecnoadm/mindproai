@@ -13,7 +13,7 @@ import {
 import {
   Plus, Brain, Trash2, Clock, GitBranch, Users, Timer, Link2, LayoutGrid,
   Search, SlidersHorizontal, Share2, FolderPlus, ChevronDown, ChevronRight,
-  Pencil, AlertTriangle, GripVertical,
+  Pencil, AlertTriangle, GripVertical, Building2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,10 +31,14 @@ import { cn } from "@/lib/utils";
 
 const typeIcons: Record<string, React.ReactNode> = {
   mindmap: <Brain className="w-5 h-5 text-primary/70" />,
+  orgchart: <Building2 className="w-5 h-5 text-primary/70" />,
+  flowchart: <GitBranch className="w-5 h-5 text-primary/70" />,
 };
 
 const typeLabels: Record<string, string> = {
   mindmap: "Mapa Mental",
+  orgchart: "Organograma",
+  flowchart: "Fluxograma",
 };
 
 type SortOption = "updated" | "created" | "name";
@@ -447,6 +451,8 @@ const DiagramList = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos os tipos</SelectItem>
                   <SelectItem value="mindmap">Mapa Mental</SelectItem>
+                  <SelectItem value="orgchart">Organograma</SelectItem>
+                  <SelectItem value="flowchart">Fluxograma</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
@@ -547,7 +553,7 @@ const DiagramList = () => {
                         wsDiagrams.length === 0 ? (
                           <p className="text-xs text-muted-foreground ml-6 sm:ml-6">Nenhum diagrama neste workspace</p>
                         ) : (
-                          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-0 sm:ml-6">
+                          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-0 sm:ml-6 max-w-4xl">
                             {wsDiagrams.map((d: any) => renderDiagramCard(d, true))}
                           </StaggerContainer>
                         )
@@ -560,7 +566,7 @@ const DiagramList = () => {
                 {diagramsByWs.unassigned.length > 0 && (
                   <div className="space-y-3">
                     <h2 className="text-sm font-semibold text-foreground/80">Sem workspace</h2>
-                    <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-4xl">
                       {diagramsByWs.unassigned.map((d: any) => renderDiagramCard(d, true))}
                     </StaggerContainer>
                   </div>
@@ -576,7 +582,7 @@ const DiagramList = () => {
                   <h2 className="text-sm font-semibold text-foreground/80">Compartilhados comigo</h2>
                   <span className="text-xs text-muted-foreground">{sharedDiagrams.length}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-4xl">
                   {sharedDiagrams.map((d: any) => renderDiagramCard(d, false))}
                 </div>
               </div>
