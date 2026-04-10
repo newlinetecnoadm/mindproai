@@ -12,14 +12,14 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
     "elk.algorithm": "layered",
     "elk.direction": direction,
     // Espaço horizontal entre camadas (root→depth1, depth1→depth2, etc.)
-    // Maior = mais distância horizontal, criando o "leque" do mapa mental
-    "elk.layered.spacing.nodeNodeBetweenLayers": "120",
-    // Espaço vertical entre irmãos — deve ser grande o bastante para sub-árvores não sobreporem
-    "elk.spacing.nodeNode": "34",
-    // CENTER: filhos centrados verticalmente ao redor do pai (resolve número ímpar)
-    "elk.layered.nodePlacement.strategy": "SIMPLE",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "110",
+    // Espaço vertical entre irmãos
+    "elk.spacing.nodeNode": "28",
+    // BRANDES_KOEPF + BALANCED: centra filhos ao redor do pai (evita filhos
+    // "vagando" para longe do nó pai como acontece com SIMPLE)
+    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
-    "elk.alignment": "CENTER",
+    // LAYER_SWEEP minimiza cruzamentos sem descentrar os nós
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
     "elk.edgeRouting": "SPLINES",
     "elk.padding": "[top=20, left=20, bottom=20, right=20]",

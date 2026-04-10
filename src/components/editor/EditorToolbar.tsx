@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, Diamond, StickyNote, Bot, List, Network } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, List, Network, FileCode2, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -86,6 +86,8 @@ interface EditorToolbarProps {
   onRedo: () => void;
   onExportPng: () => void;
   onExportPdf: () => void;
+  onExportSvg: () => void;
+  onExportMarkdown: () => void;
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
   onEdgeTypeChange?: (type: string) => void;
@@ -119,7 +121,7 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
 
   const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onUndo, onRedo, onExportPng, onExportPdf,
+  onUndo, onRedo, onExportPng, onExportPdf, onExportSvg, onExportMarkdown,
   onThemeChange, onReLayout, onAddIndependentNode, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
   userRole = "viewer",
@@ -278,6 +280,15 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
             {!canExportPdf && (
               <span className="ml-auto text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">PRO</span>
             )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onExportSvg}>
+            <FileCode2 className="w-3.5 h-3.5 mr-2" />
+            Exportar SVG
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onExportMarkdown}>
+            <FileType className="w-3.5 h-3.5 mr-2" />
+            Exportar Markdown
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

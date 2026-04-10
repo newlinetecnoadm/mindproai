@@ -186,6 +186,10 @@ function MindMapEdgeComponent(props: EdgeProps) {
     (style?.stroke as string | undefined) ??
     "#94a3b8";
 
+  // Extrai animações do tema (_animation, _dashArray) — mesmo mecanismo
+  // dos outros edge types, agora aplicado nativamente ao MindMapEdge
+  const animStyle = getAnimationStyle(style);
+
   return (
     <path
       id={id}
@@ -194,7 +198,14 @@ function MindMapEdgeComponent(props: EdgeProps) {
       stroke={branchColor}
       strokeWidth={2}
       strokeLinecap="round"
-      style={{ transition: "d 0.25s cubic-bezier(0.4,0,0.2,1), stroke 0.2s ease" }}
+      style={{
+        // currentColor resolve para branchColor nos keyframes de glow/neon
+        color: branchColor,
+        strokeDasharray: animStyle.strokeDasharray as string | undefined,
+        animation: animStyle.animation as string | undefined,
+        filter: (animStyle as any).filter as string | undefined,
+        transition: "d 0.25s cubic-bezier(0.4,0,0.2,1), stroke 0.2s ease",
+      }}
     />
   );
 }
