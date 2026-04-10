@@ -70,6 +70,8 @@ type MindMapStore = {
   copySelection: (nodeIds: string[]) => void;
   pasteSelection: () => void;
   setDiagramType: (type: string) => void;
+  updateEdgeData: (edgeId: string, data: Record<string, unknown>) => void;
+  addSketchEdge: (source: string, target: string, sourceHandle?: string, targetHandle?: string) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -559,5 +561,32 @@ export const useMindMapStore = create<MindMapStore>()(
     setVisible: (nodes, edges) => set({ visibleNodes: nodes, visibleEdges: edges }),
     setIsLayouting: (v) => set({ isLayouting: v }),
     setDiagramType: (type) => set({ diagramType: type }),
+
+    updateEdgeData: (edgeId, data) => {
+      set((state) => ({
+        allEdges: state.allEdges.map((e) =>
+          e.id === edgeId ? { ...e, data: { ...(e.data ?? {}), ...data } } : e
+        ),
+        visibleEdges: state.visibleEdges.map((e) =>
+          e.id === edgeId ? { ...e, data: { ...(e.data ?? {}), ...data } } : e
+        ),
+      }));
+    },
+
+    addSketchEdge: (source, target, sourceHandle, targetHandle) => {
+      const newEdge: Edge = {
+        id: `sketch-${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        source,
+        target,
+        ...(sourceHandle ? { sourceHandle } : {}),
+        ...(targetHandle ? { targetHandle } : {}),
+        type: "sketch",
+        data: { color: "#22c55e", lineType: "dashed", markerEnd: "open-arrow", markerStart: "none" },
+      };
+      set((state) => ({
+        allEdges: [...state.allEdges, newEdge],
+        visibleEdges: [...state.visibleEdges, newEdge],
+      }));
+    },
   }))
 );

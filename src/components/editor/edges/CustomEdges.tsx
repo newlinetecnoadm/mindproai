@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import {
   BaseEdge,
   getBezierPath,
@@ -6,6 +6,7 @@ import {
   getStraightPath,
   Position,
   useInternalNode,
+  useReactFlow,
   MarkerType,
   type EdgeProps,
 } from "@xyflow/react";
@@ -309,65 +310,123 @@ function SquareMindMapEdgeComponent(props: EdgeProps) {
 }
 export const SquareMindMapEdge = memo(SquareMindMapEdgeComponent);
 
-// ── Sketch Edge (manual connector — dashed + arrow, hand-drawn feel) ─────────
-// Used for user-created cross-links. Uses BaseEdge with a dashed stroke and
-// React Flow's built-in marker for the arrowhead (avoids SVG defs-in-g issues).
+// ── Sketch Edge (manual connector — dashed + moveable control point) ─────────
 
 function SketchEdgeComponent(props: EdgeProps) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, selected } = props;
+  const { id, sourceX, sourceY, targetX, targetY, selected, data } = props;
+  const { setEdges, screenToFlowPosition } = useReactFlow();
 
-  const [edgePath] = getBezierPath({
-    sourceX, sourceY, sourcePosition,
-    targetX, targetY, targetPosition,
-    curvature: 0.25,
-  });
+  const color: string = (data as any)?.color ?? "#22c55e";
+  const lineType: string = (data as any)?.lineType ?? "dashed";
+  const markerEndType: string = (data as any)?.markerEnd ?? "open-arrow";
+  const markerStartType: string = (data as any)?.markerStart ?? "none";
 
-  const color = (style as any)?.stroke || "#6b7280";
-  const strokeWidth = selected ? 2 : 1.5;
+  // Control point defaults to midpoint raised above the line
+  const cpX: number = (data as any)?.cpX ?? (sourceX + targetX) / 2;
+  const cpY: number = (data as any)?.cpY ?? (sourceY + targetY) / 2 - Math.abs(targetX - sourceX) * 0.15 - 20;
 
-  const edgeStyle: React.CSSProperties = {
-    stroke: color,
-    strokeWidth,
-    strokeDasharray: "7 4",
-    strokeLinecap: "round",
-    opacity: selected ? 1 : 0.8,
-    transition: "opacity 0.15s ease, stroke-width 0.15s ease",
-  };
+  const edgePath = `M ${sourceX} ${sourceY} Q ${cpX} ${cpY} ${targetX} ${targetY}`;
+
+  const strokeDasharray =
+    lineType === "dashed" ? "7 4" :
+    lineType === "dotted" ? "2 4" :
+    undefined;
+
+  const endMarkerId = `sk-end-${id}`;
+  const startMarkerId = `sk-start-${id}`;
+
+  // Drag control point using pointer events + screenToFlowPosition
+  const onCpPointerDown = useCallback((e: React.PointerEvent<SVGCircleElement>) => {
+    e.stopPropagation();
+    const startScreen = { x: e.clientX, y: e.clientY };
+    const startFlow = screenToFlowPosition(startScreen);
+    const startCp = { x: cpX, y: cpY };
+
+    const onMove = (ev: PointerEvent) => {
+      const curFlow = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
+      const newCpX = startCp.x + (curFlow.x - startFlow.x);
+      const newCpY = startCp.y + (curFlow.y - startFlow.y);
+      setEdges((eds) =>
+        eds.map((edge) =>
+          edge.id === id
+            ? { ...edge, data: { ...(edge.data ?? {}), cpX: newCpX, cpY: newCpY } }
+            : edge
+        )
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, [id, cpX, cpY, setEdges, screenToFlowPosition]);
 
   return (
     <g>
-      {/* Wide invisible hit area so the dashed line is easy to click/select */}
+      <defs>
+        {/* End markers */}
+        {markerEndType === "arrow" && (
+          <marker id={endMarkerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        )}
+        {markerEndType === "open-arrow" && (
+          <marker id={endMarkerId} viewBox="0 -4 10 8" refX="8" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+            <polyline points="0,-3.5 8,0 0,3.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+          </marker>
+        )}
+        {markerEndType === "circle" && (
+          <marker id={endMarkerId} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <circle cx="5" cy="5" r="4" fill={color} />
+          </marker>
+        )}
+        {/* Start markers */}
+        {markerStartType === "arrow" && (
+          <marker id={startMarkerId} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 10 0 L 0 5 L 10 10 z" fill={color} />
+          </marker>
+        )}
+        {markerStartType === "open-arrow" && (
+          <marker id={startMarkerId} viewBox="0 -4 10 8" refX="2" refY="0" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <polyline points="10,-3.5 2,0 10,3.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+          </marker>
+        )}
+        {markerStartType === "circle" && (
+          <marker id={startMarkerId} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <circle cx="5" cy="5" r="4" fill={color} />
+          </marker>
+        )}
+      </defs>
+
+      {/* Wide invisible hit area */}
       <path d={edgePath} fill="none" stroke="transparent" strokeWidth={14} />
 
-      {/* Visible dashed line — BaseEdge handles the markerEnd SVG injection via React Flow */}
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        style={edgeStyle}
-        markerEnd={props.markerEnd}
-      />
-
-      {/* Fallback arrowhead using a small inline triangle at the end of the path */}
-      <defs>
-        <marker
-          id={`sketch-arrow-${id}`}
-          viewBox="0 -4 8 8"
-          refX="7"
-          refY="0"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <polyline points="0,-3.5 8,0 0,3.5" fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-        </marker>
-      </defs>
+      {/* Visible dashed line */}
       <path
+        id={id}
         d={edgePath}
         fill="none"
-        stroke="transparent"
-        strokeWidth={0}
-        markerEnd={`url(#sketch-arrow-${id})`}
+        stroke={color}
+        strokeWidth={selected ? 2 : 1.5}
+        strokeDasharray={strokeDasharray}
+        strokeLinecap="round"
+        opacity={selected ? 1 : 0.82}
+        markerEnd={markerEndType !== "none" ? `url(#${endMarkerId})` : undefined}
+        markerStart={markerStartType !== "none" ? `url(#${startMarkerId})` : undefined}
+        style={{ transition: "opacity 0.15s ease, stroke-width 0.15s ease" }}
       />
+
+      {/* Moveable control point — visible when selected */}
+      {selected && (
+        <circle
+          cx={cpX} cy={cpY} r={5}
+          fill={color} stroke="white" strokeWidth={2}
+          style={{ cursor: "move" }}
+          className="nodrag nopan"
+          onPointerDown={onCpPointerDown}
+        />
+      )}
     </g>
   );
 }

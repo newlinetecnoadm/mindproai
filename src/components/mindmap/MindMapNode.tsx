@@ -101,7 +101,7 @@ function getNodeStyle(
       boxShadow: selected ? `0 2px 0 0 ${color}` : "none",
       transition: "box-shadow 0.15s ease",
       cursor: "default",
-      width: "fit-content",
+      maxWidth: 220,
     };
   }
 
@@ -112,7 +112,7 @@ function getNodeStyle(
     border: (shape === "rectangle" || shape === "oval") ? `1px solid ${color}40` : undefined,
     borderRadius: shape ? radius : undefined,
     cursor: "default",
-    width: "fit-content",
+    maxWidth: 200,
   };
 }
 
@@ -123,6 +123,7 @@ function getTextStyle(
   side?: string,
   isDark?: boolean,
   flowStyle?: boolean,
+  shape?: NodeShape,
 ): React.CSSProperties {
   const textAlign = side === "left" ? "right" : "left";
 
@@ -135,6 +136,19 @@ function getTextStyle(
       userSelect: "none",
       whiteSpace: "pre-wrap",
       maxWidth: 240,
+      outline: "none",
+      textAlign: "center",
+    };
+  }
+
+  // Diamond nodes: always use branch color text for readability (light bg)
+  if (shape === "diamond") {
+    return {
+      fontSize: "0.85rem",
+      fontWeight: 600,
+      color: branchColor ?? "#374151",
+      userSelect: "none",
+      whiteSpace: "nowrap",
       outline: "none",
       textAlign: "center",
     };
@@ -172,7 +186,9 @@ function getTextStyle(
       fontWeight: 500,
       color: isDark ? "rgba(255,255,255,0.88)" : "var(--foreground, #1e293b)",
       userSelect: "none",
-      whiteSpace: "nowrap",
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-word",
+      maxWidth: 180,
       outline: "none",
       textAlign,
     };
@@ -183,7 +199,9 @@ function getTextStyle(
     fontWeight: 400,
     color: isDark ? "rgba(255,255,255,0.6)" : "var(--muted-foreground, #64748b)",
     userSelect: "none",
-    whiteSpace: "nowrap",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    maxWidth: 160,
     outline: "none",
     textAlign,
   };
@@ -286,7 +304,7 @@ function MindMapNodeComponent({
   const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
 
   const wrapperStyle = getNodeStyle(depth, isRoot, side, branchColor, !!selected, shape, isDark, isFlowDiagram && !isRoot);
-  const textStyle = getTextStyle(depth, isRoot, branchColor, side, isDark, isFlowDiagram && !isRoot);
+  const textStyle = getTextStyle(depth, isRoot, branchColor, side, isDark, isFlowDiagram && !isRoot, shape);
 
   // Handles direction: flow diagrams use TOP/BOTTOM, mindmap uses LEFT/RIGHT
   const sourcePos = isFlowDiagram
@@ -418,18 +436,26 @@ function MindMapNodeComponent({
         </div>
       </NodeToolbar>
 
+      {/* Sketch connection handles — 4 sides, hidden until hover via CSS */}
+      <Handle type="source" position={Position.Top}    id="sk-top"    isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, top: -4,    opacity: 0, zIndex: 10 }} />
+      <Handle type="source" position={Position.Bottom} id="sk-bottom" isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, bottom: -4, opacity: 0, zIndex: 10 }} />
+      <Handle type="source" position={Position.Left}   id="sk-left"   isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, left: -4,   opacity: 0, zIndex: 10 }} />
+      <Handle type="source" position={Position.Right}  id="sk-right"  isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, right: -4,  opacity: 0, zIndex: 10 }} />
+      <Handle type="target" position={Position.Top}    id="sk-t-top"    isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, top: -4,    opacity: 0, zIndex: 10 }} />
+      <Handle type="target" position={Position.Bottom} id="sk-t-bottom" isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, bottom: -4, opacity: 0, zIndex: 10 }} />
+      <Handle type="target" position={Position.Left}   id="sk-t-left"   isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, left: -4,   opacity: 0, zIndex: 10 }} />
+      <Handle type="target" position={Position.Right}  id="sk-t-right"  isConnectable={isConnectable} style={{ background: "transparent", border: "2px solid #94a3b8", width: 8, height: 8, right: -4,  opacity: 0, zIndex: 10 }} />
+
       {/* Handles */}
       {isFlowDiagram ? (
         <>
-          {/* Flow diagram: root only has source bottom; non-root has target top + optional source bottom */}
+          {/* Flow diagram: root only has source bottom; non-root has target top + source bottom (always) */}
           {isRoot ? (
             <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8", opacity: 0 }} />
           ) : (
             <>
               <Handle type="target" position={Position.Top} id="t-top" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
-              {hasChildren && (
-                <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
-              )}
+              <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
             </>
           )}
         </>
@@ -463,7 +489,10 @@ function MindMapNodeComponent({
         )}
 
         {editing ? (
-          <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1.5"
+            style={{ justifyContent: isFlowDiagram || isRoot ? "center" : side === "left" ? "flex-end" : "flex-start" }}
+          >
             {icon && icon !== "∅" && (
               <span style={{ fontSize: depth === 0 ? "1.1rem" : "0.95rem", lineHeight: 1, flexShrink: 0 }}>{icon}</span>
             )}
@@ -479,7 +508,10 @@ function MindMapNodeComponent({
             />
           </div>
         ) : (
-          <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1.5"
+            style={{ justifyContent: isFlowDiagram || isRoot ? "center" : side === "left" ? "flex-end" : "flex-start" }}
+          >
             {icon && icon !== "∅" && (
               <span style={{ fontSize: depth === 0 ? "1.1rem" : "0.95rem", lineHeight: 1, flexShrink: 0 }}>{icon}</span>
             )}

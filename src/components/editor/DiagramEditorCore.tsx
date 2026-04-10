@@ -158,6 +158,8 @@ function DiagramEditorInner({
   const pasteSelection = useMindMapStore(s => s.pasteSelection);
   const pendingEditNodeId = useMindMapStore(s => s.pendingEditNodeId);
   const clearPendingEdit = useMindMapStore(s => s.clearPendingEdit);
+  const updateEdgeData = useMindMapStore(s => s.updateEdgeData);
+  const addSketchEdge = useMindMapStore(s => s.addSketchEdge);
 
   useElkLayout();
 
@@ -376,17 +378,41 @@ function DiagramEditorInner({
 
   // ─── Edge actions ─────────────────────────────────────────────────────────
   const onConnect = useCallback((params: Connection) => {
+    // sk-* handles → create a sketch (draft arrow) edge
+    if (params.sourceHandle?.startsWith("sk-") || params.targetHandle?.startsWith("sk-")) {
+      addSketchEdge(
+        params.source!,
+        params.target!,
+        params.sourceHandle ?? undefined,
+        params.targetHandle ?? undefined,
+      );
+      triggerSave();
+      return;
+    }
+    // Default: structural edge
     const { allNodes, allEdges } = useMindMapStore.getState();
     const nextEdges = addEdge({ ...params, type: "sketch", data: { isCustom: true } }, allEdges);
     setNodesAndEdges(allNodes, nextEdges);
     triggerSave();
-  }, [setNodesAndEdges, triggerSave]);
+  }, [setNodesAndEdges, addSketchEdge, triggerSave]);
 
   const handleEdgeDelete = useCallback((edgeId: string) => {
     const { allNodes, allEdges } = useMindMapStore.getState();
     setNodesAndEdges(allNodes, allEdges.filter(e => e.id !== edgeId));
     setSelectedEdgeId(null);
   }, [setNodesAndEdges]);
+
+  const handleEdgeDataChange = useCallback((edgeId: string, data: Record<string, unknown>) => {
+    if (data._swapDirection) {
+      const { allNodes, allEdges } = useMindMapStore.getState();
+      setNodesAndEdges(
+        allNodes,
+        allEdges.map(e => e.id === edgeId ? { ...e, source: e.target, target: e.source } : e)
+      );
+      return;
+    }
+    updateEdgeData(edgeId, data);
+  }, [updateEdgeData, setNodesAndEdges]);
 
   // ─── Auto-edit on new node ─────────────────────────────────────────────────
   useEffect(() => {
@@ -625,7 +651,13 @@ function DiagramEditorInner({
       <EdgeFloatingToolbar
         selectedEdge={visibleEdges.find(e => e.id === selectedEdgeId) || null}
         onDelete={handleEdgeDelete}
-        onColorChange={() => {}}
+        onColorChange={(edgeId, color) => {
+          const { allNodes, allEdges } = useMindMapStore.getState();
+          setNodesAndEdges(allNodes, allEdges.map(e =>
+            e.id === edgeId ? { ...e, style: { ...e.style, stroke: color } } : e
+          ));
+        }}
+        onEdgeDataChange={handleEdgeDataChange}
       />
 
       {viewMode === "graph" ? (
