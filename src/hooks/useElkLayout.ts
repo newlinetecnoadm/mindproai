@@ -32,12 +32,12 @@ function elkOptionsDown() {
   return {
     "elk.algorithm": "layered",
     "elk.direction": "DOWN",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "80",
-    "elk.spacing.nodeNode": "50",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+    "elk.spacing.nodeNode": "40",
     "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    "elk.edgeRouting": "ORTHOGONAL",
+    "elk.edgeRouting": "SPLINES",
     "elk.padding": "[top=40, left=60, bottom=40, right=60]",
   };
 }

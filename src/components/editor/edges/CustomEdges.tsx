@@ -378,10 +378,13 @@ export const SketchEdge = memo(SketchEdgeComponent);
 function FlowEdgeComponent(props: EdgeProps) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
 
+  // Force vertical routing: source exits bottom, target enters top
   const [edgePath] = getSmoothStepPath({
-    sourceX, sourceY, sourcePosition,
-    targetX, targetY, targetPosition,
-    borderRadius: 6,
+    sourceX, sourceY,
+    sourcePosition: Position.Bottom,
+    targetX, targetY,
+    targetPosition: Position.Top,
+    borderRadius: 8,
   });
 
   const branchColor =
@@ -397,11 +400,11 @@ function FlowEdgeComponent(props: EdgeProps) {
         <marker
           id={`flow-arrow-${id}`}
           viewBox="0 0 10 10"
-          refX="9"
+          refX="8"
           refY="5"
-          markerWidth="16"
-          markerHeight="16"
-          orient="auto-start-reverse"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill={branchColor} />
         </marker>
