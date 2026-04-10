@@ -317,7 +317,13 @@ export const useMindMapStore = create<MindMapStore>()(
 
     initDiagram: (nodes, edges) => {
       const { currentThemeEdgeColor, currentIsDark } = get();
-      const { nodes: enrichedNodes, edges: enrichedEdges } = inferBranchSides(nodes, edges, currentThemeEdgeColor, currentIsDark);
+      // Normalize flow edges that lack sourceHandle/targetHandle (saved before the fix)
+      const normalizedEdges = edges.map((e) =>
+        e.type === "flow" && !e.sourceHandle
+          ? { ...e, sourceHandle: "s-bottom", targetHandle: "t-top" }
+          : e
+      );
+      const { nodes: enrichedNodes, edges: enrichedEdges } = inferBranchSides(nodes, normalizedEdges, currentThemeEdgeColor, currentIsDark);
       const { visibleNodes, visibleEdges } = computeVisible(enrichedNodes, enrichedEdges, new Set());
       set({
         allNodes: enrichedNodes,

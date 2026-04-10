@@ -52,8 +52,9 @@ export function useElkLayout() {
   const diagramType = useMindMapStore((s) => s.diagramType);
   const isRunning = useRef(false);
 
-  // Chave de estrutura — muda quando collapse/expand ou nós são adicionados/removidos
-  const structureKey = `${visibleNodes.length}|${visibleEdges.length}|${useMindMapStore.getState().collapsedIds.size}`;
+  // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
+  const structuralEdgeCount = visibleEdges.filter((e) => e.type !== "sketch").length;
+  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();

@@ -221,7 +221,10 @@ function DiagramEditorInner({
     setDraggingDescendantIds(new Set());
 
     if ((node.data as any)?.isRoot) return;
-    const currentEdge = allEdges.find(e => e.target === node.id && e.type === "mindmap");
+    const { diagramType } = useMindMapStore.getState();
+    const isFlow = diagramType === "orgchart" || diagramType === "flowchart";
+    const edgeType = isFlow ? "flow" : "mindmap";
+    const currentEdge = allEdges.find(e => e.target === node.id && e.type === edgeType);
 
     const newParentId = dropTargetId;
     if (!newParentId) {
@@ -231,7 +234,14 @@ function DiagramEditorInner({
 
     if (newParentId !== currentEdge?.source) {
       const nextEdges = allEdges.filter(e => e.id !== currentEdge?.id);
-      nextEdges.push({ id: `e-${newParentId}-${node.id}`, source: newParentId, target: node.id, type: "mindmap" });
+      const newEdge: any = {
+        id: `e-${newParentId}-${node.id}`,
+        source: newParentId,
+        target: node.id,
+        type: edgeType,
+        ...(isFlow ? { sourceHandle: "s-bottom", targetHandle: "t-top" } : {}),
+      };
+      nextEdges.push(newEdge);
       setNodesAndEdges([...allNodes], nextEdges);
       toast.info("Nó conectado a nova ramificação");
     }

@@ -415,14 +415,15 @@ function SketchEdgeComponent(props: EdgeProps) {
         style={{ transition: "opacity 0.15s ease, stroke-width 0.15s ease" }}
       />
 
-      {/* Moveable control point — visible when selected */}
+      {/* Moveable control point — single circle: visible = hit area */}
       {selected && (
-        <g className="nodrag nopan" style={{ cursor: "move" }} onPointerDown={onCpPointerDown}>
-          {/* Large invisible hit area */}
-          <circle cx={cpX} cy={cpY} r={16} fill="transparent" />
-          {/* Visible dot */}
-          <circle cx={cpX} cy={cpY} r={4} fill={color} stroke="white" strokeWidth={1.5} />
-        </g>
+        <circle
+          cx={cpX} cy={cpY} r={7}
+          fill={color} stroke="white" strokeWidth={2}
+          style={{ cursor: "move" }}
+          className="nodrag nopan"
+          onPointerDown={onCpPointerDown}
+        />
       )}
     </g>
   );
