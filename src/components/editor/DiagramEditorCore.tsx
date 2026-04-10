@@ -391,10 +391,22 @@ function DiagramEditorInner({
       triggerSave();
       return;
     }
-    // Default: structural edge
-    const { allNodes, allEdges } = useMindMapStore.getState();
-    const nextEdges = addEdge({ ...params, type: "sketch", data: { isCustom: true } }, allEdges);
-    setNodesAndEdges(allNodes, nextEdges);
+    const { allNodes, allEdges, diagramType } = useMindMapStore.getState();
+    if (diagramType === "orgchart" || diagramType === "flowchart") {
+      // Structural flow connection — allow multiple targets (for convergent flows like → Fim)
+      const newEdge = {
+        ...params,
+        id: `e-${params.source}-${params.target}-${Date.now()}`,
+        type: "flow",
+        sourceHandle: params.sourceHandle ?? "s-bottom",
+        targetHandle: params.targetHandle ?? "t-top",
+        data: {},
+      };
+      setNodesAndEdges(allNodes, [...allEdges, newEdge as any]);
+    } else {
+      const nextEdges = addEdge({ ...params, type: "sketch", data: { isCustom: true } }, allEdges);
+      setNodesAndEdges(allNodes, nextEdges);
+    }
     triggerSave();
   }, [setNodesAndEdges, addSketchEdge, triggerSave]);
 
@@ -592,9 +604,16 @@ function DiagramEditorInner({
         return;
       }
 
-      // ── Escape: desselecionar ─────────────────────────────────────────────
-      if (e.key === "Escape" && selectedNode) {
-        onNodesChange([{ type: "select", id: selectedNode.id, selected: false }]);
+      // ── Escape: cancelar modo rascunho / desselecionar ───────────────────
+      if (e.key === "Escape") {
+        const { pendingSketchSource } = useMindMapStore.getState();
+        if (pendingSketchSource) {
+          useMindMapStore.getState().setPendingSketchSource(null);
+          return;
+        }
+        if (selectedNode) {
+          onNodesChange([{ type: "select", id: selectedNode.id, selected: false }]);
+        }
       }
     };
 
@@ -654,6 +673,12 @@ function DiagramEditorInner({
                 Salvando...
               </div>
             )}
+            {pendingSketchSource && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-green-500 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none select-none">
+                <span className="w-2 h-2 rounded-full bg-white/60 animate-pulse" />
+                Clique em outro nó para conectar a seta rascunho · Esc para cancelar
+              </div>
+            )}
           </>
         );
       })()}
@@ -673,12 +698,16 @@ function DiagramEditorInner({
       {viewMode === "graph" ? (
         <ReactFlow
           nodes={visibleNodes.map(n => {
-            if (!draggingNodeId) return n;
+            const isDiamond = (n.data as any)?.shape === "diamond";
+            const baseStyle = isDiamond
+              ? { ...n.style, background: "transparent", border: "none", boxShadow: "none" }
+              : n.style;
+            if (!draggingNodeId) return { ...n, style: baseStyle };
             const isDragged = n.id === draggingNodeId || draggingDescendantIds.has(n.id);
             return {
               ...n,
               style: {
-                ...n.style,
+                ...baseStyle,
                 opacity: isDragged ? 0.45 : 1,
                 ...(n.id === dropTargetId ? { outline: "2px dashed #E9853A", outlineOffset: "4px", borderRadius: 8 } : {})
               }

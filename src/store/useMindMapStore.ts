@@ -495,6 +495,7 @@ export const useMindMapStore = create<MindMapStore>()(
         source: parentId,
         target: newId,
         type: isFlowDiagram ? "flow" : "mindmap",
+        ...(isFlowDiagram ? { sourceHandle: "s-bottom", targetHandle: "t-top" } : {}),
         data: { branchColor, side: isFlowDiagram ? undefined : side },
       };
 

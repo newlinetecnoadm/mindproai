@@ -1,5 +1,4 @@
 import type { Node, Edge } from "@xyflow/react";
-import { buildNodeStyle } from "@/lib/nodeStyles";
 
 export interface DiagramTemplate {
   id: string;
@@ -15,13 +14,12 @@ export interface DiagramTemplate {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function n(id: string, label: string, x: number, y: number, opts: Partial<Node["data"]> = {}): Node {
-  const isRoot = !!(opts as any).isRoot;
   return {
     id,
     type: "mindmap",
     position: { x, y },
     data: { label, ...opts },
-    style: buildNodeStyle("mindmap", isRoot, (opts as any).depth ?? 0),
+    style: { background: "transparent", border: "none", padding: 0, boxShadow: "none" },
   };
 }
 
@@ -241,12 +239,12 @@ function orgNode(id: string, label: string, x: number, y: number, depth: number)
     type: "mindmap",
     position: { x, y },
     data: { label, depth, shape: "rectangle", isRoot: depth === 0 },
-    style: buildNodeStyle("mindmap", depth === 0, depth),
+    style: { background: "transparent", border: "none", padding: 0, boxShadow: "none" },
   };
 }
 
 function flowEdge(id: string, source: string, target: string): Edge {
-  return { id, source, target, type: "flow" };
+  return { id, source, target, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" };
 }
 
 const orgTemplate: DiagramTemplate = {
@@ -289,7 +287,7 @@ function flowNode(id: string, label: string, x: number, y: number, depth: number
     type: "mindmap",
     position: { x, y },
     data: { label, depth, shape, isRoot: depth === 0 },
-    style: buildNodeStyle("mindmap", depth === 0, depth),
+    style: { background: "transparent", border: "none", padding: 0, boxShadow: "none" },
   };
 }
 
