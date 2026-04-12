@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, CreditCard, BarChart3, Settings, ArrowLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import logoHorizontal from "@/assets/logo-horizontal-color-2.png";
-import logoIcon from "@/assets/logo-icon-color-2.png";
+import logoHorizontal from "@/assets/logo-horizontal-color.png";
+import logoIcon from "@/assets/logo-icon-full.png";
 
 const navItems = [
   { icon: BarChart3, label: "Métricas", path: "/admin" },

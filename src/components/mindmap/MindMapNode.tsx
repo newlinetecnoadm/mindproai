@@ -5,6 +5,7 @@ import {
 } from "@xyflow/react";
 import { ChevronRight, ChevronDown, Plus, Trash2, StickyNote, Smile, Square, Circle, RectangleHorizontal, PenLine } from "lucide-react";
 import { useMindMapStore, type MindMapNodeData, type NodeShape } from "@/store/useMindMapStore";
+import { useUserRole } from "@/components/editor/UserRoleContext";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -215,6 +216,8 @@ function MindMapNodeComponent({
   isConnectable,
 }: NodeProps & { data: MindMapNodeData }) {
   const nodeId = useNodeId()!;
+  const userRole = useUserRole();
+  const isReadOnly = userRole === "viewer";
   const toggleCollapse = useMindMapStore((s) => s.toggleCollapse);
   const updateNodeLabel = useMindMapStore((s) => s.updateNodeLabel);
   const updateNodeNotes = useMindMapStore((s) => s.updateNodeNotes);
@@ -253,6 +256,7 @@ function MindMapNodeComponent({
 
   useEffect(() => {
     const handler = (e: Event) => {
+      if (isReadOnly) return;
       const { nodeId: targetId, replaceText, char } = (e as CustomEvent).detail ?? {};
       if (targetId === nodeId) {
         if (replaceText) setLocalLabel(char ?? "");
@@ -261,7 +265,7 @@ function MindMapNodeComponent({
     };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
-  }, [nodeId]);
+  }, [nodeId, isReadOnly]);
 
   const commitEdit = useCallback(() => {
     setEditing(false);
@@ -323,7 +327,7 @@ function MindMapNodeComponent({
   return (
     <>
       {/* Toolbar de ações */}
-      <NodeToolbar isVisible={selected && !isRoot} position={Position.Top} offset={6}>
+      <NodeToolbar isVisible={selected && !isRoot && !isReadOnly} position={Position.Top} offset={6}>
         <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-lg px-1 py-1 shadow-lg">
           {/* Adicionar filho */}
           <button
@@ -492,7 +496,7 @@ function MindMapNodeComponent({
       {/* Nó visual */}
       <div
         style={wrapperStyle}
-        onDoubleClick={() => !editing && setEditing(true)}
+        onDoubleClick={() => !editing && !isReadOnly && setEditing(true)}
         className={cn("relative group", { "cursor-text": editing })}
       >
         {/* Indicador de nota */}

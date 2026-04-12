@@ -101,7 +101,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           "flex items-center h-16 border-b border-sidebar-border shrink-0",
           collapsed ? "justify-center px-2" : "px-5"
         )}>
-          <Logo variant={collapsed ? "icon" : "horizontal"} className={collapsed ? "h-8 w-8" : "h-7"} />
+          <Logo variant={collapsed ? "icon" : "horizontal"} className={collapsed ? "h-8 w-8" : "h-7"} forceDark />
         </div>
 
         {/* Trial banner */}
