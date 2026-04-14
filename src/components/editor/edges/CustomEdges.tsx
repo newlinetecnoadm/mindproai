@@ -260,12 +260,13 @@ function StraightEdgeComponent(props: EdgeProps) {
 }
 export const StraightEdge = memo(StraightEdgeComponent);
 
-// ── Hierarchy Edge (curved L-shape for org charts) ────────
+// ── Hierarchy Edge (straight orthogonal elbow for org charts) ────────
 
 function HierarchyEdgeComponent(props: EdgeProps) {
   const { sourceX, sourceY, targetX, targetY } = props;
   const midY = sourceY + (targetY - sourceY) * 0.5;
-  const edgePath = `M ${sourceX} ${sourceY} C ${sourceX} ${midY}, ${targetX} ${midY}, ${targetX} ${targetY}`;
+  // Orthogonal elbow: down → across → down (no curves)
+  const edgePath = `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`;
   return <BaseEdge id={props.id} path={edgePath} style={getAnimationStyle(props.style)} markerEnd={props.markerEnd} />;
 }
 export const HierarchyEdge = memo(HierarchyEdgeComponent);
@@ -435,13 +436,13 @@ export const SketchEdge = memo(SketchEdgeComponent);
 function FlowEdgeComponent(props: EdgeProps) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
 
-  // Force vertical routing: source exits bottom, target enters top
+  // Force vertical routing: source exits bottom, target enters top — straight orthogonal (no curves)
   const [edgePath] = getSmoothStepPath({
     sourceX, sourceY,
     sourcePosition: Position.Bottom,
     targetX, targetY,
     targetPosition: Position.Top,
-    borderRadius: 8,
+    borderRadius: 0,
   });
 
   const branchColor =

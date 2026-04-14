@@ -50,11 +50,14 @@ export function useElkLayout() {
   const visibleEdges = useMindMapStore((s) => s.visibleEdges);
   const visibleNodes = useMindMapStore((s) => s.visibleNodes);
   const diagramType = useMindMapStore((s) => s.diagramType);
+  const labelVersion = useMindMapStore((s) => s.labelVersion);
   const isRunning = useRef(false);
 
   // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
+  // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
   const structuralEdgeCount = visibleEdges.filter((e) => e.type !== "sketch").length;
-  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}`;
+  const isFlowLayout = diagramType === "orgchart" || diagramType === "flowchart";
+  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();
@@ -91,17 +94,31 @@ export function useElkLayout() {
           positionMap.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
         });
 
-        setNodes(
-          nodes.map((node) => {
-            const pos = positionMap.get(node.id);
-            if (!pos) return node;
-            return { ...node, position: pos };
-          })
-        );
+        const positionedNodes = nodes.map((node) => {
+          const pos = positionMap.get(node.id);
+          return pos ? { ...node, position: pos } : node;
+        });
 
-        setTimeout(() => {
-          fitView({ duration: 500, padding: 0.15 });
-        }, 80);
+        // Migrate legacy "mindmap" edges → "flow" so they render as straight orthogonal connectors
+        // Must update the store directly (not setEdges) because ReactFlow is in controlled mode
+        const store = useMindMapStore.getState();
+        const currentEdges = store.visibleEdges;
+        const hasLegacyEdges = currentEdges.some((e) => e.type !== "sketch" && e.type !== "flow");
+        if (hasLegacyEdges) {
+          const migratedEdges = currentEdges.map((e) =>
+            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" }
+          );
+          const migratedAllEdges = store.allEdges.map((e) =>
+            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" }
+          );
+          // Update both visibleNodes (with positions) + edges in a single store update
+          store.setVisible(positionedNodes, migratedEdges);
+          useMindMapStore.setState({ allEdges: migratedAllEdges });
+        } else {
+          setNodes(positionedNodes);
+        }
+
+        setTimeout(() => { fitView({ duration: 500, padding: 0.15 }); }, 80);
         return;
       }
 

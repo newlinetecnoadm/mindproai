@@ -513,8 +513,8 @@ export function rerouteDiagramEdges(
 
     if (diagramType === "mindmap") {
       handles = getMindmapHandles(srcPos, tgtPos);
-    } else if (diagramType === "orgchart") {
-      handles = { sourceHandle: "bottom", targetHandle: "top" };
+    } else if (diagramType === "orgchart" || diagramType === "flowchart") {
+      handles = { sourceHandle: "s-bottom", targetHandle: "t-top" };
     } else if (diagramType === "timeline") {
       handles = { sourceHandle: "right", targetHandle: "left" };
     } else {
@@ -523,11 +523,16 @@ export function rerouteDiagramEdges(
 
     const { sourceHandle, targetHandle } = handles;
 
+    const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
+    const edgeType = isFlowDiagram
+      ? (edge.type === "sketch" ? "sketch" : "flow")
+      : (edge.type || "smoothstep");
+
     return {
       ...edge,
       sourceHandle,
       targetHandle,
-      type: edge.type || "smoothstep",
+      type: edgeType,
     };
   });
 }

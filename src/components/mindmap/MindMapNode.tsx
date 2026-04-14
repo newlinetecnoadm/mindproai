@@ -74,7 +74,10 @@ function getNodeStyle(
       boxShadow: selected ? `0 0 0 3px ${color}40` : depth === 1 ? `0 2px 8px ${color}40` : "none",
       transition: "box-shadow 0.2s ease",
       cursor: "default",
-      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140 } : {}),
+      maxWidth: 200,
+      wordBreak: "break-word",
+      overflowWrap: "break-word",
+      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140, maxWidth: undefined } : {}),
     };
   }
 
@@ -162,7 +165,9 @@ function getTextStyle(
       color: depth === 1 ? "#ffffff" : isDark ? "rgba(255,255,255,0.88)" : "var(--foreground, #1e293b)",
       userSelect: "none",
       whiteSpace: "pre-wrap",
-      maxWidth: 220,
+      wordBreak: "break-word",
+      overflowWrap: "break-word",
+      maxWidth: 160,
       outline: "none",
       textAlign: "center",
     };
@@ -544,9 +549,8 @@ function MindMapNodeComponent({
           <button
             className="nodrag nopan absolute opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
-              [collapseButtonSide]: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
+              [isFlowDiagram ? "bottom" : collapseButtonSide]: isFlowDiagram ? "-10px" : "-12px",
+              ...(isFlowDiagram ? { left: "50%", transform: "translateX(-50%)" } : { top: "50%", transform: "translateY(-50%)" }),
               width: 18,
               height: 18,
               borderRadius: "50%",

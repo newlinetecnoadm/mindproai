@@ -45,6 +45,7 @@ type MindMapStore = {
   currentThemeEdgeColor: string | null;
   currentIsDark: boolean;
   diagramType: string;
+  labelVersion: number;
 
   initDiagram: (nodes: MindMapNode[], edges: Edge[]) => void;
   setNodesAndEdges: (nodes: MindMapNode[], edges: Edge[]) => void;
@@ -207,6 +208,7 @@ export const useMindMapStore = create<MindMapStore>()(
     currentThemeEdgeColor: null,
     currentIsDark: false,
     diagramType: "mindmap",
+    labelVersion: 0,
     pendingSketchSource: null,
 
     _pushHistory: () => {
@@ -316,13 +318,15 @@ export const useMindMapStore = create<MindMapStore>()(
     },
 
     initDiagram: (nodes, edges) => {
-      const { currentThemeEdgeColor, currentIsDark } = get();
-      // Normalize flow edges that lack sourceHandle/targetHandle (saved before the fix)
-      const normalizedEdges = edges.map((e) =>
-        e.type === "flow" && !e.sourceHandle
-          ? { ...e, sourceHandle: "s-bottom", targetHandle: "t-top" }
-          : e
-      );
+      const { currentThemeEdgeColor, currentIsDark, diagramType } = get();
+      const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
+      // Migrate edges for flow diagrams: convert "mindmap" type to "flow" and ensure handles are set
+      const normalizedEdges = edges.map((e) => {
+        if (e.type === "sketch") return e;
+        if (isFlowDiagram) return { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" };
+        if (e.type === "flow" && !e.sourceHandle) return { ...e, sourceHandle: "s-bottom", targetHandle: "t-top" };
+        return e;
+      });
       const { nodes: enrichedNodes, edges: enrichedEdges } = inferBranchSides(nodes, normalizedEdges, currentThemeEdgeColor, currentIsDark);
       const { visibleNodes, visibleEdges } = computeVisible(enrichedNodes, enrichedEdges, new Set());
       set({
@@ -387,6 +391,7 @@ export const useMindMapStore = create<MindMapStore>()(
         visibleNodes: state.visibleNodes.map((n) =>
           n.id === nodeId ? { ...n, data: { ...n.data, label } } : n
         ),
+        labelVersion: state.labelVersion + 1,
       }));
     },
 
