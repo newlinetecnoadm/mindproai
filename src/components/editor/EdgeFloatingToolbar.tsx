@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Edge } from "@xyflow/react";
 import { useReactFlow } from "@xyflow/react";
+import { useUserRole } from "@/components/editor/UserRoleContext";
 import { Trash2, ArrowRight, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -88,6 +89,8 @@ const EdgeFloatingToolbar = ({
   onEdgeDataChange,
 }: EdgeFloatingToolbarProps) => {
   const { flowToScreenPosition, getNode } = useReactFlow();
+  const userRole = useUserRole();
+  if (userRole === "viewer") return null;
 
   const position = useMemo(() => {
     if (!selectedEdge) return null;

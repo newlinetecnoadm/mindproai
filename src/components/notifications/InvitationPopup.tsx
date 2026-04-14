@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Check, X, Bell } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,17 +17,25 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export const InvitationPopup = () => {
   const { pendingInvitations, acceptInvitation, declineInvitation } = useNotifications();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [hasShownThisSession, setHasShownThisSession] = useState(false);
+  // Armazena o ID do usuário para quem o popup já foi exibido nesta sessão
+  const [shownForUserId, setShownForUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Show only once per "session" (or after a login) when pending invitations exist
-    if (pendingInvitations.length > 0 && !hasShownThisSession) {
-      setOpen(true);
-      setHasShownThisSession(true);
+    // Reset ao fazer logout
+    if (!user) {
+      setShownForUserId(null);
+      setOpen(false);
+      return;
     }
-  }, [pendingInvitations.length, hasShownThisSession]);
+    // Exibe apenas uma vez por login; reaparece se o usuário mudar
+    if (pendingInvitations.length > 0 && shownForUserId !== user.id) {
+      setOpen(true);
+      setShownForUserId(user.id);
+    }
+  }, [pendingInvitations.length, user?.id]);
 
   if (pendingInvitations.length === 0) return null;
 

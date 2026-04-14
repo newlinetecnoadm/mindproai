@@ -5,6 +5,7 @@ import {
 } from "@xyflow/react";
 import { ChevronRight, ChevronDown, Plus, Trash2, StickyNote, Smile, Square, Circle, RectangleHorizontal, PenLine } from "lucide-react";
 import { useMindMapStore, type MindMapNodeData, type NodeShape } from "@/store/useMindMapStore";
+import { useUserRole } from "@/components/editor/UserRoleContext";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -73,7 +74,10 @@ function getNodeStyle(
       boxShadow: selected ? `0 0 0 3px ${color}40` : depth === 1 ? `0 2px 8px ${color}40` : "none",
       transition: "box-shadow 0.2s ease",
       cursor: "default",
-      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140 } : {}),
+      maxWidth: 200,
+      wordBreak: "break-word",
+      overflowWrap: "break-word",
+      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140, maxWidth: undefined } : {}),
     };
   }
 
@@ -161,7 +165,9 @@ function getTextStyle(
       color: depth === 1 ? "#ffffff" : isDark ? "rgba(255,255,255,0.88)" : "var(--foreground, #1e293b)",
       userSelect: "none",
       whiteSpace: "pre-wrap",
-      maxWidth: 220,
+      wordBreak: "break-word",
+      overflowWrap: "break-word",
+      maxWidth: 160,
       outline: "none",
       textAlign: "center",
     };
@@ -215,6 +221,8 @@ function MindMapNodeComponent({
   isConnectable,
 }: NodeProps & { data: MindMapNodeData }) {
   const nodeId = useNodeId()!;
+  const userRole = useUserRole();
+  const isReadOnly = userRole === "viewer";
   const toggleCollapse = useMindMapStore((s) => s.toggleCollapse);
   const updateNodeLabel = useMindMapStore((s) => s.updateNodeLabel);
   const updateNodeNotes = useMindMapStore((s) => s.updateNodeNotes);
@@ -253,6 +261,7 @@ function MindMapNodeComponent({
 
   useEffect(() => {
     const handler = (e: Event) => {
+      if (isReadOnly) return;
       const { nodeId: targetId, replaceText, char } = (e as CustomEvent).detail ?? {};
       if (targetId === nodeId) {
         if (replaceText) setLocalLabel(char ?? "");
@@ -261,7 +270,7 @@ function MindMapNodeComponent({
     };
     window.addEventListener("mindmap-edit-node", handler);
     return () => window.removeEventListener("mindmap-edit-node", handler);
-  }, [nodeId]);
+  }, [nodeId, isReadOnly]);
 
   const commitEdit = useCallback(() => {
     setEditing(false);
@@ -323,7 +332,7 @@ function MindMapNodeComponent({
   return (
     <>
       {/* Toolbar de ações */}
-      <NodeToolbar isVisible={selected && !isRoot} position={Position.Top} offset={6}>
+      <NodeToolbar isVisible={selected && !isRoot && !isReadOnly} position={Position.Top} offset={6}>
         <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-lg px-1 py-1 shadow-lg">
           {/* Adicionar filho */}
           <button
@@ -492,7 +501,7 @@ function MindMapNodeComponent({
       {/* Nó visual */}
       <div
         style={wrapperStyle}
-        onDoubleClick={() => !editing && setEditing(true)}
+        onDoubleClick={() => !editing && !isReadOnly && setEditing(true)}
         className={cn("relative group", { "cursor-text": editing })}
       >
         {/* Indicador de nota */}
@@ -540,9 +549,8 @@ function MindMapNodeComponent({
           <button
             className="nodrag nopan absolute opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
-              [collapseButtonSide]: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
+              [isFlowDiagram ? "bottom" : collapseButtonSide]: isFlowDiagram ? "-10px" : "-12px",
+              ...(isFlowDiagram ? { left: "50%", transform: "translateX(-50%)" } : { top: "50%", transform: "translateY(-50%)" }),
               width: 18,
               height: 18,
               borderRadius: "50%",
