@@ -768,7 +768,7 @@ function DiagramEditorInner({
       )}
 
       <ImportOutlineDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} onImport={() => {}} />
-      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
+      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} resource="feature" planName="Free" />
     </div>
   );
 }

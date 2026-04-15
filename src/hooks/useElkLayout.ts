@@ -112,7 +112,7 @@ export function useElkLayout() {
             e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" }
           );
           // Update both visibleNodes (with positions) + edges in a single store update
-          store.setVisible(positionedNodes, migratedEdges);
+          store.setVisible(positionedNodes as any, migratedEdges);
           useMindMapStore.setState({ allEdges: migratedAllEdges });
         } else {
           setNodes(positionedNodes);
