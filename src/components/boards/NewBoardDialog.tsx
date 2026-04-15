@@ -170,9 +170,12 @@ const NewBoardDialog = ({ open, onOpenChange, onCreateBoard, isPending }: NewBoa
             <Input
               value={boardTitle}
               onChange={(e) => setBoardTitle(e.target.value)}
-              placeholder={template.name}
+              placeholder="Ex: Projeto Marketing"
               className="mt-1"
             />
+            {!boardTitle.trim() && (
+              <p className="text-xs text-muted-foreground mt-1.5">Insira um nome para continuar</p>
+            )}
           </div>
 
           <div>
