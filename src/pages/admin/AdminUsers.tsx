@@ -19,13 +19,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { Search, Settings2, Shield, CreditCard } from "lucide-react";
+import { Search, Settings2, Shield, CreditCard, KeyRound, Mail, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [managingUser, setManagingUser] = useState<any>(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<any>(null);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: plans = [] } = useQuery({
@@ -71,7 +83,6 @@ const AdminUsers = () => {
   // Change user plan manually
   const changePlanMut = useMutation({
     mutationFn: async ({ userId, planId }: { userId: string; planId: string }) => {
-      // Check if user has a subscription
       const { data: existing } = await supabase
         .from("subscriptions")
         .select("id")
@@ -131,6 +142,53 @@ const AdminUsers = () => {
     },
     onError: () => toast.error("Erro ao atualizar role"),
   });
+
+  // Admin actions via edge function
+  const adminActionMut = useMutation({
+    mutationFn: async ({ action, targetUserId }: { action: string; targetUserId: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action, targetUserId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const handleSendPasswordReset = async (userId: string, email: string) => {
+    try {
+      await adminActionMut.mutateAsync({ action: "send_password_reset", targetUserId: userId });
+      toast.success(`Link de redefinição enviado para ${email}`);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao enviar redefinição");
+    }
+  };
+
+  const handleGenerateTempPassword = async (userId: string) => {
+    try {
+      const result = await adminActionMut.mutateAsync({ action: "set_temporary_password", targetUserId: userId });
+      setTempPassword(result.temporaryPassword);
+      toast.success("Senha temporária gerada");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao gerar senha");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await adminActionMut.mutateAsync({ action: "delete_user", targetUserId: userId });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setManagingUser(null);
+      setDeleteConfirmUser(null);
+      toast.success("Usuário excluído com sucesso");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao excluir usuário");
+    }
+  };
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
@@ -218,7 +276,7 @@ const AdminUsers = () => {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs gap-1"
-                        onClick={() => setManagingUser(u)}
+                        onClick={() => { setManagingUser(u); setTempPassword(null); }}
                       >
                         <Settings2 className="w-3.5 h-3.5" />
                         Gerenciar
@@ -232,7 +290,7 @@ const AdminUsers = () => {
         )}
 
         {/* User Management Dialog */}
-        <Dialog open={!!managingUser} onOpenChange={(open) => { if (!open) setManagingUser(null); }}>
+        <Dialog open={!!managingUser} onOpenChange={(open) => { if (!open) { setManagingUser(null); setTempPassword(null); } }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -355,10 +413,107 @@ const AdminUsers = () => {
                     Clique para adicionar/remover roles. Admin tem acesso irrestrito.
                   </p>
                 </div>
+
+                {/* Account actions */}
+                <div className="space-y-2 border-t border-border pt-4">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4" />
+                    Ações da Conta
+                  </label>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      disabled={adminActionMut.isPending}
+                      onClick={() => handleSendPasswordReset(managingUser.user_id, managingUser.email)}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Enviar Redefinição de Senha
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      disabled={adminActionMut.isPending}
+                      onClick={() => handleGenerateTempPassword(managingUser.user_id)}
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Gerar Senha Temporária
+                    </Button>
+                  </div>
+
+                  {/* Show temporary password */}
+                  {tempPassword && (
+                    <div className="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mb-1 font-medium">
+                        Senha temporária gerada:
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm font-mono bg-background px-2 py-1 rounded border border-border flex-1">
+                          {tempPassword}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(tempPassword);
+                            toast.success("Senha copiada!");
+                          }}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                        Compartilhe esta senha com o usuário. Ele deverá alterá-la no primeiro acesso.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Delete user */}
+                  <div className="pt-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      disabled={adminActionMut.isPending}
+                      onClick={() => setDeleteConfirmUser(managingUser)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Excluir Usuário
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteConfirmUser} onOpenChange={(open) => { if (!open) setDeleteConfirmUser(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Todos os dados de{" "}
+                <strong>{deleteConfirmUser?.full_name || deleteConfirmUser?.email}</strong>{" "}
+                serão removidos permanentemente, incluindo diagramas, boards e assinaturas.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteConfirmUser && handleDeleteUser(deleteConfirmUser.user_id)}
+              >
+                Excluir permanentemente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

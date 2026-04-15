@@ -85,29 +85,18 @@ const AdminDashboard = () => {
     return total > 0 ? 100 : 0;
   }, [stripeData]);
 
-  // Revenue by plan
+  // Revenue by plan – use Stripe revenueByPrice when available
   const revenueByPlan = useMemo(() => {
-    if (!subs) return [];
-    const planMap = new Map<string, { name: string; displayName: string; revenue: number; activeSubs: number }>();
-
-    subs.forEach((s: any) => {
-      const planName = (s as any).subscription_plans?.name ?? "unknown";
-      const displayName = (s as any).subscription_plans?.display_name ?? planName;
-      const price = Number((s as any).subscription_plans?.price_brl ?? 0);
-      const isActive = s.status === "active" || s.status === "trialing";
-
-      if (!planMap.has(planName)) {
-        planMap.set(planName, { name: planName, displayName, revenue: 0, activeSubs: 0 });
-      }
-      const entry = planMap.get(planName)!;
-      if (isActive) {
-        entry.revenue += price;
-        entry.activeSubs += 1;
-      }
-    });
-
-    return Array.from(planMap.values()).sort((a, b) => a.revenue - b.revenue);
-  }, [subs]);
+    if (stripeData?.revenueByPrice) {
+      return Object.entries(stripeData.revenueByPrice).map(([priceId, info]) => ({
+        name: priceId,
+        displayName: info.nickname || priceId,
+        revenue: info.amount / 100,
+        activeSubs: info.count,
+      })).sort((a, b) => a.revenue - b.revenue);
+    }
+    return [];
+  }, [stripeData]);
 
   // Chart data for last 6 months
   const chartData = useMemo(() => {
@@ -137,16 +126,12 @@ const AdminDashboard = () => {
         ? (stripeData.monthlyChurn[monthKey] ?? 0)
         : 0;
 
-      // Retention: active at end of month / total created up to month
-      const totalSubsUpTo = subs?.filter((s: any) => s.created_at && parseISO(s.created_at) <= monthEnd).length ?? 0;
-      const activeAtMonth = subs?.filter((s: any) => {
-        if (!s.created_at) return false;
-        const created = parseISO(s.created_at);
-        if (created > monthEnd) return false;
-        if (s.canceled_at && parseISO(s.canceled_at) < month) return false;
-        return true;
-      }).length ?? 0;
-      const retention = totalSubsUpTo > 0 ? (activeAtMonth / totalSubsUpTo) * 100 : 100;
+      // Retention: only from Stripe data (active / (active + canceled in period))
+      const retention = stripeData
+        ? (stripeData.activeSubs > 0
+          ? ((stripeData.activeSubs) / (stripeData.activeSubs + (stripeData.monthlyChurn[monthKey] ?? 0))) * 100
+          : 0)
+        : 0;
 
       return { month: label, users: usersUpTo, newUsers, mrr, churned, retention };
     });
