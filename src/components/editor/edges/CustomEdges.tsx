@@ -7,7 +7,6 @@ import {
   Position,
   useInternalNode,
   useReactFlow,
-  MarkerType,
   type EdgeProps,
 } from "@xyflow/react";
 import { useMindMapStore } from "@/store/useMindMapStore";
@@ -434,16 +433,38 @@ export const SketchEdge = memo(SketchEdgeComponent);
 // ── Flow Edge (SmoothStep with arrowhead — for orgchart/flowchart) ────────────
 
 function FlowEdgeComponent(props: EdgeProps) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, data } = props;
+  const { id, sourceX, sourceY, targetX, targetY, style, data } = props;
 
-  // Force vertical routing: source exits bottom, target enters top — straight orthogonal (no curves)
-  const [edgePath] = getSmoothStepPath({
-    sourceX, sourceY,
-    sourcePosition: Position.Bottom,
-    targetX, targetY,
-    targetPosition: Position.Top,
-    borderRadius: 0,
-  });
+  // Converging edges (multiple sources → same target) need a small horizontal
+  // offset at the entry point so they don't overlap perfectly. The offset
+  // direction mirrors the source side: a source on the LEFT of the target
+  // enters slightly from the left, a source on the RIGHT enters from the right.
+  // This makes flowcharts with "Sim"/"Não" branches visually readable.
+  const dx = sourceX - targetX;
+  const sideSign = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+  const entryOffset = sideSign * 8; // 8px split between converging edges
+  const entryLeadIn = 10;           // vertical distance for the final straight segment
+
+  // Manual orthogonal path: down from source → horizontal at midY → down into
+  // the target handle via a short vertical lead-in that's offset per side.
+  // Using a manual path gives us control over convergence, which the stock
+  // getSmoothStepPath cannot do because it doesn't see sibling edges.
+  const midY = Math.max(sourceY + 20, targetY - entryLeadIn - 20);
+  const entryX = targetX + entryOffset;
+  const r = 8; // corner radius for the elbow
+  // Rounded orthogonal path:
+  //   source -> down to (midY - r) -> rounded corner -> horizontal to (entryX ± r)
+  //   -> rounded corner -> down to (targetY - entryLeadIn) -> final straight to target
+  const horizSign = entryX >= sourceX ? 1 : -1;
+  const edgePath = `
+    M ${sourceX} ${sourceY}
+    L ${sourceX} ${midY - r}
+    Q ${sourceX} ${midY} ${sourceX + horizSign * r} ${midY}
+    L ${entryX - horizSign * r} ${midY}
+    Q ${entryX} ${midY} ${entryX} ${midY + r}
+    L ${entryX} ${targetY - entryLeadIn}
+    L ${targetX} ${targetY}
+  `.replace(/\s+/g, " ").trim();
 
   const branchColor =
     ((data as any)?.branchColor as string | undefined) ??

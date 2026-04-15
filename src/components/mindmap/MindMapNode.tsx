@@ -66,10 +66,36 @@ function getNodeStyle(
 
   // Flow diagram style: always render a box regardless of depth
   if (flowStyle) {
+    // Diamond nodes use an inline-SVG background so fill + stroke render
+    // properly on all four diagonal edges (clipPath+border drops the corner
+    // borders and produces a washed-out look).
+    if (shape === "diamond") {
+      const fill = isDark ? `${color}33` : `${color}1f`;
+      const stroke = color;
+      // viewBox 160x72, 2px inset so the stroke isn't cropped at the corners
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 72' preserveAspectRatio='none'><polygon points='80,2 158,36 80,70 2,36' fill='${fill}' stroke='${stroke}' stroke-width='2' stroke-linejoin='round'/></svg>`;
+      return {
+        minWidth: 160,
+        minHeight: 72,
+        // Horizontal padding is large because a diamond only offers
+        // ~50% usable width at the vertical center. Top/bottom padding
+        // matches the stroke inset.
+        padding: "18px 42px",
+        background: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") center/100% 100% no-repeat`,
+        boxShadow: selected ? `0 0 0 3px ${color}40` : "none",
+        transition: "box-shadow 0.2s ease, filter 0.2s ease",
+        filter: selected ? "none" : "drop-shadow(0 1px 2px rgba(0,0,0,0.06))",
+        cursor: "default",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      };
+    }
+
     return {
       padding: depth <= 1 ? "8px 18px" : "6px 14px",
-      borderRadius: shape === "diamond" ? 4 : radius,
-      background: shape === "diamond" ? `${color}20` : depth === 0 ? "var(--background, #fff)" : depth === 1 ? color : `${color}18`,
+      borderRadius: radius,
+      background: depth === 0 ? "var(--background, #fff)" : depth === 1 ? color : `${color}18`,
       border: depth === 0 ? "2.5px solid rgba(100,100,100,0.15)" : depth === 1 ? `2px solid ${color}` : `2px solid ${color}80`,
       boxShadow: selected ? `0 0 0 3px ${color}40` : depth === 1 ? `0 2px 8px ${color}40` : "none",
       transition: "box-shadow 0.2s ease",
@@ -77,7 +103,6 @@ function getNodeStyle(
       maxWidth: 200,
       wordBreak: "break-word",
       overflowWrap: "break-word",
-      ...(shape === "diamond" ? { clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)", padding: "20px 44px", minWidth: 140, maxWidth: undefined } : {}),
     };
   }
 
