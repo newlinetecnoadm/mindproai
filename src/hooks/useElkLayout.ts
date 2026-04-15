@@ -32,12 +32,22 @@ function elkOptionsDown() {
   return {
     "elk.algorithm": "layered",
     "elk.direction": "DOWN",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "70",
-    "elk.spacing.nodeNode": "40",
+    // Espaçamento vertical entre camadas (quanto maior, mais "ar" entre níveis)
+    "elk.layered.spacing.nodeNodeBetweenLayers": "90",
+    // Espaçamento horizontal entre irmãos — aumentado para caber o diamante
+    // sem colidir visualmente com os rectangles laterais
+    "elk.spacing.nodeNode": "70",
+    // Distância entre arestas e nós adjacentes — evita linhas grudadas
+    "elk.layered.spacing.edgeNodeBetweenLayers": "30",
+    "elk.spacing.edgeNode": "20",
+    "elk.spacing.edgeEdge": "15",
+    // BRANDES_KOEPF + BALANCED centraliza filhos sob o pai
     "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    "elk.edgeRouting": "SPLINES",
+    // ORTHOGONAL routing → arestas em linhas retas com elbows, lida
+    // naturalmente com arestas convergentes (duas setas para o mesmo nó)
+    "elk.edgeRouting": "ORTHOGONAL",
     "elk.padding": "[top=40, left=60, bottom=40, right=60]",
   };
 }
