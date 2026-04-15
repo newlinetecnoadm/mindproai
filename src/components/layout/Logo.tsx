@@ -30,9 +30,9 @@ const Logo = ({ variant = "horizontal", className, forceColor2, forceDark }: Log
 
   const getSrc = () => {
     if (variant === "horizontal") {
-      return useColor2 ? logoHorizontalColor2 : logoHorizontalColor;
+      return useColor2 ? logoHorizontalColor : logoHorizontalColor2;
     }
-    return useColor2 ? logoIconColor2 : logoIconFull;
+    return useColor2 ? logoIconFull : logoIconColor2;
   };
 
   return (
