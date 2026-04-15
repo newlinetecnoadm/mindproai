@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, CreditCard, BarChart3, Settings, ArrowLeft, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import logoHorizontal from "@/assets/logo-horizontal-color.png";
-import logoIcon from "@/assets/logo-icon-full.png";
+import Logo from "./Logo";
 
 const navItems = [
   { icon: BarChart3, label: "Métricas", path: "/admin" },
@@ -20,7 +19,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
     <div className="flex min-h-screen bg-background">
       <aside className="flex flex-col w-60 border-r border-sidebar-border bg-sidebar sticky top-0 h-screen">
         <div className="px-5 h-16 border-b border-sidebar-border flex items-center gap-2">
-          <img src={logoHorizontal} alt="MindPro" className="h-7" />
+          <Logo variant="horizontal" className="h-7" forceDark />
         </div>
 
         <div className="mx-3 mt-3 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2">
