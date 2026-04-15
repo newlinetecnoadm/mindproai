@@ -196,10 +196,13 @@ const NewDiagram = () => {
                 ref={inputRef}
                 value={diagramName}
                 onChange={(e) => setDiagramName(e.target.value)}
-                placeholder={pendingTemplate ? (isBlankTemplate(pendingTemplate) ? "Sem título" : pendingTemplate.name) : "Sem título"}
+                placeholder="Ex: Planejamento Q3"
                 className="mt-1"
-                onKeyDown={(e) => { if (e.key === "Enter") handleConfirmCreate(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && diagramName.trim()) handleConfirmCreate(); }}
               />
+              {!diagramName.trim() && (
+                <p className="text-xs text-muted-foreground mt-1.5">Insira um nome para continuar</p>
+              )}
             </div>
             <Button
               variant="hero"
