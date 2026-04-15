@@ -157,6 +157,27 @@ serve(async (req) => {
         break;
       }
 
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+        if (subId) {
+          await supabase
+            .from("subscriptions")
+            .update({ status: "past_due" })
+            .eq("stripe_subscription_id", subId);
+          logStep("Subscription marked past_due", { subId });
+        }
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        // Fired 3 days before trial ends — useful for sending reminder emails
+        const subscription = event.data.object as Stripe.Subscription;
+        logStep("Trial will end soon", { subId: subscription.id, trialEnd: subscription.trial_end });
+        // TODO: trigger email reminder via notify function if needed
+        break;
+      }
+
       default:
         logStep("Unhandled event type", { type: event.type });
     }

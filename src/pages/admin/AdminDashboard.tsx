@@ -11,8 +11,11 @@ import { ptBR } from "date-fns/locale";
 import KpiCards from "@/components/admin/KpiCards";
 import RevenueByPlanChart from "@/components/admin/RevenueByPlanChart";
 import RetentionChart from "@/components/admin/RetentionChart";
+import { useStripeAdminData } from "@/hooks/useStripeAdminData";
 
 const AdminDashboard = () => {
+  const { data: stripeData } = useStripeAdminData();
+
   const { data: profiles } = useQuery({
     queryKey: ["admin-profiles-all"],
     queryFn: async () => {
@@ -65,7 +68,10 @@ const AdminDashboard = () => {
     },
   });
 
-  const activeSubs = subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0;
+  // Prefer real Stripe data for active subs and MRR; fall back to DB counts
+  const activeSubs = stripeData
+    ? stripeData.activeSubs + stripeData.trialingSubs
+    : (subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0);
   const totalUsers = profiles?.length ?? 0;
 
   // Retention rate: active subs / total subs that ever existed
@@ -106,6 +112,7 @@ const AdminDashboard = () => {
     return months.map((month) => {
       const monthEnd = endOfMonth(month);
       const label = format(month, "MMM", { locale: ptBR });
+      const monthKey = format(month, "yyyy-MM");
 
       const usersUpTo = profiles?.filter((p: any) => p.created_at && parseISO(p.created_at) <= monthEnd).length ?? 0;
 
@@ -115,20 +122,26 @@ const AdminDashboard = () => {
         return d >= month && d <= monthEnd;
       }).length ?? 0;
 
-      const mrr = subs?.reduce((acc: number, s: any) => {
-        if (!s.created_at) return acc;
-        const created = parseISO(s.created_at);
-        if (created > monthEnd) return acc;
-        if (s.canceled_at && parseISO(s.canceled_at) < month) return acc;
-        const price = (s as any).subscription_plans?.price_brl ?? 0;
-        return acc + Number(price);
-      }, 0) ?? 0;
+      // Use real Stripe invoice data when available; fall back to DB price_brl estimate
+      const mrr = stripeData
+        ? (stripeData.monthlyRevenue[monthKey] ?? 0) / 100
+        : (subs?.reduce((acc: number, s: any) => {
+            if (!s.created_at) return acc;
+            const created = parseISO(s.created_at);
+            if (created > monthEnd) return acc;
+            if (s.canceled_at && parseISO(s.canceled_at) < month) return acc;
+            const price = (s as any).subscription_plans?.price_brl ?? 0;
+            return acc + Number(price);
+          }, 0) ?? 0);
 
-      const churned = subs?.filter((s: any) => {
-        if (!s.canceled_at) return false;
-        const d = parseISO(s.canceled_at);
-        return d >= month && d <= monthEnd;
-      }).length ?? 0;
+      // Use real Stripe churn data when available
+      const churned = stripeData
+        ? (stripeData.monthlyChurn[monthKey] ?? 0)
+        : (subs?.filter((s: any) => {
+            if (!s.canceled_at) return false;
+            const d = parseISO(s.canceled_at);
+            return d >= month && d <= monthEnd;
+          }).length ?? 0);
 
       // Retention: active at end of month / total created up to month
       const totalSubsUpTo = subs?.filter((s: any) => s.created_at && parseISO(s.created_at) <= monthEnd).length ?? 0;
@@ -143,14 +156,23 @@ const AdminDashboard = () => {
 
       return { month: label, users: usersUpTo, newUsers, mrr, churned, retention };
     });
-  }, [profiles, subs]);
+  }, [profiles, subs, stripeData]);
 
-  const currentMRR = chartData[chartData.length - 1]?.mrr ?? 0;
+  // Current MRR: prefer live Stripe snapshot over last chart point
+  const currentMRR = stripeData ? stripeData.mrrBrl : (chartData[chartData.length - 1]?.mrr ?? 0);
 
   return (
     <AdminLayout>
       <div className="p-6 lg:p-8 max-w-7xl">
-        <h1 className="text-2xl font-display font-bold mb-1">Painel Administrativo</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-2xl font-display font-bold">Painel Administrativo</h1>
+          {stripeData && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Dados ao vivo · Stripe
+            </span>
+          )}
+        </div>
         <p className="text-muted-foreground mb-8">Visão geral do sistema Mind Pro AI</p>
 
         {/* KPI Cards */}
