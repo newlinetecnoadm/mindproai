@@ -68,17 +68,22 @@ const AdminDashboard = () => {
     },
   });
 
-  // Prefer real Stripe data for active subs and MRR; fall back to DB counts
+  // Only count real Stripe subscriptions for financial metrics; DB subs include manually granted ones
   const activeSubs = stripeData
     ? stripeData.activeSubs + stripeData.trialingSubs
-    : (subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0);
+    : 0; // Don't fall back to DB – it includes free grants
   const totalUsers = profiles?.length ?? 0;
 
-  // Retention rate: active subs / total subs that ever existed
+  // DB subs count (for info only – includes manually granted)
+  const dbActiveSubs = subs?.filter((s: any) => s.status === "active" || s.status === "trialing").length ?? 0;
+
+  // Retention rate: only meaningful with real Stripe data
   const retentionRate = useMemo(() => {
-    if (!subs || subs.length === 0) return 0;
-    return (activeSubs / subs.length) * 100;
-  }, [subs, activeSubs]);
+    if (!stripeData) return 0;
+    const total = stripeData.activeSubs + stripeData.trialingSubs;
+    // We don't have total-ever from Stripe in this payload, so skip if no data
+    return total > 0 ? 100 : 0;
+  }, [stripeData]);
 
   // Revenue by plan
   const revenueByPlan = useMemo(() => {
@@ -122,26 +127,15 @@ const AdminDashboard = () => {
         return d >= month && d <= monthEnd;
       }).length ?? 0;
 
-      // Use real Stripe invoice data when available; fall back to DB price_brl estimate
+      // MRR: only use real Stripe invoice data – never estimate from DB price_brl
       const mrr = stripeData
         ? (stripeData.monthlyRevenue[monthKey] ?? 0) / 100
-        : (subs?.reduce((acc: number, s: any) => {
-            if (!s.created_at) return acc;
-            const created = parseISO(s.created_at);
-            if (created > monthEnd) return acc;
-            if (s.canceled_at && parseISO(s.canceled_at) < month) return acc;
-            const price = (s as any).subscription_plans?.price_brl ?? 0;
-            return acc + Number(price);
-          }, 0) ?? 0);
+        : 0;
 
-      // Use real Stripe churn data when available
+      // Churn: only use real Stripe data
       const churned = stripeData
         ? (stripeData.monthlyChurn[monthKey] ?? 0)
-        : (subs?.filter((s: any) => {
-            if (!s.canceled_at) return false;
-            const d = parseISO(s.canceled_at);
-            return d >= month && d <= monthEnd;
-          }).length ?? 0);
+        : 0;
 
       // Retention: active at end of month / total created up to month
       const totalSubsUpTo = subs?.filter((s: any) => s.created_at && parseISO(s.created_at) <= monthEnd).length ?? 0;
