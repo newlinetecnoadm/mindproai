@@ -1,5 +1,5 @@
 import type { Node, Edge } from "@xyflow/react";
-import type { MindMapNodeData } from "./MindMapNode";
+import type { MindMapNodeData } from "@/store/useMindMapStore";
 
 // Simple tree layout algorithm
 interface TreeNode {
