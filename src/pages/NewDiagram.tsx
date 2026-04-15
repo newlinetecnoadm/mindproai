@@ -1,17 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { diagramTypes, getTemplatesByType, templateCategories, type DiagramTemplate } from "@/data/templates";
+import { ArrowLeft } from "lucide-react";
+import { diagramTypes, getTemplatesByType, type DiagramTemplate } from "@/data/templates";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-
 import { cn } from "@/lib/utils";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import UpgradeModal from "@/components/UpgradeModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const NewDiagram = () => {
   const navigate = useNavigate();
@@ -20,6 +28,10 @@ const NewDiagram = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [creating, setCreating] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<DiagramTemplate | null>(null);
+  const [diagramName, setDiagramName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const limits = usePlanLimits();
 
   useEffect(() => {
@@ -35,9 +47,20 @@ const NewDiagram = () => {
 
   const isBlankTemplate = (tpl: DiagramTemplate) => tpl.name === "Em branco";
 
-  const handleSelectTemplate = async (template: DiagramTemplate) => {
-    if (!user || creating) return;
+  const handleSelectTemplate = (template: DiagramTemplate) => {
+    setPendingTemplate(template);
+    setDiagramName("");
+    setNameDialogOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!user || !pendingTemplate || creating) return;
     setCreating(true);
+    setNameDialogOpen(false);
+
+    const template = pendingTemplate;
+    const title = diagramName.trim() || (isBlankTemplate(template) ? "Sem título" : template.name);
 
     try {
       const diagramData: any = {
@@ -60,7 +83,7 @@ const NewDiagram = () => {
       const { data, error } = await supabase
         .from("diagrams")
         .insert({
-          title: isBlankTemplate(template) ? "Sem título" : template.name,
+          title,
           type: template.type as any,
           data: diagramData,
           user_id: user.id,
@@ -107,7 +130,6 @@ const NewDiagram = () => {
           </div>
         </div>
 
-        {/* Type Selection or Template Selection */}
         {!selectedType ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
             {diagramTypes.map((type) => (
@@ -128,7 +150,6 @@ const NewDiagram = () => {
                     Criar Agora
                   </Button>
                 </CardContent>
-                {/* Subtle highlight effect */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </Card>
             ))}
@@ -158,6 +179,40 @@ const NewDiagram = () => {
           </div>
         )}
       </div>
+
+      {/* Name Dialog */}
+      <Dialog open={nameDialogOpen} onOpenChange={(open) => { setNameDialogOpen(open); if (!open) setPendingTemplate(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nome do diagrama</DialogTitle>
+            <DialogDescription>
+              {pendingTemplate ? `Template: ${pendingTemplate.name}` : "Dê um nome ao seu diagrama"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label className="text-xs text-muted-foreground">Nome</Label>
+              <Input
+                ref={inputRef}
+                value={diagramName}
+                onChange={(e) => setDiagramName(e.target.value)}
+                placeholder={pendingTemplate ? (isBlankTemplate(pendingTemplate) ? "Sem título" : pendingTemplate.name) : "Sem título"}
+                className="mt-1"
+                onKeyDown={(e) => { if (e.key === "Enter") handleConfirmCreate(); }}
+              />
+            </div>
+            <Button
+              variant="hero"
+              className="w-full"
+              onClick={handleConfirmCreate}
+              disabled={creating}
+            >
+              {creating ? "Criando..." : "Criar Diagrama"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <UpgradeModal
         open={upgradeOpen}
         onOpenChange={(open) => {
