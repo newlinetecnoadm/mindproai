@@ -160,14 +160,24 @@ const AdminDashboard = () => {
       <div className="p-6 lg:p-8 max-w-7xl">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-display font-bold">Painel Administrativo</h1>
-          {stripeData && (
+          {stripeData ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               Dados ao vivo · Stripe
             </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2.5 py-1 rounded-full">
+              Aguardando conexão Stripe
+            </span>
           )}
         </div>
-        <p className="text-muted-foreground mb-8">Visão geral do sistema Mind Pro AI</p>
+        <p className="text-muted-foreground mb-2">Visão geral do sistema Mind Pro AI</p>
+        {!stripeData && (
+          <div className="mb-6 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-300">
+            ⚠️ Dados financeiros (MRR, assinaturas pagas, churn) só serão exibidos quando o Stripe estiver ativo. 
+            Assinaturas concedidas manualmente no banco ({dbActiveSubs}) não são contabilizadas como receita.
+          </div>
+        )}
 
         {/* KPI Cards */}
         <KpiCards
