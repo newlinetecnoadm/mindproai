@@ -55,12 +55,12 @@ const NewDiagram = () => {
   };
 
   const handleConfirmCreate = async () => {
-    if (!user || !pendingTemplate || creating) return;
+    if (!user || !pendingTemplate || creating || !diagramName.trim()) return;
     setCreating(true);
     setNameDialogOpen(false);
 
     const template = pendingTemplate;
-    const title = diagramName.trim() || (isBlankTemplate(template) ? "Sem título" : template.name);
+    const title = diagramName.trim();
 
     try {
       const diagramData: any = {
@@ -205,7 +205,7 @@ const NewDiagram = () => {
               variant="hero"
               className="w-full"
               onClick={handleConfirmCreate}
-              disabled={creating}
+              disabled={creating || !diagramName.trim()}
             >
               {creating ? "Criando..." : "Criar Diagrama"}
             </Button>

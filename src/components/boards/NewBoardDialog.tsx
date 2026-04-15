@@ -148,8 +148,10 @@ const NewBoardDialog = ({ open, onOpenChange, onCreateBoard, isPending }: NewBoa
   const template = boardTemplates.find((t) => t.id === selectedTemplate) || boardTemplates[0];
 
   const handleCreate = () => {
-    const title = boardTitle.trim() || template.name;
-    onCreateBoard(title, template);
+    if (!boardTitle.trim()) {
+      return;
+    }
+    onCreateBoard(boardTitle.trim(), template);
     setBoardTitle("");
     setSelectedTemplate("blank");
   };
@@ -223,7 +225,7 @@ const NewBoardDialog = ({ open, onOpenChange, onCreateBoard, isPending }: NewBoa
             variant="hero"
             className="w-full"
             onClick={handleCreate}
-            disabled={isPending}
+            disabled={isPending || !boardTitle.trim()}
           >
             {isPending ? "Criando..." : "Criar Board"}
           </Button>
