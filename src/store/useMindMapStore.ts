@@ -45,6 +45,8 @@ type MindMapStore = {
   currentThemeEdgeColor: string | null;
   currentIsDark: boolean;
   diagramType: string;
+  /** Layout direction for flow diagrams: "DOWN" (vertical) or "RIGHT" (horizontal) */
+  layoutDirection: "DOWN" | "RIGHT";
   labelVersion: number;
 
   initDiagram: (nodes: MindMapNode[], edges: Edge[]) => void;
@@ -71,6 +73,7 @@ type MindMapStore = {
   copySelection: (nodeIds: string[]) => void;
   pasteSelection: () => void;
   setDiagramType: (type: string) => void;
+  setLayoutDirection: (dir: "DOWN" | "RIGHT") => void;
   updateEdgeData: (edgeId: string, data: Record<string, unknown>) => void;
   addSketchEdge: (source: string, target: string, sourceHandle?: string, targetHandle?: string) => void;
   pendingSketchSource: string | null;
@@ -208,6 +211,7 @@ export const useMindMapStore = create<MindMapStore>()(
     currentThemeEdgeColor: null,
     currentIsDark: false,
     diagramType: "mindmap",
+    layoutDirection: "DOWN",
     labelVersion: 0,
     pendingSketchSource: null,
 
@@ -318,13 +322,15 @@ export const useMindMapStore = create<MindMapStore>()(
     },
 
     initDiagram: (nodes, edges) => {
-      const { currentThemeEdgeColor, currentIsDark, diagramType } = get();
+      const { currentThemeEdgeColor, currentIsDark, diagramType, layoutDirection } = get();
       const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
+      const srcHandle = layoutDirection === "RIGHT" ? "s-right" : "s-bottom";
+      const tgtHandle = layoutDirection === "RIGHT" ? "t-left" : "t-top";
       // Migrate edges for flow diagrams: convert "mindmap" type to "flow" and ensure handles are set
       const normalizedEdges = edges.map((e) => {
         if (e.type === "sketch") return e;
-        if (isFlowDiagram) return { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" };
-        if (e.type === "flow" && !e.sourceHandle) return { ...e, sourceHandle: "s-bottom", targetHandle: "t-top" };
+        if (isFlowDiagram) return { ...e, type: "flow", sourceHandle: srcHandle, targetHandle: tgtHandle };
+        if (e.type === "flow" && !e.sourceHandle) return { ...e, sourceHandle: srcHandle, targetHandle: tgtHandle };
         return e;
       });
       const { nodes: enrichedNodes, edges: enrichedEdges } = inferBranchSides(nodes, normalizedEdges, currentThemeEdgeColor, currentIsDark);
@@ -440,7 +446,7 @@ export const useMindMapStore = create<MindMapStore>()(
 
     addChild: (parentId, label = "Novo tópico") => {
       get()._pushHistory();
-      const { allNodes, allEdges, collapsedIds, currentThemeEdgeColor, currentIsDark, diagramType } = get();
+      const { allNodes, allEdges, collapsedIds, currentThemeEdgeColor, currentIsDark, diagramType, layoutDirection } = get();
       const newId = `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
       const parentNode = allNodes.find((n) => n.id === parentId);
@@ -504,12 +510,14 @@ export const useMindMapStore = create<MindMapStore>()(
         },
       };
 
+      const flowSrcHandle = layoutDirection === "RIGHT" ? "s-right" : "s-bottom";
+      const flowTgtHandle = layoutDirection === "RIGHT" ? "t-left" : "t-top";
       const newEdge: Edge = {
         id: `e-${parentId}-${newId}`,
         source: parentId,
         target: newId,
         type: isFlowDiagram ? "flow" : "mindmap",
-        ...(isFlowDiagram ? { sourceHandle: "s-bottom", targetHandle: "t-top" } : {}),
+        ...(isFlowDiagram ? { sourceHandle: flowSrcHandle, targetHandle: flowTgtHandle } : {}),
         data: { branchColor, side: isFlowDiagram ? undefined : side },
       };
 
@@ -579,6 +587,7 @@ export const useMindMapStore = create<MindMapStore>()(
     setVisible: (nodes, edges) => set({ visibleNodes: nodes, visibleEdges: edges }),
     setIsLayouting: (v) => set({ isLayouting: v }),
     setDiagramType: (type) => set({ diagramType: type }),
+    setLayoutDirection: (dir) => set({ layoutDirection: dir, labelVersion: get().labelVersion + 1 }),
     setPendingSketchSource: (id) => set({ pendingSketchSource: id }),
 
     updateEdgeData: (edgeId, data) => {

@@ -435,13 +435,14 @@ export const SketchEdge = memo(SketchEdgeComponent);
 function FlowEdgeComponent(props: EdgeProps) {
   const { id, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, style, data } = props;
 
-  // Force vertical routing: source exits bottom, target enters top — straight
-  // orthogonal lines (no curves). borderRadius 0 = sharp 90° elbows.
+  // Use the handle positions from props (set by ELK layout via sourceHandle/targetHandle).
+  // DOWN layout → Bottom/Top, RIGHT layout → Right/Left
+  // borderRadius 0 = sharp 90° orthogonal elbows.
   const [edgePath] = getSmoothStepPath({
     sourceX, sourceY,
-    sourcePosition: Position.Bottom,
+    sourcePosition: sourcePosition ?? Position.Bottom,
     targetX, targetY,
-    targetPosition: Position.Top,
+    targetPosition: targetPosition ?? Position.Top,
     borderRadius: 0,
   });
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowDown } from "lucide-react";
 import { diagramTypes, getTemplatesByType, type DiagramTemplate } from "@/data/templates";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,7 @@ const NewDiagram = () => {
   const { user } = useAuth();
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [flowDirection, setFlowDirection] = useState<"DOWN" | "RIGHT">("DOWN");
   const [creating, setCreating] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
@@ -63,6 +64,10 @@ const NewDiagram = () => {
     const title = diagramName.trim();
 
     try {
+      // For flow diagrams, store the chosen layout direction
+      const isFlowDiagram = template.type === "orgchart" || template.type === "flowchart";
+      const direction = isFlowDiagram ? flowDirection : undefined;
+
       const diagramData: any = {
         nodes: template.nodes.map((n) => ({
           id: n.id,
@@ -78,6 +83,7 @@ const NewDiagram = () => {
           ...(e.label ? { label: e.label } : {}),
         })) as unknown as any,
         viewport: {},
+        ...(direction ? { layoutDirection: direction } : {}),
       };
 
       const { data, error } = await supabase
@@ -155,27 +161,64 @@ const NewDiagram = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
-            {templates.map((tpl) => (
-              <Card
-                key={tpl.id}
-                className={cn(
-                  "cursor-pointer hover:border-primary/40 hover:shadow-md transition-all",
-                  creating && "opacity-50 pointer-events-none"
-                )}
-                onClick={() => handleSelectTemplate(tpl)}
-              >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/8 flex items-center justify-center text-2xl shrink-0">
-                    {tpl.icon || "🧠"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm mb-0.5">{tpl.name}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="max-w-3xl">
+            {/* Orientation picker for flow diagrams */}
+            {(selectedType === "flowchart" || selectedType === "orgchart") && (
+              <div className="mb-5">
+                <p className="text-sm font-medium mb-2.5">Orientação do diagrama</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all",
+                      flowDirection === "DOWN"
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                    )}
+                    onClick={() => setFlowDirection("DOWN")}
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                    Vertical
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all",
+                      flowDirection === "RIGHT"
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                    )}
+                    onClick={() => setFlowDirection("RIGHT")}
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    Horizontal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {templates.map((tpl) => (
+                <Card
+                  key={tpl.id}
+                  className={cn(
+                    "cursor-pointer hover:border-primary/40 hover:shadow-md transition-all",
+                    creating && "opacity-50 pointer-events-none"
+                  )}
+                  onClick={() => handleSelectTemplate(tpl)}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/8 flex items-center justify-center text-2xl shrink-0">
+                      {tpl.icon || "🧠"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm mb-0.5">{tpl.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </div>

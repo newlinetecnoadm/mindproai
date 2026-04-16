@@ -65,6 +65,7 @@ const PROXIMITY_THRESHOLD = 120;
 
 interface DiagramEditorCoreProps {
   diagramType: string;
+  initialLayoutDirection?: "DOWN" | "RIGHT";
   initialNodes?: Node[];
   initialEdges?: Edge[];
   initialThemeId?: string;
@@ -111,7 +112,7 @@ function exportToMarkdown(nodes: Node[], edges: Edge[]): string {
 }
 
 function DiagramEditorInner({
-  diagramType, initialNodes = [], initialEdges = [], initialThemeId,
+  diagramType, initialLayoutDirection, initialNodes = [], initialEdges = [], initialThemeId,
   onSave, saving, remoteNodes, remoteEdges, remoteThemeId, userRole = "viewer"
 }: DiagramEditorCoreProps) {
   const [viewMode, setViewMode] = useState<"graph" | "outline">("graph");
@@ -143,6 +144,7 @@ function DiagramEditorInner({
 
   const initDiagram = useMindMapStore(s => s.initDiagram);
   const setDiagramType = useMindMapStore(s => s.setDiagramType);
+  const setLayoutDirection = useMindMapStore(s => s.setLayoutDirection);
   const onNodesChange = useMindMapStore(s => s.onNodesChange);
   const onEdgesChange = useMindMapStore(s => s.onEdgesChange);
   const setNodesAndEdges = useMindMapStore(s => s.setNodesAndEdges);
@@ -174,10 +176,14 @@ function DiagramEditorInner({
       const isDark = isColorDark(theme.bg);
       useMindMapStore.getState().applyTheme(theme.edgeColor, isDark);
       setDiagramType(diagramType);
+      if (initialLayoutDirection) {
+        // Set direction directly in store without bumping labelVersion (avoid extra relayout)
+        useMindMapStore.setState({ layoutDirection: initialLayoutDirection });
+      }
       initDiagram(initialNodes as any[], initialEdges);
       setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 100);
     }
-  }, [initialNodes, initialEdges, initDiagram, fitView, theme, setDiagramType, diagramType]);
+  }, [initialNodes, initialEdges, initDiagram, fitView, theme, setDiagramType, diagramType, initialLayoutDirection]);
 
   // ─── Drag to Reparent ─────────────────────────────────────────────────────
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
@@ -401,15 +407,17 @@ function DiagramEditorInner({
       triggerSave();
       return;
     }
-    const { allNodes, allEdges, diagramType } = useMindMapStore.getState();
+    const { allNodes, allEdges, diagramType, layoutDirection } = useMindMapStore.getState();
     if (diagramType === "orgchart" || diagramType === "flowchart") {
       // Structural flow connection — allow multiple targets (for convergent flows like → Fim)
+      const defaultSrc = layoutDirection === "RIGHT" ? "s-right" : "s-bottom";
+      const defaultTgt = layoutDirection === "RIGHT" ? "t-left" : "t-top";
       const newEdge = {
         ...params,
         id: `e-${params.source}-${params.target}-${Date.now()}`,
         type: "flow",
-        sourceHandle: params.sourceHandle ?? "s-bottom",
-        targetHandle: params.targetHandle ?? "t-top",
+        sourceHandle: params.sourceHandle ?? defaultSrc,
+        targetHandle: params.targetHandle ?? defaultTgt,
         data: {},
       };
       setNodesAndEdges(allNodes, [...allEdges, newEdge as any]);

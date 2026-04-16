@@ -27,15 +27,14 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
 }
 
 
-// Opções ELK para layout vertical (orgchart/flowchart)
-function elkOptionsDown() {
+// Opções ELK para layout de fluxo (orgchart/flowchart) — suporta DOWN e RIGHT
+function elkOptionsFlow(direction: "DOWN" | "RIGHT" = "DOWN") {
   return {
     "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    // Espaçamento vertical entre camadas (quanto maior, mais "ar" entre níveis)
+    "elk.direction": direction,
+    // Espaçamento entre camadas (vertical=entre linhas, horizontal=entre colunas)
     "elk.layered.spacing.nodeNodeBetweenLayers": "90",
-    // Espaçamento horizontal entre irmãos — aumentado para caber o diamante
-    // sem colidir visualmente com os rectangles laterais
+    // Espaçamento entre irmãos — aumentado para caber o diamante
     "elk.spacing.nodeNode": "70",
     // Distância entre arestas e nós adjacentes — evita linhas grudadas
     "elk.layered.spacing.edgeNodeBetweenLayers": "30",
@@ -60,6 +59,7 @@ export function useElkLayout() {
   const visibleEdges = useMindMapStore((s) => s.visibleEdges);
   const visibleNodes = useMindMapStore((s) => s.visibleNodes);
   const diagramType = useMindMapStore((s) => s.diagramType);
+  const layoutDirection = useMindMapStore((s) => s.layoutDirection);
   const labelVersion = useMindMapStore((s) => s.labelVersion);
   const isRunning = useRef(false);
 
@@ -72,7 +72,7 @@ export function useElkLayout() {
   const shapeKey = isFlowLayout
     ? visibleNodes.map((n) => (n.data as any)?.shape ?? "").join(",")
     : "";
-  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}|${shapeKey}`;
+  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}|${shapeKey}|${layoutDirection}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();
@@ -88,9 +88,10 @@ export function useElkLayout() {
       const layoutEdges = visibleEdges.filter((e) => e.type !== "sketch");
 
       if (diagramType === "orgchart" || diagramType === "flowchart") {
-        const downGraph = {
-          id: "down",
-          layoutOptions: elkOptionsDown(),
+        const dir = useMindMapStore.getState().layoutDirection;
+        const flowGraph = {
+          id: "flow",
+          layoutOptions: elkOptionsFlow(dir),
           children: nodes.map((n) => ({
             id: n.id,
             width: (n as any).measured?.width ?? 150,
@@ -103,7 +104,7 @@ export function useElkLayout() {
           })),
         };
 
-        const downResult = await elk.layout(downGraph);
+        const downResult = await elk.layout(flowGraph);
         const positionMap = new Map<string, { x: number; y: number }>();
         downResult.children?.forEach((n) => {
           positionMap.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
@@ -116,15 +117,22 @@ export function useElkLayout() {
 
         // Migrate legacy "mindmap" edges → "flow" so they render as straight orthogonal connectors
         // Must update the store directly (not setEdges) because ReactFlow is in controlled mode
+        // Handle IDs depend on direction: DOWN → bottom/top, RIGHT → right/left
         const store = useMindMapStore.getState();
         const currentEdges = store.visibleEdges;
+        const srcHandle = dir === "RIGHT" ? "s-right" : "s-bottom";
+        const tgtHandle = dir === "RIGHT" ? "t-left" : "t-top";
         const hasLegacyEdges = currentEdges.some((e) => e.type !== "sketch" && e.type !== "flow");
-        if (hasLegacyEdges) {
+        // Also detect handle mismatch when direction changes
+        const hasHandleMismatch = currentEdges.some((e) =>
+          e.type === "flow" && (e.sourceHandle !== srcHandle || e.targetHandle !== tgtHandle)
+        );
+        if (hasLegacyEdges || hasHandleMismatch) {
           const migratedEdges = currentEdges.map((e) =>
-            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" }
+            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: srcHandle, targetHandle: tgtHandle }
           );
           const migratedAllEdges = store.allEdges.map((e) =>
-            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: "s-bottom", targetHandle: "t-top" }
+            e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: srcHandle, targetHandle: tgtHandle }
           );
           // Update both visibleNodes (with positions) + edges in a single store update
           store.setVisible(positionedNodes as any, migratedEdges);
@@ -240,7 +248,7 @@ export function useElkLayout() {
     } finally {
       isRunning.current = false;
     }
-  }, [getNodes, setNodes, fitView, visibleEdges, diagramType]);
+  }, [getNodes, setNodes, fitView, visibleEdges, diagramType, layoutDirection]);
 
   // Gatilho: nós renderizados E estrutura mudou
   // eslint-disable-next-line react-hooks/exhaustive-deps
