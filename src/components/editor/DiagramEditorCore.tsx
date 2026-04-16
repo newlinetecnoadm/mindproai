@@ -325,6 +325,9 @@ function DiagramEditorInner({
     }
   }, [allEdges, allNodes, dropTargetId, setNodesAndEdges]);
 
+  // ─── Canvas container ref (for NodeFloatingToolbar coordinate correction) ──
+  const canvasRef = useRef<HTMLDivElement>(null);
+
   // ─── Save & Sync ──────────────────────────────────────────────────────────
   const lastPersistedRef = useRef("");
 
@@ -767,7 +770,7 @@ function DiagramEditorInner({
       </div>
 
       {/* Canvas — ocupa o restante */}
-      <div className="relative flex-1 overflow-hidden">
+      <div ref={canvasRef} className="relative flex-1 overflow-hidden">
         {(() => {
           const ui = themeUI(theme);
           return (
@@ -794,6 +797,7 @@ function DiagramEditorInner({
         {/* Floating toolbar de nó selecionado */}
         {viewMode === "graph" && userRole !== "viewer" && (
           <NodeFloatingToolbar
+            containerRef={canvasRef}
             selectedNodes={selectedNodes.filter(n => !(n.data as any)?.isRoot || diagramType !== "mindmap")}
             diagramType={diagramType}
             onShapeChange={(shape) => selectedNodes.forEach(n => updateNodeShape(n.id, shape as any))}
