@@ -164,7 +164,7 @@ const DirectionToggle = () => {
   onImportSketch,
 }: EditorToolbarProps) => {
   return (
-    <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md flex-wrap max-w-[calc(100vw-2rem)]">
+    <div className="flex items-center gap-1 bg-card/90 backdrop-blur-sm border border-border rounded-xl px-2 py-1.5 shadow-md flex-wrap max-w-[calc(100vw-2rem)]">
       {/* View Toggle */}
       <div className="flex items-center bg-muted/50 rounded-lg p-0.5 mr-1">
         <TipButton
