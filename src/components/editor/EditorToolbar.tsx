@@ -1,4 +1,5 @@
-import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, List, Network, FileCode2, FileType } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, List, Network, FileCode2, FileType, ArrowDown, ArrowRight } from "lucide-react";
+import { useMindMapStore } from "@/store/useMindMapStore";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -119,6 +120,39 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
   </TooltipProvider>
 );
 
+/** Toggle between vertical (DOWN) and horizontal (RIGHT) layout for flow diagrams */
+const DirectionToggle = () => {
+  const layoutDirection = useMindMapStore((s) => s.layoutDirection);
+  const setLayoutDirection = useMindMapStore((s) => s.setLayoutDirection);
+  const isVertical = layoutDirection === "DOWN";
+
+  return (
+    <>
+      <div className="w-px h-5 bg-border mx-1" />
+      <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
+        <TipButton
+          label="Layout Vertical"
+          variant={isVertical ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 rounded-md"
+          onClick={() => setLayoutDirection("DOWN")}
+        >
+          <ArrowDown className="w-3.5 h-3.5" />
+        </TipButton>
+        <TipButton
+          label="Layout Horizontal"
+          variant={!isVertical ? "secondary" : "ghost"}
+          size="icon"
+          className="h-7 w-7 rounded-md"
+          onClick={() => setLayoutDirection("RIGHT")}
+        >
+          <ArrowRight className="w-3.5 h-3.5" />
+        </TipButton>
+      </div>
+    </>
+  );
+};
+
   const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
   onUndo, onRedo, onExportPng, onExportPdf, onExportSvg, onExportMarkdown,
@@ -227,6 +261,11 @@ const TipButton = ({ label, children, ...rest }: { label: string; children: Reac
       <TipButton label="Ajustar à tela" variant="ghost" size="icon" className="h-8 w-8" onClick={onFitView}>
         <Maximize className="w-4 h-4" />
       </TipButton>
+
+      {/* Layout direction toggle — only for flow diagrams */}
+      {(diagramType === "flowchart" || diagramType === "orgchart") && (
+        <DirectionToggle />
+      )}
 
       <div className="w-px h-5 bg-border mx-1" />
 

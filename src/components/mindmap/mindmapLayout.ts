@@ -1,4 +1,5 @@
 import type { Node, Edge } from "@xyflow/react";
+import { useMindMapStore } from "@/store/useMindMapStore";
 import { 
   getNodeDimensions, 
   ROOT_WIDTH, 
@@ -514,7 +515,10 @@ export function rerouteDiagramEdges(
     if (diagramType === "mindmap") {
       handles = getMindmapHandles(srcPos, tgtPos);
     } else if (diagramType === "orgchart" || diagramType === "flowchart") {
-      handles = { sourceHandle: "s-bottom", targetHandle: "t-top" };
+      const dir = useMindMapStore.getState().layoutDirection;
+      handles = dir === "RIGHT"
+        ? { sourceHandle: "s-right", targetHandle: "t-left" }
+        : { sourceHandle: "s-bottom", targetHandle: "t-top" };
     } else if (diagramType === "timeline") {
       handles = { sourceHandle: "right", targetHandle: "left" };
     } else {

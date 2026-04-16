@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import DiagramEditorCore from "@/components/editor/DiagramEditorCore";
 import { buildNodeStyle, inferStyleKey } from "@/lib/nodeStyles";
+import { useMindMapStore } from "@/store/useMindMapStore";
 import { cn } from "@/lib/utils";
 import type { Node, Edge } from "@xyflow/react";
 import type { Json } from "@/integrations/supabase/types";
@@ -30,6 +31,7 @@ const DiagramEditor = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [publicToken, setPublicToken] = useState<string | null>(null);
   const [diagramType, setDiagramType] = useState("mindmap");
+  const [initialLayoutDirection, setInitialLayoutDirection] = useState<"DOWN" | "RIGHT">("DOWN");
   const [initialNodes, setInitialNodes] = useState<Node[] | undefined>();
   const [initialEdges, setInitialEdges] = useState<Edge[] | undefined>();
   const [initialThemeId, setInitialThemeId] = useState<string | undefined>();
@@ -88,7 +90,10 @@ const DiagramEditor = () => {
         }
       }
 
-      const diagramData = data.data as { nodes?: Node[]; edges?: Edge[] };
+      const diagramData = data.data as { nodes?: Node[]; edges?: Edge[]; layoutDirection?: "DOWN" | "RIGHT" };
+      if (diagramData?.layoutDirection) {
+        setInitialLayoutDirection(diagramData.layoutDirection);
+      }
       if (diagramData?.nodes?.length) {
         // 3C — Apply native style to legacy nodes loaded from the database
         const migratedNodes = diagramData.nodes.map((node: Node) => {
@@ -189,6 +194,9 @@ const DiagramEditor = () => {
         setSaving(true);
       }
 
+      // Persist layoutDirection for flow diagrams so it's restored on reload
+      const currentLayoutDir = useMindMapStore.getState().layoutDirection;
+
       const diagramData: Json = {
         nodes: nodes.map((n) => ({
           id: n.id,
@@ -208,6 +216,7 @@ const DiagramEditor = () => {
           ...(e.label ? { label: e.label } : {}),
         })) as unknown as Json,
         viewport: {},
+        layoutDirection: currentLayoutDir,
       };
 
       try {
@@ -399,6 +408,7 @@ const DiagramEditor = () => {
       <div className="flex-1">
         <DiagramEditorCore
           diagramType={diagramType}
+          initialLayoutDirection={initialLayoutDirection}
           initialNodes={initialNodes}
           initialEdges={initialEdges}
           initialThemeId={initialThemeId}

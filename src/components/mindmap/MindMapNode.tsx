@@ -499,13 +499,19 @@ function MindMapNodeComponent({
       {/* Handles */}
       {isFlowDiagram ? (
         <>
-          {/* Flow diagram: root only has source bottom; non-root has target top + source bottom (always) */}
+          {/* Flow diagram handles: both vertical (bottom/top) and horizontal (right/left)
+              are always present so the layout can switch direction without remounting nodes */}
           {isRoot ? (
-            <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8", opacity: 0 }} />
+            <>
+              <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8", opacity: 0 }} />
+              <Handle type="source" position={Position.Right} id="s-right" className="mindmap-handle" isConnectable={isConnectable} style={{ background: "#94a3b8", opacity: 0 }} />
+            </>
           ) : (
             <>
               <Handle type="target" position={Position.Top} id="t-top" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
               <Handle type="source" position={Position.Bottom} id="s-bottom" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
+              <Handle type="target" position={Position.Left} id="t-left" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
+              <Handle type="source" position={Position.Right} id="s-right" className="mindmap-handle" isConnectable={isConnectable} style={{ background: branchColor ?? "#94a3b8", opacity: 0 }} />
             </>
           )}
         </>
