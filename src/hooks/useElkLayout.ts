@@ -65,9 +65,14 @@ export function useElkLayout() {
 
   // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
   // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
+  // Also includes a shape fingerprint so re-layout fires when a node shape changes
+  // (e.g. rectangle → diamond changes the measured size, requiring ELK to reposition)
   const structuralEdgeCount = visibleEdges.filter((e) => e.type !== "sketch").length;
   const isFlowLayout = diagramType === "orgchart" || diagramType === "flowchart";
-  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}`;
+  const shapeKey = isFlowLayout
+    ? visibleNodes.map((n) => (n.data as any)?.shape ?? "").join(",")
+    : "";
+  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}|${shapeKey}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();

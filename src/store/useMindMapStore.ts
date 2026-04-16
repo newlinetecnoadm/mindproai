@@ -425,6 +425,9 @@ export const useMindMapStore = create<MindMapStore>()(
         visibleNodes: state.visibleNodes.map((n) =>
           n.id === nodeId ? { ...n, data: { ...n.data, shape } } : n
         ),
+        // Bump labelVersion so ELK re-layouts after React Flow remeasures the
+        // new shape dimensions (diamond is wider than rectangle, etc.)
+        labelVersion: state.labelVersion + 1,
       }));
     },
 
