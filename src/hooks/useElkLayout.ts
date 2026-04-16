@@ -110,9 +110,16 @@ export function useElkLayout() {
           positionMap.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
         });
 
+        // Anchor: keep root at its current position, shift everything else
+        const elkRootPos = positionMap.get(root.id);
+        const currentRootPos = root.position;
+        const offsetX = elkRootPos ? currentRootPos.x - elkRootPos.x : 0;
+        const offsetY = elkRootPos ? currentRootPos.y - elkRootPos.y : 0;
+
         const positionedNodes = nodes.map((node) => {
           const pos = positionMap.get(node.id);
-          return pos ? { ...node, position: pos } : node;
+          if (!pos) return node;
+          return { ...node, position: { x: pos.x + offsetX, y: pos.y + offsetY } };
         });
 
         // Migrate legacy "mindmap" edges → "flow" so they render as straight orthogonal connectors
@@ -202,30 +209,32 @@ export function useElkLayout() {
       const leftResult = leftNodes.length > 0 ? await elk.layout(leftGraph) : null;
       const rootInLeft = leftResult?.children?.find((c) => c.id === root.id);
 
-      // ─── Calcular offsets para unir os dois grafos pela raiz ────────────────
-      const rootRightX = rootInRight?.x ?? 0;
-      const rootRightY = rootInRight?.y ?? 0;
+      // ─── Anchor root at its current position ─────────────────────────────────
+      const elkRootX = rootInRight?.x ?? 0;
+      const elkRootY = rootInRight?.y ?? 0;
+      // Offset: shift ELK output so root stays where it was on screen
+      const anchorOX = root.position.x - elkRootX;
+      const anchorOY = root.position.y - elkRootY;
 
-      // Offset para posicionar lado esquerdo espelhado
-      const leftOffsetX = rootRightX - (rootInLeft?.x ?? 0);
-      const leftOffsetY = rootRightY - (rootInLeft?.y ?? 0);
+      // Offset para posicionar lado esquerdo espelhado (relative to ELK root)
+      const leftOffsetX = elkRootX - (rootInLeft?.x ?? 0);
+      const leftOffsetY = elkRootY - (rootInLeft?.y ?? 0);
 
       // ─── Mapear posições finais ──────────────────────────────────────────────
       const positionMap = new Map<string, { x: number; y: number }>();
 
       rightResult.children?.forEach((n) => {
         positionMap.set(n.id, {
-          x: n.x ?? 0,
-          y: n.y ?? 0,
+          x: (n.x ?? 0) + anchorOX,
+          y: (n.y ?? 0) + anchorOY,
         });
       });
 
       leftResult?.children?.forEach((n) => {
         if (n.id !== root.id) {
-          // Lado esquerdo: espelhar X em relação à raiz
           positionMap.set(n.id, {
-            x: (n.x ?? 0) + leftOffsetX,
-            y: (n.y ?? 0) + leftOffsetY,
+            x: (n.x ?? 0) + leftOffsetX + anchorOX,
+            y: (n.y ?? 0) + leftOffsetY + anchorOY,
           });
         }
       });
