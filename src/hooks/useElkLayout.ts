@@ -11,18 +11,19 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
   return {
     "elk.algorithm": "layered",
     "elk.direction": direction,
-    // Espaço horizontal entre camadas (root→depth1, depth1→depth2, etc.)
-    "elk.layered.spacing.nodeNodeBetweenLayers": "110",
-    // Espaço vertical entre irmãos
-    "elk.spacing.nodeNode": "28",
-    // BRANDES_KOEPF + BALANCED: centra filhos ao redor do pai (evita filhos
-    // "vagando" para longe do nó pai como acontece com SIMPLE)
+    // Espaço horizontal entre camadas — reduzido para layout mais compacto
+    "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+    // Espaço vertical entre irmãos — bem compacto como no print de referência
+    "elk.spacing.nodeNode": "14",
+    // BRANDES_KOEPF + BALANCED: centra filhos ao redor do pai
     "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
     // LAYER_SWEEP minimiza cruzamentos sem descentrar os nós
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    // Compactação pós-layout: reduz comprimento das arestas
+    "elk.layered.compaction.postCompaction.strategy": "EDGE_LENGTH",
     "elk.edgeRouting": "SPLINES",
-    "elk.padding": "[top=20, left=20, bottom=20, right=20]",
+    "elk.padding": "[top=10, left=10, bottom=10, right=10]",
   };
 }
 
@@ -62,6 +63,8 @@ export function useElkLayout() {
   const layoutDirection = useMindMapStore((s) => s.layoutDirection);
   const labelVersion = useMindMapStore((s) => s.labelVersion);
   const isRunning = useRef(false);
+  // fitView só na carga inicial — edições não devem fazer zoom-out
+  const hasInitialFit = useRef(false);
 
   // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
   // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
@@ -148,7 +151,10 @@ export function useElkLayout() {
           setNodes(positionedNodes);
         }
 
-        setTimeout(() => { fitView({ duration: 500, padding: 0.15 }); }, 80);
+        if (!hasInitialFit.current) {
+          hasInitialFit.current = true;
+          setTimeout(() => { fitView({ duration: 500, padding: 0.15 }); }, 80);
+        }
         return;
       }
 
@@ -248,16 +254,24 @@ export function useElkLayout() {
         })
       );
 
-      // fitView com animação suave após layout
-      setTimeout(() => {
-        fitView({ duration: 500, padding: 0.15 });
-      }, 80);
+      // fitView apenas na carga inicial — sem zoom-out a cada edição
+      if (!hasInitialFit.current) {
+        hasInitialFit.current = true;
+        setTimeout(() => {
+          fitView({ duration: 500, padding: 0.15 });
+        }, 80);
+      }
     } catch (err) {
       console.error("[ELK Bifurcado]", err);
     } finally {
       isRunning.current = false;
     }
   }, [getNodes, setNodes, fitView, visibleEdges, diagramType, layoutDirection]);
+
+  // Reset fitView flag quando o tipo de diagrama muda (novo diagrama carregado)
+  useEffect(() => {
+    hasInitialFit.current = false;
+  }, [diagramType]);
 
   // Gatilho: nós renderizados E estrutura mudou
   // eslint-disable-next-line react-hooks/exhaustive-deps

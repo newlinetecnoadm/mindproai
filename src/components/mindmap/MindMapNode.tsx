@@ -254,6 +254,7 @@ function MindMapNodeComponent({
   const updateNodeIcon = useMindMapStore((s) => s.updateNodeIcon);
   const updateNodeShape = useMindMapStore((s) => s.updateNodeShape);
   const addChild = useMindMapStore((s) => s.addChild);
+  const addSibling = useMindMapStore((s) => s.addSibling);
   const deleteNode = useMindMapStore((s) => s.deleteNode);
   const diagramType = useMindMapStore((s) => s.diagramType);
   const pendingSketchSource = useMindMapStore((s) => s.pendingSketchSource);
@@ -315,16 +316,26 @@ function MindMapNodeComponent({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       e.stopPropagation();
+      // Tab: commit e cria filho, foco vai para o novo nó
+      if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        commitEdit();
+        setTimeout(() => addChild(nodeId), 0);
+        return;
+      }
+      // Enter: commit e cria irmão
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         commitEdit();
+        setTimeout(() => addSibling(nodeId), 0);
+        return;
       }
       if (e.key === "Escape") {
         setLocalLabel(data.label);
         setEditing(false);
       }
     },
-    [commitEdit, data.label]
+    [commitEdit, data.label, addChild, addSibling, nodeId]
   );
 
   const cycleShape = useCallback(() => {
@@ -535,13 +546,41 @@ function MindMapNodeComponent({
         onDoubleClick={() => !editing && !isReadOnly && setEditing(true)}
         className={cn("relative group", { "cursor-text": editing })}
       >
-        {/* Indicador de nota */}
+        {/* Indicador de nota — bolinha laranja clicável que abre popover */}
         {notes && !editing && (
-          <div
-            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-yellow-400 border border-white"
-            title="Tem anotação"
-            style={{ zIndex: 5 }}
-          />
+          <Popover open={notesOpen} onOpenChange={setNotesOpen}>
+            <PopoverTrigger asChild>
+              <div
+                className="nodrag nopan absolute -top-1 -right-1 w-3 h-3 rounded-full bg-orange-400 border border-white cursor-pointer hover:scale-125 transition-transform"
+                title="Ver anotação"
+                style={{ zIndex: 5 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-56 p-2"
+              side="top"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Anotação do nó</p>
+              <textarea
+                className="nodrag nopan w-full h-20 text-xs rounded border border-border bg-background p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Escreva uma anotação..."
+                value={localNotes}
+                onChange={(e) => setLocalNotes(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+                readOnly={isReadOnly}
+              />
+              {!isReadOnly && (
+                <button
+                  className="mt-1.5 w-full text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
+                  onClick={commitNotes}
+                >
+                  Salvar
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
 
         {editing ? (

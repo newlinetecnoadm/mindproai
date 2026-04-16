@@ -26,6 +26,7 @@ import { MindMapEdge, SketchEdge, FlowEdge } from "./edges/CustomEdges";
 
 import EditorToolbar from "./EditorToolbar";
 import EdgeFloatingToolbar from "./EdgeFloatingToolbar";
+import NodeFloatingToolbar from "./NodeFloatingToolbar";
 import NodeSearchBar from "./NodeSearchBar";
 import NodeContextMenu from "./NodeContextMenu";
 import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
@@ -75,6 +76,76 @@ interface DiagramEditorCoreProps {
   remoteEdges?: Edge[];
   remoteThemeId?: string;
   userRole?: "owner" | "editor" | "viewer";
+}
+
+// ─── Outline → Nodes/Edges parser ────────────────────────────────────────────
+const BRANCH_PALETTE = ["#3B82F6","#8B5CF6","#EC4899","#F59E0B","#10B981","#EF4444","#06B6D4","#F97316"];
+
+function parseOutlineToNodes(text: string, diagramType = "mindmap") {
+  const lines = text.split("\n").filter((l) => l.trim().length > 0);
+  const nodes: any[] = [];
+  const edges: any[] = [];
+
+  // Detect indentation: spaces or tabs
+  const getDepth = (line: string) => {
+    const match = line.match(/^(\s*)/);
+    const indent = match?.[1] ?? "";
+    if (indent.includes("\t")) return indent.split("\t").length - 1;
+    // Markdown headers: # = 0, ## = 1, etc.
+    const hMatch = line.trimStart().match(/^(#{1,6})\s/);
+    if (hMatch) return hMatch[1].length - 1;
+    return Math.floor(indent.length / 2);
+  };
+
+  const getLabel = (line: string) => line.trimStart().replace(/^#{1,6}\s/, "").trim();
+
+  const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
+  const depthStack: string[] = []; // stack of node IDs by depth level
+
+  lines.forEach((line, i) => {
+    const depth = getDepth(line);
+    const label = getLabel(line);
+    if (!label) return;
+
+    const id = `imported_${i}_${Date.now()}`;
+    const isRoot = depth === 0 && nodes.length === 0;
+    const branchColor = BRANCH_PALETTE[depth === 0 ? 0 : (Math.floor((depthStack[1] ? depthStack.indexOf(depthStack[1]) : i) % BRANCH_PALETTE.length))];
+    const side = !isFlowDiagram && depth > 0 ? (i % 2 === 0 ? "right" : "left") : undefined;
+
+    nodes.push({
+      id,
+      type: "mindmap",
+      position: { x: 0, y: i * 60 },
+      data: {
+        label,
+        depth,
+        isRoot,
+        side,
+        branchColor,
+        ...(isFlowDiagram ? { shape: depth === 0 ? "oval" : "rectangle" } : {}),
+      },
+      style: { background: "transparent", border: "none", padding: 0, boxShadow: "none" },
+    });
+
+    // Trim stack to current depth and push
+    depthStack.length = depth;
+    depthStack[depth] = id;
+
+    // Connect to parent
+    const parentId = depth > 0 ? depthStack[depth - 1] : null;
+    if (parentId) {
+      edges.push({
+        id: `e-${parentId}-${id}`,
+        source: parentId,
+        target: id,
+        type: isFlowDiagram ? "flow" : "mindmap",
+        ...(isFlowDiagram ? { sourceHandle: "s-bottom", targetHandle: "t-top" } : {}),
+        data: { branchColor, side },
+      });
+    }
+  });
+
+  return { nodes, edges };
 }
 
 // ─── Markdown export helper ───────────────────────────────────────────────────
@@ -145,6 +216,7 @@ function DiagramEditorInner({
   const initDiagram = useMindMapStore(s => s.initDiagram);
   const setDiagramType = useMindMapStore(s => s.setDiagramType);
   const setLayoutDirection = useMindMapStore(s => s.setLayoutDirection);
+  const updateNodeShape = useMindMapStore(s => s.updateNodeShape);
   const onNodesChange = useMindMapStore(s => s.onNodesChange);
   const onEdgesChange = useMindMapStore(s => s.onEdgesChange);
   const setNodesAndEdges = useMindMapStore(s => s.setNodesAndEdges);
@@ -643,75 +715,101 @@ function DiagramEditorInner({
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="w-full h-full relative" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
-      <EditorToolbar
-        onAddNode={() => selectedNodes.length > 0 && addChild(selectedNodes[0].id)}
-        onAddSpecialNode={() => {}}
-        onDelete={() => {
-          const toDelete = selectedNodes.filter(n => !(n.data as any)?.isRoot);
-          if (toDelete.length === 1) deleteNode(toDelete[0].id);
-          else if (toDelete.length > 1) deleteNodes(toDelete.map(n => n.id));
-        }}
-        onSave={() => userRole !== "viewer" && triggerSave({ force: true } as any)}
-        onZoomIn={() => zoomIn()}
-        onZoomOut={() => zoomOut()}
-        onFitView={() => fitView({ padding: 0.2, duration: 300 })}
-        onUndo={undo}
-        onRedo={redo}
-        onExportPng={handleExportPng}
-        onExportPdf={handleExportPdf}
-        onExportSvg={handleExportSvg}
-        onExportMarkdown={handleExportMarkdown}
-        canExportPdf={limits.exportPdf}
-        onThemeChange={handleThemeChange}
-        onReLayout={() => {}}
-        currentThemeId={theme.id}
-        canUndo={past.length > 0}
-        canRedo={future.length > 0}
-        saving={saving}
-        exporting={exporting}
-        hasSelection={selectedNodes.length > 0 && userRole !== "viewer"}
-        diagramType="mindmap"
-        userRole={userRole}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onImportSketch={() => setImportDialogOpen(true)}
-      />
+    <div className="w-full h-full flex flex-col" style={{ backgroundColor: theme.bg, transition: "background-color 0.3s" }}>
+      {/* Header centralizado com toolbar */}
+      <div className="flex-none flex items-center justify-center px-3 py-1.5 border-b border-border/30 bg-card/80 backdrop-blur-sm z-10">
+        <EditorToolbar
+          onAddNode={() => selectedNodes.length > 0 && addChild(selectedNodes[0].id)}
+          onAddSpecialNode={() => {}}
+          onDelete={() => {
+            const toDelete = selectedNodes.filter(n => !(n.data as any)?.isRoot);
+            if (toDelete.length === 1) deleteNode(toDelete[0].id);
+            else if (toDelete.length > 1) deleteNodes(toDelete.map(n => n.id));
+          }}
+          onSave={() => userRole !== "viewer" && triggerSave({ force: true } as any)}
+          onZoomIn={() => zoomIn()}
+          onZoomOut={() => zoomOut()}
+          onFitView={() => fitView({ padding: 0.2, duration: 300 })}
+          onUndo={undo}
+          onRedo={redo}
+          onExportPng={handleExportPng}
+          onExportPdf={handleExportPdf}
+          onExportSvg={handleExportSvg}
+          onExportMarkdown={handleExportMarkdown}
+          canExportPdf={limits.exportPdf}
+          onThemeChange={handleThemeChange}
+          onReLayout={() => {}}
+          currentThemeId={theme.id}
+          canUndo={past.length > 0}
+          canRedo={future.length > 0}
+          saving={saving}
+          exporting={exporting}
+          hasSelection={selectedNodes.length > 0 && userRole !== "viewer"}
+          diagramType={diagramType}
+          userRole={userRole}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onImportSketch={() => setImportDialogOpen(true)}
+        />
+      </div>
 
-      {(() => {
-        const ui = themeUI(theme);
-        return (
-          <>
-            {!isMobile && (saving || autosaveStatus === "saving") && (
-              <div
-                className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
-                style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
-              >
-                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ui.accentColor }} />
-                Salvando...
-              </div>
-            )}
-            {pendingSketchSource && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-green-500 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none select-none">
-                <span className="w-2 h-2 rounded-full bg-white/60 animate-pulse" />
-                Clique em outro nó para conectar a seta rascunho · Esc para cancelar
-              </div>
-            )}
-          </>
-        );
-      })()}
+      {/* Canvas — ocupa o restante */}
+      <div className="relative flex-1 overflow-hidden">
+        {(() => {
+          const ui = themeUI(theme);
+          return (
+            <>
+              {!isMobile && (saving || autosaveStatus === "saving") && (
+                <div
+                  className="absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md text-xs"
+                  style={{ backgroundColor: ui.cardBg, borderColor: ui.cardBorder, color: ui.cardText, border: `1px solid ${ui.cardBorder}` }}
+                >
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ui.accentColor }} />
+                  Salvando...
+                </div>
+              )}
+              {pendingSketchSource && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-green-500 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none select-none">
+                  <span className="w-2 h-2 rounded-full bg-white/60 animate-pulse" />
+                  Clique em outro nó para conectar a seta rascunho · Esc para cancelar
+                </div>
+              )}
+            </>
+          );
+        })()}
 
-      <EdgeFloatingToolbar
-        selectedEdge={visibleEdges.find(e => e.id === selectedEdgeId) || null}
-        onDelete={handleEdgeDelete}
-        onColorChange={(edgeId, color) => {
-          const { allNodes, allEdges } = useMindMapStore.getState();
-          setNodesAndEdges(allNodes, allEdges.map(e =>
-            e.id === edgeId ? { ...e, style: { ...e.style, stroke: color } } : e
-          ));
-        }}
-        onEdgeDataChange={handleEdgeDataChange}
-      />
+        {/* Floating toolbar de nó selecionado */}
+        {viewMode === "graph" && userRole !== "viewer" && (
+          <NodeFloatingToolbar
+            selectedNodes={selectedNodes.filter(n => !(n.data as any)?.isRoot || diagramType !== "mindmap")}
+            diagramType={diagramType}
+            onShapeChange={(shape) => selectedNodes.forEach(n => updateNodeShape(n.id, shape as any))}
+            onDuplicate={() => {
+              const ids = selectedNodes.filter(n => !(n.data as any)?.isRoot).map(n => n.id);
+              if (ids.length > 0) { copySelection(ids); pasteSelection(); }
+            }}
+            onDelete={() => {
+              const toDelete = selectedNodes.filter(n => !(n.data as any)?.isRoot);
+              if (toDelete.length === 1) deleteNode(toDelete[0].id);
+              else if (toDelete.length > 1) deleteNodes(toDelete.map(n => n.id));
+            }}
+            onAddChild={() => selectedNodes.length > 0 && addChild(selectedNodes[0].id)}
+            onAddSibling={() => selectedNodes.length > 0 && addSibling(selectedNodes[0].id)}
+            onToggleConnectors={() => selectedNodes.length > 0 && setPendingSketchSource(selectedNodes[0].id)}
+          />
+        )}
+
+        <EdgeFloatingToolbar
+          selectedEdge={visibleEdges.find(e => e.id === selectedEdgeId) || null}
+          onDelete={handleEdgeDelete}
+          onColorChange={(edgeId, color) => {
+            const { allNodes, allEdges } = useMindMapStore.getState();
+            setNodesAndEdges(allNodes, allEdges.map(e =>
+              e.id === edgeId ? { ...e, style: { ...e.style, stroke: color } } : e
+            ));
+          }}
+          onEdgeDataChange={handleEdgeDataChange}
+        />
 
       {viewMode === "graph" ? (
         <ReactFlow
@@ -775,7 +873,16 @@ function DiagramEditorInner({
         />
       )}
 
-      <ImportOutlineDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} onImport={() => {}} />
+      </div>{/* fim canvas */}
+
+      <ImportOutlineDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={(text) => {
+          const parsed = parseOutlineToNodes(text, diagramType);
+          setNodesAndEdges(parsed.nodes as any[], parsed.edges);
+        }}
+      />
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} resource="feature" planName="Free" />
     </div>
   );
