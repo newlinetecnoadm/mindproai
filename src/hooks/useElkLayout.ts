@@ -58,10 +58,8 @@ export function useElkLayout() {
   const { getNodes, setNodes, fitView } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const visibleEdges = useMindMapStore((s) => s.visibleEdges);
-  const visibleNodes = useMindMapStore((s) => s.visibleNodes);
   const diagramType = useMindMapStore((s) => s.diagramType);
   const layoutDirection = useMindMapStore((s) => s.layoutDirection);
-  const labelVersion = useMindMapStore((s) => s.labelVersion);
   const isRunning = useRef(false);
   // fitView só na carga inicial — edições não devem fazer zoom-out
   const hasInitialFit = useRef(false);
@@ -70,12 +68,11 @@ export function useElkLayout() {
   // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
   // Also includes a shape fingerprint so re-layout fires when a node shape changes
   // (e.g. rectangle → diamond changes the measured size, requiring ELK to reposition)
-  const structuralEdgeCount = visibleEdges.filter((e) => e.type !== "sketch").length;
   const isFlowLayout = diagramType === "orgchart" || diagramType === "flowchart";
-  const shapeKey = isFlowLayout
-    ? visibleNodes.map((n) => (n.data as any)?.shape ?? "").join(",")
-    : "";
-  const structureKey = `${visibleNodes.length}|${structuralEdgeCount}|${useMindMapStore.getState().collapsedIds.size}|${isFlowLayout ? labelVersion : 0}|${shapeKey}|${layoutDirection}`;
+  // Relayout só em: carga inicial, colapso/expansão, ou mudança de direção.
+  // NÃO relayouta ao adicionar/mover nós — o usuário controla a posição manualmente.
+  const collapseKey = useMindMapStore.getState().collapsedIds.size;
+  const structureKey = `${collapseKey}|${layoutDirection}|${diagramType}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();

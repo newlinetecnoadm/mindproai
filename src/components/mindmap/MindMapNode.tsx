@@ -316,18 +316,17 @@ function MindMapNodeComponent({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       e.stopPropagation();
-      // Tab: commit e cria filho, foco vai para o novo nó
+      // Tab: commit e cria filho — o foco e scroll acontecem via pendingEditNodeId
       if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
         commitEdit();
         setTimeout(() => addChild(nodeId), 0);
         return;
       }
-      // Enter: commit e cria irmão
+      // Enter: apenas finaliza a edição (não cria nó)
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         commitEdit();
-        setTimeout(() => addSibling(nodeId), 0);
         return;
       }
       if (e.key === "Escape") {

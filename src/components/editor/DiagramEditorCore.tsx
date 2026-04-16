@@ -203,7 +203,7 @@ function DiagramEditorInner({
 
   const limits = usePlanLimits();
   const isMobile = useIsMobile();
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, setCenter, getZoom, getNode } = useReactFlow();
 
   // ─── Zustand Store ────────────────────────────────────────────────────────
   const visibleNodes = useMindMapStore(s => s.visibleNodes);
@@ -526,7 +526,7 @@ function DiagramEditorInner({
     updateEdgeData(edgeId, data);
   }, [updateEdgeData, setNodesAndEdges]);
 
-  // ─── Auto-edit on new node ─────────────────────────────────────────────────
+  // ─── Auto-edit on new node + scroll to keep it in view ────────────────────
   useEffect(() => {
     if (!pendingEditNodeId) return;
     const timer = setTimeout(() => {
@@ -537,9 +537,22 @@ function DiagramEditorInner({
       if (others.length) onNodesChange(others);
       window.dispatchEvent(new CustomEvent("mindmap-edit-node", { detail: { nodeId: pendingEditNodeId } }));
       clearPendingEdit();
+
+      // Scroll suave para o novo nó se estiver fora da viewport
+      const node = getNode(pendingEditNodeId)
+        ?? useMindMapStore.getState().visibleNodes.find(n => n.id === pendingEditNodeId);
+      if (node) {
+        const w = (node as any).measured?.width ?? 150;
+        const h = (node as any).measured?.height ?? 40;
+        setCenter(
+          node.position.x + w / 2,
+          node.position.y + h / 2,
+          { zoom: getZoom(), duration: 300 }
+        );
+      }
     }, 120);
     return () => clearTimeout(timer);
-  }, [pendingEditNodeId, clearPendingEdit, onNodesChange]);
+  }, [pendingEditNodeId, clearPendingEdit, onNodesChange, setCenter, getZoom, getNode]);
 
   // ─── Keyboard Hotkeys ──────────────────────────────────────────────────────
   useEffect(() => {
