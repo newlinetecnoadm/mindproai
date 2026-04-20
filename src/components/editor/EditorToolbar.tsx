@@ -1,4 +1,4 @@
-import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, List, Network, FileCode2, FileType, ArrowDown, ArrowRight } from "lucide-react";
+import { Plus, ZoomIn, ZoomOut, Trash2, Maximize, Undo2, Redo2, Download, Image, FileText, SwatchBook, Keyboard, List, Network, FileCode2, FileType, ArrowDown, ArrowRight, AlignLeft } from "lucide-react";
 import { useMindMapStore } from "@/store/useMindMapStore";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -89,6 +89,7 @@ interface EditorToolbarProps {
   onExportPdf: () => void;
   onExportSvg: () => void;
   onExportMarkdown: () => void;
+  onExportText?: () => void;
   onThemeChange: (theme: EditorTheme) => void;
   onReLayout: () => void;
   onEdgeTypeChange?: (type: string) => void;
@@ -155,7 +156,7 @@ const DirectionToggle = () => {
 
   const EditorToolbar = ({
   onAddNode, onAddSpecialNode, onDelete, onSave, onZoomIn, onZoomOut, onFitView,
-  onUndo, onRedo, onExportPng, onExportPdf, onExportSvg, onExportMarkdown,
+  onUndo, onRedo, onExportPng, onExportPdf, onExportSvg, onExportMarkdown, onExportText,
   onThemeChange, onReLayout, onAddIndependentNode, currentThemeId,
   canUndo, canRedo, saving, hasSelection, diagramType, exporting, canExportPdf = true,
   userRole = "viewer",
@@ -329,6 +330,12 @@ const DirectionToggle = () => {
             <FileType className="w-3.5 h-3.5 mr-2" />
             Exportar Markdown
           </DropdownMenuItem>
+          {onExportText && (
+            <DropdownMenuItem onClick={onExportText}>
+              <AlignLeft className="w-3.5 h-3.5 mr-2" />
+              Exportar Texto Hierárquico
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
