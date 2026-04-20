@@ -1,7 +1,7 @@
 import { memo, useState, useRef, useEffect, useCallback } from "react";
 import {
   Handle, Position, NodeToolbar,
-  useNodeId, type NodeProps,
+  useNodeId, useStore, type NodeProps,
 } from "@xyflow/react";
 import { ChevronRight, ChevronDown, Plus, Trash2, StickyNote, Smile, Square, Circle, RectangleHorizontal, PenLine } from "lucide-react";
 import { useMindMapStore, type MindMapNodeData, type NodeShape } from "@/store/useMindMapStore";
@@ -260,6 +260,9 @@ function MindMapNodeComponent({
   const pendingSketchSource = useMindMapStore((s) => s.pendingSketchSource);
   const setPendingSketchSource = useMindMapStore((s) => s.setPendingSketchSource);
 
+  // True when 2+ nodes are selected — toolbar shows only delete in that case
+  const isMultiSelected = useStore((s) => s.nodes.filter((n) => n.selected).length > 1);
+
   const [editing, setEditing] = useState(false);
   const [localLabel, setLocalLabel] = useState(data.label);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -369,123 +372,128 @@ function MindMapNodeComponent({
       {/* Toolbar de ações */}
       <NodeToolbar isVisible={selected && !isRoot && !isReadOnly} position={Position.Top} offset={6}>
         <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-lg px-1 py-1 shadow-lg">
-          {/* Adicionar filho */}
-          <button
-            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            onClick={() => addChild(nodeId)}
-            title="Adicionar filho (Tab)"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Editar */}
-          <button
-            className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            onClick={() => setEditing(true)}
-            title="Editar texto (F2)"
-          >
-            ✏️
-          </button>
-
-          {/* Notas */}
-          <Popover open={notesOpen} onOpenChange={setNotesOpen}>
-            <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  "nodrag nopan flex items-center justify-center w-6 h-6 rounded transition-colors text-muted-foreground hover:text-foreground",
-                  notes ? "hover:bg-yellow-100 text-yellow-600" : "hover:bg-muted"
-                )}
-                title="Anotações"
-              >
-                <StickyNote className="w-3.5 h-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-56 p-2"
-              side="top"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Anotação do nó</p>
-              <textarea
-                className="nodrag nopan w-full h-20 text-xs rounded border border-border bg-background p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Escreva uma anotação..."
-                value={localNotes}
-                onChange={(e) => setLocalNotes(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-              <button
-                className="mt-1.5 w-full text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
-                onClick={commitNotes}
-              >
-                Salvar
-              </button>
-            </PopoverContent>
-          </Popover>
-
-          {/* Ícone/Emoji picker */}
-          <Popover>
-            <PopoverTrigger asChild>
+          {/* Actions hidden during multi-selection */}
+          {!isMultiSelected && (
+            <>
+              {/* Adicionar filho */}
               <button
                 className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                title="Ícone do nó"
+                onClick={() => addChild(nodeId)}
+                title="Adicionar filho (Tab)"
               >
-                {icon && icon !== "∅" ? (
-                  <span className="text-sm leading-none">{icon}</span>
-                ) : (
-                  <Smile className="w-3.5 h-3.5" />
-                )}
+                <Plus className="w-3.5 h-3.5" />
               </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-52 p-2"
-              side="top"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Escolher ícone</p>
-              <div className="grid grid-cols-8 gap-0.5">
-                {QUICK_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    className="nodrag nopan w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-sm transition-colors"
-                    onClick={() => updateNodeIcon(nodeId, emoji === "∅" ? "" : emoji)}
-                    title={emoji === "∅" ? "Remover ícone" : emoji}
-                  >
-                    {emoji === "∅" ? <span className="text-[10px] text-muted-foreground">✕</span> : emoji}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
 
-          {/* Forma do nó — apenas no fluxograma */}
-          {diagramType === "flowchart" && (
-            <button
-              className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              onClick={cycleShape}
-              title={`Forma: ${shapeTitle} (clique para alternar)`}
-            >
-              <ShapeIcon className="w-3 h-3" />
-            </button>
+              {/* Editar */}
+              <button
+                className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                onClick={() => setEditing(true)}
+                title="Editar texto (F2)"
+              >
+                ✏️
+              </button>
+
+              {/* Notas */}
+              <Popover open={notesOpen} onOpenChange={setNotesOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      "nodrag nopan flex items-center justify-center w-6 h-6 rounded transition-colors text-muted-foreground hover:text-foreground",
+                      notes ? "hover:bg-yellow-100 text-yellow-600" : "hover:bg-muted"
+                    )}
+                    title="Anotações"
+                  >
+                    <StickyNote className="w-3.5 h-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-56 p-2"
+                  side="top"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Anotação do nó</p>
+                  <textarea
+                    className="nodrag nopan w-full h-20 text-xs rounded border border-border bg-background p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Escreva uma anotação..."
+                    value={localNotes}
+                    onChange={(e) => setLocalNotes(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                  <button
+                    className="mt-1.5 w-full text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:opacity-90 transition-opacity"
+                    onClick={commitNotes}
+                  >
+                    Salvar
+                  </button>
+                </PopoverContent>
+              </Popover>
+
+              {/* Ícone/Emoji picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Ícone do nó"
+                  >
+                    {icon && icon !== "∅" ? (
+                      <span className="text-sm leading-none">{icon}</span>
+                    ) : (
+                      <Smile className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-52 p-2"
+                  side="top"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Escolher ícone</p>
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {QUICK_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        className="nodrag nopan w-6 h-6 flex items-center justify-center rounded hover:bg-muted text-sm transition-colors"
+                        onClick={() => updateNodeIcon(nodeId, emoji === "∅" ? "" : emoji)}
+                        title={emoji === "∅" ? "Remover ícone" : emoji}
+                      >
+                        {emoji === "∅" ? <span className="text-[10px] text-muted-foreground">✕</span> : emoji}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Forma do nó — apenas no fluxograma */}
+              {diagramType === "flowchart" && (
+                <button
+                  className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                  onClick={cycleShape}
+                  title={`Forma: ${shapeTitle} (clique para alternar)`}
+                >
+                  <ShapeIcon className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Seta rascunho */}
+              <button
+                className={cn(
+                  "nodrag nopan flex items-center justify-center w-6 h-6 rounded transition-colors",
+                  pendingSketchSource === nodeId
+                    ? "bg-green-500/20 text-green-600 ring-1 ring-green-500"
+                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setPendingSketchSource(pendingSketchSource === nodeId ? null : nodeId)}
+                title="Adicionar seta rascunho"
+              >
+                <PenLine className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Separador */}
+              <div className="w-px h-4 bg-border mx-0.5" />
+            </>
           )}
 
-          {/* Seta rascunho */}
-          <button
-            className={cn(
-              "nodrag nopan flex items-center justify-center w-6 h-6 rounded transition-colors",
-              pendingSketchSource === nodeId
-                ? "bg-green-500/20 text-green-600 ring-1 ring-green-500"
-                : "hover:bg-muted text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setPendingSketchSource(pendingSketchSource === nodeId ? null : nodeId)}
-            title="Adicionar seta rascunho"
-          >
-            <PenLine className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Separador */}
-          <div className="w-px h-4 bg-border mx-0.5" />
-
-          {/* Deletar */}
+          {/* Deletar — sempre visível */}
           <button
             className="nodrag nopan flex items-center justify-center w-6 h-6 rounded hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
             onClick={() => deleteNode(nodeId)}
