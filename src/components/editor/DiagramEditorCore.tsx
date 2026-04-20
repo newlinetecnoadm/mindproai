@@ -182,6 +182,38 @@ function exportToMarkdown(nodes: Node[], edges: Edge[]): string {
   return buildMd(root.id, 0);
 }
 
+// ─── Hierarchical text export helper ─────────────────────────────────────────
+function exportToText(nodes: Node[], edges: Edge[]): string {
+  const root = nodes.find((n) => (n.data as any)?.isRoot);
+  if (!root) return "";
+
+  const childrenMap = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.type === "sketch") continue;
+    const children = childrenMap.get(edge.source) ?? [];
+    children.push(edge.target);
+    childrenMap.set(edge.source, children);
+  }
+
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  function buildText(nodeId: string, depth: number): string {
+    const node = nodeMap.get(nodeId);
+    if (!node) return "";
+    const icon = (node.data as any)?.icon ?? "";
+    const label = (node.data as any)?.label ?? "";
+    const prefix = "  ".repeat(depth);
+    let line = `${prefix}${icon ? icon + " " : ""}${label}\n`;
+    const children = childrenMap.get(nodeId) ?? [];
+    for (const childId of children) {
+      line += buildText(childId, depth + 1);
+    }
+    return line;
+  }
+
+  return buildText(root.id, 0).trimEnd();
+}
+
 function DiagramEditorInner({
   diagramType, initialLayoutDirection, initialNodes = [], initialEdges = [], initialThemeId,
   onSave, saving, remoteNodes, remoteEdges, remoteThemeId, userRole = "viewer"
@@ -281,49 +313,41 @@ function DiagramEditorInner({
 
   const handleNodeDrag = useCallback((_e: any, node: Node) => {
     if (!draggingNodeId || (node.data as any)?.isRoot) return;
+    const nW = (node as any).measured?.width ?? 150;
+    const nH = (node as any).measured?.height ?? 40;
+    const nCX = node.position.x + nW / 2;
+    const nCY = node.position.y + nH / 2;
     const candidates = visibleNodes.filter(n => n.id !== node.id && !draggingDescendantIds.has(n.id));
     let closest: Node | null = null;
     let minDist = Infinity;
     for (const c of candidates) {
-      const dx = c.position.x - node.position.x;
-      const dy = c.position.y - node.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const cW = (c as any).measured?.width ?? 150;
+      const cH = (c as any).measured?.height ?? 40;
+      const cCX = c.position.x + cW / 2;
+      const cCY = c.position.y + cH / 2;
+      const dist = Math.sqrt((cCX - nCX) ** 2 + (cCY - nCY) ** 2);
       if (dist < minDist) { minDist = dist; closest = c; }
     }
     setDropTargetId(minDist < PROXIMITY_THRESHOLD && closest ? closest.id : null);
   }, [draggingNodeId, draggingDescendantIds, visibleNodes]);
 
   const handleNodeDragStop = useCallback((_e: any, node: Node) => {
+    const capturedDropTarget = dropTargetId;
     setDraggingNodeId(null);
     setDropTargetId(null);
     setDraggingDescendantIds(new Set());
 
     if ((node.data as any)?.isRoot) return;
-    const { diagramType } = useMindMapStore.getState();
-    const isFlow = diagramType === "orgchart" || diagramType === "flowchart";
-    const edgeType = isFlow ? "flow" : "mindmap";
-    const currentEdge = allEdges.find(e => e.target === node.id && e.type === edgeType);
 
-    const newParentId = dropTargetId;
-    if (!newParentId) {
-      setNodesAndEdges([...allNodes], [...allEdges]);
-      return;
+    if (capturedDropTarget) {
+      const currentParentId = allEdges.find(e => e.target === node.id)?.source;
+      if (capturedDropTarget !== currentParentId) {
+        useMindMapStore.getState().reparentNode(node.id, capturedDropTarget);
+        toast.info("Nó movido para nova ramificação");
+      }
     }
-
-    if (newParentId !== currentEdge?.source) {
-      const nextEdges = allEdges.filter(e => e.id !== currentEdge?.id);
-      const newEdge: any = {
-        id: `e-${newParentId}-${node.id}`,
-        source: newParentId,
-        target: node.id,
-        type: edgeType,
-        ...(isFlow ? { sourceHandle: "s-bottom", targetHandle: "t-top" } : {}),
-      };
-      nextEdges.push(newEdge);
-      setNodesAndEdges([...allNodes], nextEdges);
-      toast.info("Nó conectado a nova ramificação");
-    }
-  }, [allEdges, allNodes, dropTargetId, setNodesAndEdges]);
+    // Free drag (no drop target): position already updated by onNodesChange — nothing extra needed
+  }, [allEdges, dropTargetId]);
 
   // ─── Canvas container ref (for NodeFloatingToolbar coordinate correction) ──
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -467,6 +491,21 @@ function DiagramEditorInner({
     link.click();
     URL.revokeObjectURL(url);
     toast.success("Markdown exportado!");
+  }, []);
+
+  // ─── Export Text ──────────────────────────────────────────────────────────
+  const handleExportText = useCallback(() => {
+    const { allNodes: nodes, allEdges: edges } = useMindMapStore.getState();
+    const txt = exportToText(nodes, edges);
+    if (!txt) { toast.error("Nada para exportar"); return; }
+    const blob = new Blob([txt], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "mapa-mental.txt";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Texto hierárquico exportado!");
   }, []);
 
   // ─── Edge actions ─────────────────────────────────────────────────────────
@@ -752,6 +791,7 @@ function DiagramEditorInner({
           onExportPdf={handleExportPdf}
           onExportSvg={handleExportSvg}
           onExportMarkdown={handleExportMarkdown}
+          onExportText={handleExportText}
           canExportPdf={limits.exportPdf}
           onThemeChange={handleThemeChange}
           onReLayout={() => {}}

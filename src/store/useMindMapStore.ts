@@ -61,6 +61,7 @@ type MindMapStore = {
   updateNodeShape: (nodeId: string, shape: NodeShape) => void;
   addChild: (parentId: string, label?: string) => string;
   addSibling: (nodeId: string, label?: string) => string;
+  reparentNode: (nodeId: string, newParentId: string) => void;
   deleteNode: (nodeId: string) => void;
   deleteNodes: (nodeIds: string[]) => void;
   setVisible: (nodes: MindMapNode[], edges: Edge[]) => void;
@@ -619,6 +620,103 @@ export const useMindMapStore = create<MindMapStore>()(
       const nextCollapsed = new Set([...collapsedIds].filter((id) => !toDelete.has(id)));
       const { visibleNodes, visibleEdges } = computeVisible(nextNodes, nextEdges, nextCollapsed);
       set({ allNodes: nextNodes, allEdges: nextEdges, visibleNodes, visibleEdges, collapsedIds: nextCollapsed });
+    },
+
+    reparentNode: (nodeId, newParentId) => {
+      get()._pushHistory();
+      const { allNodes, allEdges, collapsedIds, currentThemeEdgeColor, currentIsDark, diagramType, layoutDirection } = get();
+
+      const draggedNode = allNodes.find((n) => n.id === nodeId);
+      const newParent = allNodes.find((n) => n.id === newParentId);
+      if (!draggedNode || !newParent) return;
+      // Prevent circular reparenting (can't reparent onto a descendant)
+      if (getDescendantIds(nodeId, allEdges).has(newParentId)) return;
+
+      const isFlow = diagramType === "orgchart" || diagramType === "flowchart";
+      const isDefaultColor = !currentThemeEdgeColor || currentThemeEdgeColor === "#a3a3a3";
+      const palette = isDefaultColor ? BRANCH_COLORS : generateThemeBranchColors(currentThemeEdgeColor!, 8);
+
+      // Remove old parent edge
+      const oldEdgeId = allEdges.find((e) => e.target === nodeId)?.id;
+      const filteredEdges = allEdges.filter((e) => e.id !== oldEdgeId);
+
+      const newParentDepth = (newParent.data.depth as number) ?? 0;
+      const oldDepth = (draggedNode.data.depth as number) ?? 1;
+      const depthDelta = (newParentDepth + 1) - oldDepth;
+
+      // Determine new side/color based on new parent
+      let newSide: "left" | "right" = "right";
+      let newBranchColor = palette[0];
+      let newBranchIndex = 0;
+
+      if (!isFlow) {
+        if (newParentDepth === 0) {
+          const rootChildCount = filteredEdges.filter((e) => e.source === newParentId).length;
+          newSide = rootChildCount % 2 === 0 ? "right" : "left";
+          newBranchIndex = rootChildCount;
+          newBranchColor = palette[rootChildCount % palette.length];
+        } else {
+          newSide = (newParent.data.side as "left" | "right") ?? "right";
+          newBranchIndex = (newParent.data.branchIndex as number) ?? 0;
+          newBranchColor = (newParent.data.branchColor as string) ?? palette[0];
+        }
+      } else {
+        if (newParentDepth === 0) {
+          const flowChildCount = filteredEdges.filter((e) => e.source === newParentId).length;
+          newBranchIndex = flowChildCount;
+          newBranchColor = palette[flowChildCount % palette.length];
+        } else {
+          newBranchIndex = (newParent.data.branchIndex as number) ?? 0;
+          newBranchColor = (newParent.data.branchColor as string) ?? palette[0];
+        }
+      }
+
+      const flowSrcHandle = layoutDirection === "RIGHT" ? "s-right" : "s-bottom";
+      const flowTgtHandle = layoutDirection === "RIGHT" ? "t-left" : "t-top";
+      const newEdge: Edge = {
+        id: `e-${newParentId}-${nodeId}`,
+        source: newParentId,
+        target: nodeId,
+        type: isFlow ? "flow" : "mindmap",
+        ...(isFlow ? { sourceHandle: flowSrcHandle, targetHandle: flowTgtHandle } : {}),
+        data: { branchColor: newBranchColor, side: isFlow ? undefined : newSide },
+      };
+
+      // Update the reparented node and all its descendants
+      const descendantIds = getDescendantIds(nodeId, allEdges);
+      const nextNodes = allNodes.map((n) => {
+        if (n.id === nodeId) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              side: isFlow ? n.data.side : newSide,
+              depth: newParentDepth + 1,
+              branchColor: newBranchColor,
+              branchIndex: newBranchIndex,
+              isDark: currentIsDark,
+            },
+          };
+        }
+        if (descendantIds.has(n.id)) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              side: isFlow ? n.data.side : newSide,
+              depth: Math.max(1, ((n.data.depth as number) ?? 1) + depthDelta),
+              branchColor: newBranchColor,
+              branchIndex: newBranchIndex,
+              isDark: currentIsDark,
+            },
+          };
+        }
+        return n;
+      });
+
+      const finalEdges = [...filteredEdges, newEdge];
+      const { visibleNodes, visibleEdges } = computeVisible(nextNodes, finalEdges, collapsedIds);
+      set({ allNodes: nextNodes, allEdges: finalEdges, visibleNodes, visibleEdges });
     },
 
     setVisible: (nodes, edges) => set({ visibleNodes: nodes, visibleEdges: edges }),
