@@ -834,8 +834,8 @@ function DiagramEditorInner({
           );
         })()}
 
-        {/* Floating toolbar de nó selecionado */}
-        {viewMode === "graph" && userRole !== "viewer" && (
+        {/* Floating toolbar de nó selecionado — apenas para seleção singular */}
+        {viewMode === "graph" && userRole !== "viewer" && selectedNodes.length === 1 && (
           <NodeFloatingToolbar
             containerRef={canvasRef}
             selectedNodes={selectedNodes.filter(n => !(n.data as any)?.isRoot || diagramType !== "mindmap")}
