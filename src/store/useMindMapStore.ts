@@ -490,9 +490,46 @@ export const useMindMapStore = create<MindMapStore>()(
       const parentW = (parentNode as any)?.measured?.width ?? 150;
       const parentH = (parentNode as any)?.measured?.height ?? 40;
 
-      // Para flow: posiciona abaixo. Para mindmap: posiciona à direita/esquerda.
-      const initialX = isFlowDiagram ? parentPos.x : (side === "right" ? parentPos.x + parentW + 40 : parentPos.x - 190);
-      const initialY = isFlowDiagram ? parentPos.y + parentH + 80 : parentPos.y;
+      // ── Find existing siblings on the same side / under same parent ────────
+      const siblingIds = new Set(
+        allEdges.filter((e) => e.source === parentId).map((e) => e.target)
+      );
+      const siblings = allNodes.filter((n) => siblingIds.has(n.id) && (isFlowDiagram || n.data.side === side));
+
+      // For mindmap: place below the last sibling on the same side.
+      // For flow: place below the last sibling vertically.
+      const NODE_GAP = 14; // matches ELK spacing.nodeNode
+      const FLOW_GAP = 80;
+
+      let initialX: number;
+      let initialY: number;
+
+      if (isFlowDiagram) {
+        initialX = parentPos.x;
+        if (siblings.length > 0) {
+          const lastBottom = Math.max(
+            ...siblings.map((n) => n.position.y + ((n as any).measured?.height ?? 40))
+          );
+          initialY = lastBottom + FLOW_GAP;
+        } else {
+          initialY = parentPos.y + parentH + FLOW_GAP;
+        }
+      } else {
+        // X: for non-root children, align with existing siblings on the same side
+        if (parentDepth > 0 && siblings.length > 0) {
+          initialX = siblings[0].position.x;
+        } else {
+          initialX = side === "right" ? parentPos.x + parentW + 40 : parentPos.x - 190;
+        }
+        if (siblings.length > 0) {
+          const lastBottom = Math.max(
+            ...siblings.map((n) => n.position.y + ((n as any).measured?.height ?? 40))
+          );
+          initialY = lastBottom + NODE_GAP;
+        } else {
+          initialY = parentPos.y;
+        }
+      }
 
       const newNode: MindMapNode = {
         id: newId,
