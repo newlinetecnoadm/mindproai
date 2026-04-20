@@ -85,32 +85,90 @@ function parseOutlineToNodes(text: string, diagramType = "mindmap") {
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
   const nodes: any[] = [];
   const edges: any[] = [];
+  const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
 
-  // Detect indentation: spaces or tabs
-  const getDepth = (line: string) => {
-    const match = line.match(/^(\s*)/);
-    const indent = match?.[1] ?? "";
-    if (indent.includes("\t")) return indent.split("\t").length - 1;
-    // Markdown headers: # = 0, ## = 1, etc.
-    const hMatch = line.trimStart().match(/^(#{1,6})\s/);
-    if (hMatch) return hMatch[1].length - 1;
-    return Math.floor(indent.length / 2);
+  // ── Format detection ──────────────────────────────────────────────────────
+  // Numbered outline: "1. label" (top-level with dot) or "1.1 label" (multi-level)
+  // "5 a 25 computadores" must NOT match — it starts with a digit but has no dot before the text.
+  const isNumberedOutline = lines.some(
+    (l) => /^\d+\.\s/.test(l.trimStart()) || /^\d+\.\d/.test(l.trimStart())
+  );
+
+  // ── Per-line depth + label extraction ────────────────────────────────────
+  let lastNumberedDepth = 0; // tracks the depth of the most recent numbered line
+
+  const parseLine = (line: string, isFirst: boolean): { depth: number; label: string } => {
+    // First line is always the root
+    if (isFirst) {
+      const label = line.trim().replace(/^#{1,6}\s+/, "").replace(/^\d+(?:\.\d+)*\s+/, "").trim();
+      return { depth: 0, label };
+    }
+
+    const trimmed = line.trimStart();
+
+    if (isNumberedOutline) {
+      // Top-level "1. label" (single number + dot + space)
+      const topMatch = trimmed.match(/^(\d+)\.\s+([\s\S]+)/);
+      if (topMatch && !/^\d+\.\d/.test(trimmed)) {
+        // Single-number top-level: depth = 1
+        lastNumberedDepth = 1;
+        return { depth: 1, label: topMatch[2].trim() };
+      }
+      // Multi-level "1.1 label", "1.1.2 label" (dots between numeric segments)
+      const m = trimmed.match(/^(\d+\.\d+(?:\.\d+)*)\s+([\s\S]+)/);
+      if (m) {
+        // depth = number of numeric segments ("1" → 1, "1.1" → 2, "1.1.1" → 3)
+        const depth = m[1].split(".").length;
+        lastNumberedDepth = depth;
+        return { depth, label: m[2].trim() };
+      }
+      // Unnumbered line inside a numbered outline → child of last numbered parent
+      return { depth: lastNumberedDepth + 1, label: trimmed.trim() };
+    }
+
+    // Markdown headers: "# " → depth 0, "## " → depth 1, etc.
+    const hMatch = trimmed.match(/^(#{1,6})\s+([\s\S]+)/);
+    if (hMatch) return { depth: hMatch[1].length - 1, label: hMatch[2].trim() };
+
+    // Indentation (spaces or tabs)
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch?.[1] ?? "";
+    const depth = indent.includes("\t")
+      ? indent.split("\t").length - 1
+      : Math.floor(indent.length / 2);
+    return { depth, label: trimmed.trim() };
   };
 
-  const getLabel = (line: string) => line.trimStart().replace(/^#{1,6}\s/, "").trim();
-
-  const isFlowDiagram = diagramType === "orgchart" || diagramType === "flowchart";
-  const depthStack: string[] = []; // stack of node IDs by depth level
+  // ── Build tree ────────────────────────────────────────────────────────────
+  const depthStack: string[] = []; // node IDs indexed by depth
 
   lines.forEach((line, i) => {
-    const depth = getDepth(line);
-    const label = getLabel(line);
+    const { depth, label } = parseLine(line, nodes.length === 0);
     if (!label) return;
 
     const id = `imported_${i}_${Date.now()}`;
     const isRoot = depth === 0 && nodes.length === 0;
-    const branchColor = BRANCH_PALETTE[depth === 0 ? 0 : (Math.floor((depthStack[1] ? depthStack.indexOf(depthStack[1]) : i) % BRANCH_PALETTE.length))];
-    const side = !isFlowDiagram && depth > 0 ? (i % 2 === 0 ? "right" : "left") : undefined;
+
+    // Branch color & side: determined at depth 1, inherited by descendants
+    let side: "left" | "right" | undefined;
+    let branchColor = BRANCH_PALETTE[0];
+    let branchIndex = 0;
+
+    if (!isRoot) {
+      if (depth === 1) {
+        // Count existing depth-1 nodes to alternate sides and pick color
+        const d1Count = nodes.filter((n) => n.data?.depth === 1).length;
+        side = isFlowDiagram ? undefined : (d1Count % 2 === 0 ? "right" : "left");
+        branchIndex = d1Count;
+        branchColor = BRANCH_PALETTE[d1Count % BRANCH_PALETTE.length];
+      } else {
+        // Inherit from depth-1 ancestor stored in the stack
+        const ancestor1 = nodes.find((n) => n.id === depthStack[1]);
+        side = isFlowDiagram ? undefined : (ancestor1?.data?.side ?? "right");
+        branchIndex = ancestor1?.data?.branchIndex ?? 0;
+        branchColor = ancestor1?.data?.branchColor ?? BRANCH_PALETTE[0];
+      }
+    }
 
     nodes.push({
       id,
@@ -122,12 +180,13 @@ function parseOutlineToNodes(text: string, diagramType = "mindmap") {
         isRoot,
         side,
         branchColor,
+        branchIndex,
         ...(isFlowDiagram ? { shape: depth === 0 ? "oval" : "rectangle" } : {}),
       },
       style: { background: "transparent", border: "none", padding: 0, boxShadow: "none" },
     });
 
-    // Trim stack to current depth and push
+    // Update stack: truncate to current depth, then record this node
     depthStack.length = depth;
     depthStack[depth] = id;
 
