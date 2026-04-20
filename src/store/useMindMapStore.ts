@@ -562,7 +562,28 @@ export const useMindMapStore = create<MindMapStore>()(
       const nextCollapsed = new Set(collapsedIds);
       nextCollapsed.delete(parentId);
 
-      const nextNodes = [...allNodes, newNode];
+      // ── Vertically center siblings around parent's midpoint (mindmap only) ──
+      // After placing the new node, recalculate Y for all siblings so the group
+      // stays centered on the parent's vertical center.
+      let centeredNodes = [...allNodes, newNode];
+      if (!isFlowDiagram) {
+        const allSiblingNodes = [...siblings, newNode];
+        const parentCY = parentPos.y + parentH / 2;
+        const totalH = allSiblingNodes.reduce(
+          (sum, n) => sum + ((n as any).measured?.height ?? 40), 0
+        ) + NODE_GAP * (allSiblingNodes.length - 1);
+        let curY = parentCY - totalH / 2;
+        const yMap = new Map<string, number>();
+        for (const sib of allSiblingNodes) {
+          yMap.set(sib.id, curY);
+          curY += ((sib as any).measured?.height ?? 40) + NODE_GAP;
+        }
+        centeredNodes = centeredNodes.map((n) =>
+          yMap.has(n.id) ? { ...n, position: { ...n.position, y: yMap.get(n.id)! } } : n
+        );
+      }
+
+      const nextNodes = centeredNodes;
       const nextEdges = [...allEdges, newEdge];
       const { visibleNodes, visibleEdges } = computeVisible(nextNodes, nextEdges, nextCollapsed);
 
