@@ -370,7 +370,7 @@ function MindMapNodeComponent({
   return (
     <>
       {/* Toolbar de ações */}
-      <NodeToolbar isVisible={selected && !isRoot && !isReadOnly} position={Position.Top} offset={6}>
+      <NodeToolbar isVisible={selected && !isRoot && !isReadOnly && !isMultiSelected} position={Position.Top} offset={6}>
         <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-lg px-1 py-1 shadow-lg">
           {/* Actions hidden during multi-selection */}
           {!isMultiSelected && (
