@@ -11,14 +11,14 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
   return {
     "elk.algorithm": "layered",
     "elk.direction": direction,
-    // Espaço horizontal entre camadas — reduzido para layout mais compacto
+    // Espaço horizontal entre camadas
     "elk.layered.spacing.nodeNodeBetweenLayers": "70",
-    // Espaço vertical entre irmãos — bem compacto como no print de referência
-    "elk.spacing.nodeNode": "14",
-    // BRANDES_KOEPF + BALANCED: centra filhos ao redor do pai
+    // Espaço vertical entre irmãos
+    "elk.spacing.nodeNode": "10",
+    // BRANDES_KOEPF + BALANCED: centraliza filhos ao redor do pai (melhor que LINEAR_SEGMENTS)
     "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
-    // LAYER_SWEEP minimiza cruzamentos sem descentrar os nós
+    // LAYER_SWEEP minimiza cruzamentos
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
     // Compactação pós-layout: reduz comprimento das arestas
     "elk.layered.compaction.postCompaction.strategy": "EDGE_LENGTH",
@@ -58,6 +58,7 @@ export function useElkLayout() {
   const { getNodes, setNodes, fitView } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const visibleEdges = useMindMapStore((s) => s.visibleEdges);
+  const visibleNodes = useMindMapStore((s) => s.visibleNodes);
   const diagramType = useMindMapStore((s) => s.diagramType);
   const layoutDirection = useMindMapStore((s) => s.layoutDirection);
   const isRunning = useRef(false);
@@ -68,15 +69,13 @@ export function useElkLayout() {
   // Using a ref (not state) prevents extra renders.
   const lastLayoutKey = useRef<string | null>(null);
 
-  // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
-  // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
-  // Also includes a shape fingerprint so re-layout fires when a node shape changes
-  // (e.g. rectangle → diamond changes the measured size, requiring ELK to reposition)
   const isFlowLayout = diagramType === "orgchart" || diagramType === "flowchart";
-  // Relayout só em: carga inicial, colapso/expansão, ou mudança de direção.
-  // NÃO relayouta ao adicionar/mover nós — o usuário controla a posição manualmente.
+  // Inclui nodeCount para re-layoutar automaticamente ao adicionar ou remover nós.
+  // O efeito só dispara depois que o novo nó é medido (nodesInitialized = true),
+  // garantindo que ELK recebe dimensões corretas. lastLayoutKey impede segunda execução.
   const collapseKey = useMindMapStore.getState().collapsedIds.size;
-  const structureKey = `${collapseKey}|${layoutDirection}|${diagramType}`;
+  const nodeCount = visibleNodes.length;
+  const structureKey = `${nodeCount}|${collapseKey}|${layoutDirection}|${diagramType}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();
@@ -275,12 +274,13 @@ export function useElkLayout() {
     lastLayoutKey.current = null; // force re-layout on new diagram
   }, [diagramType]);
 
-  // Trigger layout only when:
+  // Trigger layout when:
   //   (a) first time nodes are initialized (initial load), OR
-  //   (b) structureKey actually changed (collapse/expand, direction, diagram type)
+  //   (b) structureKey changed: node added/removed, collapse/expand, direction, diagram type
   //
-  // Deliberately NOT re-running when nodesInitialized cycles true→false→true due to
-  // a newly added node being measured — that would reposition manually-placed nodes.
+  // The effect only fires when nodesInitialized = true, so ELK always gets measured
+  // node sizes. lastLayoutKey prevents a second run when nodesInitialized cycles
+  // true→false→true after ELK repositions nodes.
   useEffect(() => {
     if (!nodesInitialized) return;
     const shouldRun = lastLayoutKey.current === null || lastLayoutKey.current !== structureKey;
