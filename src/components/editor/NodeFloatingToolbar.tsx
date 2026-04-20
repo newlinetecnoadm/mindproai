@@ -1,6 +1,6 @@
 import { useMemo, type RefObject } from "react";
 import type { Node } from "@xyflow/react";
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, useViewport } from "@xyflow/react";
 import { Plus } from "lucide-react";
 
 interface NodeFloatingToolbarProps {
@@ -23,6 +23,8 @@ const NodeFloatingToolbar = ({
   onAddSibling,
 }: NodeFloatingToolbarProps) => {
   const { getNodesBounds, flowToScreenPosition } = useReactFlow();
+  // Subscribe to viewport so positions recalculate on pan/zoom
+  const { x: vpX, y: vpY, zoom: vpZoom } = useViewport();
 
   const positions = useMemo(() => {
     if (selectedNodes.length === 0) return null;
@@ -47,7 +49,8 @@ const NodeFloatingToolbar = ({
     } catch {
       return null;
     }
-  }, [selectedNodes, getNodesBounds, flowToScreenPosition, containerRef]);
+  // vpX/vpY/vpZoom in deps so the memo re-runs on every pan/zoom
+  }, [selectedNodes, getNodesBounds, flowToScreenPosition, containerRef, vpX, vpY, vpZoom]);
 
   if (selectedNodes.length === 0 || !positions) return null;
 
