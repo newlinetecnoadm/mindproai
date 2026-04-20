@@ -63,6 +63,10 @@ export function useElkLayout() {
   const isRunning = useRef(false);
   // fitView só na carga inicial — edições não devem fazer zoom-out
   const hasInitialFit = useRef(false);
+  // Tracks the last structureKey that triggered a layout.
+  // null = layout has never run (triggers the very first run).
+  // Using a ref (not state) prevents extra renders.
+  const lastLayoutKey = useRef<string | null>(null);
 
   // Chave de estrutura — apenas arestas estruturais (ignora sketch para não re-disparar layout)
   // Para orgchart/flowchart, inclui labelVersion para re-layoutar quando texto muda de tamanho
@@ -265,18 +269,26 @@ export function useElkLayout() {
     }
   }, [getNodes, setNodes, fitView, visibleEdges, diagramType, layoutDirection]);
 
-  // Reset fitView flag quando o tipo de diagrama muda (novo diagrama carregado)
+  // Reset flags when diagram type changes (new diagram loaded)
   useEffect(() => {
     hasInitialFit.current = false;
+    lastLayoutKey.current = null; // force re-layout on new diagram
   }, [diagramType]);
 
-  // Gatilho: nós renderizados E estrutura mudou
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Trigger layout only when:
+  //   (a) first time nodes are initialized (initial load), OR
+  //   (b) structureKey actually changed (collapse/expand, direction, diagram type)
+  //
+  // Deliberately NOT re-running when nodesInitialized cycles true→false→true due to
+  // a newly added node being measured — that would reposition manually-placed nodes.
   useEffect(() => {
-    if (nodesInitialized) {
+    if (!nodesInitialized) return;
+    const shouldRun = lastLayoutKey.current === null || lastLayoutKey.current !== structureKey;
+    if (shouldRun) {
+      lastLayoutKey.current = structureKey;
       runLayout();
     }
-  }, [nodesInitialized, structureKey]); // structureKey detecta collapse/expand/add/remove
+  }, [nodesInitialized, structureKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { runLayout };
 }
