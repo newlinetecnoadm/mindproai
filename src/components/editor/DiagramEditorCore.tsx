@@ -864,7 +864,7 @@ function DiagramEditorInner({
           userRole={userRole}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          onImportSketch={() => setImportDialogOpen(true)}
+          // onImportSketch={() => setImportDialogOpen(true)}
         />
       </div>
 
@@ -991,6 +991,7 @@ function DiagramEditorInner({
 
       </div>{/* fim canvas */}
 
+      {/* ImportOutlineDialog disabled
       <ImportOutlineDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
@@ -999,6 +1000,7 @@ function DiagramEditorInner({
           setNodesAndEdges(parsed.nodes as any[], parsed.edges);
         }}
       />
+      */}
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} resource="feature" planName="Free" />
     </div>
   );
