@@ -516,19 +516,21 @@ export const useMindMapStore = create<MindMapStore>()(
           initialY = parentPos.y + parentH + FLOW_GAP;
         }
       } else {
-        // X: for non-root children, align with existing siblings on the same side
-        if (parentDepth > 0 && siblings.length > 0) {
+        // X: always align with existing siblings if any (works for all depths incl. root children)
+        if (siblings.length > 0) {
           initialX = siblings[0].position.x;
         } else {
           initialX = side === "right" ? parentPos.x + parentW + 40 : parentPos.x - 190;
         }
+        // Y: place below last sibling, or vertically center on parent when first child
         if (siblings.length > 0) {
           const lastBottom = Math.max(
             ...siblings.map((n) => n.position.y + ((n as any).measured?.height ?? 40))
           );
           initialY = lastBottom + NODE_GAP;
         } else {
-          initialY = parentPos.y;
+          // First child — center it on the parent's midpoint
+          initialY = parentPos.y + parentH / 2 - 20;
         }
       }
 
@@ -562,28 +564,10 @@ export const useMindMapStore = create<MindMapStore>()(
       const nextCollapsed = new Set(collapsedIds);
       nextCollapsed.delete(parentId);
 
-      // ── Vertically center siblings around parent's midpoint (mindmap only) ──
-      // After placing the new node, recalculate Y for all siblings so the group
-      // stays centered on the parent's vertical center.
-      let centeredNodes = [...allNodes, newNode];
-      if (!isFlowDiagram) {
-        const allSiblingNodes = [...siblings, newNode];
-        const parentCY = parentPos.y + parentH / 2;
-        const totalH = allSiblingNodes.reduce(
-          (sum, n) => sum + ((n as any).measured?.height ?? 40), 0
-        ) + NODE_GAP * (allSiblingNodes.length - 1);
-        let curY = parentCY - totalH / 2;
-        const yMap = new Map<string, number>();
-        for (const sib of allSiblingNodes) {
-          yMap.set(sib.id, curY);
-          curY += ((sib as any).measured?.height ?? 40) + NODE_GAP;
-        }
-        centeredNodes = centeredNodes.map((n) =>
-          yMap.has(n.id) ? { ...n, position: { ...n.position, y: yMap.get(n.id)! } } : n
-        );
-      }
-
-      const nextNodes = centeredNodes;
+      // Do NOT re-center existing siblings — they may have been positioned by ELK or
+      // manually by the user. Moving them every time a new node is added breaks saved layouts.
+      // Initial centering is handled by ELK on first load; new nodes are simply appended below.
+      const nextNodes = [...allNodes, newNode];
       const nextEdges = [...allEdges, newEdge];
       const { visibleNodes, visibleEdges } = computeVisible(nextNodes, nextEdges, nextCollapsed);
 

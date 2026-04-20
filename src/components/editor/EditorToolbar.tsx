@@ -188,6 +188,7 @@ const DirectionToggle = () => {
         </TipButton>
       </div>
 
+      {/* Import sketch button disabled
       {userRole !== "viewer" && (
         <TipButton
           label="Importar Esboço"
@@ -199,6 +200,7 @@ const DirectionToggle = () => {
           <FileText className="w-4 h-4" />
         </TipButton>
       )}
+      */}
 
       <Separator orientation="vertical" className="h-4 mx-1" />
 
