@@ -242,10 +242,10 @@ const DirectionToggle = () => {
 
       <TipButton 
         label="Excluir selecionado (Delete)" 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8" 
-        onClick={onDelete} 
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive/70 hover:text-destructive"
+        onClick={onDelete}
         disabled={!hasSelection || userRole === "viewer"}
       >
         <Trash2 className="w-4 h-4" />
