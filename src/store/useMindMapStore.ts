@@ -499,7 +499,7 @@ export const useMindMapStore = create<MindMapStore>()(
 
       // For mindmap: place below the last sibling on the same side.
       // For flow: place below the last sibling vertically.
-      const NODE_GAP = 14; // matches ELK spacing.nodeNode
+      const NODE_GAP = 10; // matches ELK spacing.nodeNode
       const FLOW_GAP = 80;
 
       let initialX: number;

@@ -11,14 +11,13 @@ function elkOptions(direction: "RIGHT" | "LEFT") {
   return {
     "elk.algorithm": "layered",
     "elk.direction": direction,
-    // Espaço horizontal entre camadas — reduzido para layout mais compacto
+    // Espaço horizontal entre camadas
     "elk.layered.spacing.nodeNodeBetweenLayers": "70",
-    // Espaço vertical entre irmãos — bem compacto como no print de referência
-    "elk.spacing.nodeNode": "14",
-    // BRANDES_KOEPF + BALANCED: centra filhos ao redor do pai
-    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-    "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
-    // LAYER_SWEEP minimiza cruzamentos sem descentrar os nós
+    // Espaço vertical uniforme entre irmãos
+    "elk.spacing.nodeNode": "10",
+    // LINEAR_SEGMENTS: espaçamento uniforme entre irmãos (sem distribuição desigual)
+    "elk.layered.nodePlacement.strategy": "LINEAR_SEGMENTS",
+    // LAYER_SWEEP minimiza cruzamentos
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
     // Compactação pós-layout: reduz comprimento das arestas
     "elk.layered.compaction.postCompaction.strategy": "EDGE_LENGTH",
