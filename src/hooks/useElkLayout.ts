@@ -3,53 +3,98 @@ import ELK from "elkjs/lib/elk.bundled.js";
 import { useReactFlow, useNodesInitialized } from "@xyflow/react";
 import { useMindMapStore } from "@/store/useMindMapStore";
 
-// Singleton ELK fora do hook
+// Singleton ELK — usado apenas para orgchart/flowchart
 const elk = new ELK();
 
-// Opções ELK para sub-grafos direcionais
-function elkOptions(direction: "RIGHT" | "LEFT") {
-  return {
-    "elk.algorithm": "layered",
-    "elk.direction": direction,
-    // Espaço horizontal entre camadas
-    "elk.layered.spacing.nodeNodeBetweenLayers": "70",
-    // Espaço vertical entre irmãos
-    "elk.spacing.nodeNode": "10",
-    // BRANDES_KOEPF + BALANCED: centraliza filhos ao redor do pai (melhor que LINEAR_SEGMENTS)
-    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-    "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
-    // LAYER_SWEEP minimiza cruzamentos
-    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    // Compactação pós-layout: reduz comprimento das arestas
-    "elk.layered.compaction.postCompaction.strategy": "EDGE_LENGTH",
-    "elk.edgeRouting": "SPLINES",
-    "elk.padding": "[top=10, left=10, bottom=10, right=10]",
-  };
-}
-
-
-// Opções ELK para layout de fluxo (orgchart/flowchart) — suporta DOWN e RIGHT
+// ─── Opções ELK para layout de fluxo (orgchart/flowchart) ────────────────────
 function elkOptionsFlow(direction: "DOWN" | "RIGHT" = "DOWN") {
   return {
     "elk.algorithm": "layered",
     "elk.direction": direction,
-    // Espaçamento entre camadas (vertical=entre linhas, horizontal=entre colunas)
     "elk.layered.spacing.nodeNodeBetweenLayers": "90",
-    // Espaçamento entre irmãos — aumentado para caber o diamante
     "elk.spacing.nodeNode": "70",
-    // Distância entre arestas e nós adjacentes — evita linhas grudadas
     "elk.layered.spacing.edgeNodeBetweenLayers": "30",
     "elk.spacing.edgeNode": "20",
     "elk.spacing.edgeEdge": "15",
-    // BRANDES_KOEPF + BALANCED centraliza filhos sob o pai
     "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
     "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    // ORTHOGONAL routing → arestas em linhas retas com elbows, lida
-    // naturalmente com arestas convergentes (duas setas para o mesmo nó)
     "elk.edgeRouting": "ORTHOGONAL",
     "elk.padding": "[top=40, left=60, bottom=40, right=60]",
   };
+}
+
+// ─── Layout de árvore personalizado para mindmap ──────────────────────────────
+//
+// Implementação Reingold-Tilford simplificada:
+//   1. Calcula altura do sub-grafo de cada nó (bottom-up)
+//   2. Posiciona filhos centralizados verticalmente no pai (top-down)
+//
+// Garante: espaçamento uniforme, filhos sempre centrados no pai, sem ELK.
+
+const MM_H_GAP = 70; // gap horizontal entre borda direita do pai e borda esquerda do filho
+const MM_V_GAP = 12; // gap vertical entre sub-árvores irmãs
+
+/** Altura total da sub-árvore enraizada em nodeId. */
+function mmSubtreeHeight(
+  nodeId: string,
+  childrenMap: Map<string, string[]>,
+  sizeMap: Map<string, { w: number; h: number }>
+): number {
+  const { h } = sizeMap.get(nodeId) ?? { w: 150, h: 40 };
+  const children = childrenMap.get(nodeId) ?? [];
+  if (children.length === 0) return h;
+  const childrenTotal =
+    children.reduce((sum, c) => sum + mmSubtreeHeight(c, childrenMap, sizeMap), 0) +
+    (children.length - 1) * MM_V_GAP;
+  // Se o nó for mais alto que seus filhos (raro), usa a altura do nó
+  return Math.max(h, childrenTotal);
+}
+
+/**
+ * Posiciona recursivamente o nó e sua sub-árvore.
+ *
+ * @param x        Borda esquerda do nó atual (coordenadas React Flow)
+ * @param centerY  Centro vertical da sub-árvore inteira (não só do nó)
+ * @param direction 1 = crescendo para a direita, -1 = crescendo para a esquerda
+ */
+function mmPlace(
+  nodeId: string,
+  x: number,
+  centerY: number,
+  direction: 1 | -1,
+  childrenMap: Map<string, string[]>,
+  sizeMap: Map<string, { w: number; h: number }>,
+  out: Map<string, { x: number; y: number }>
+): void {
+  const { w, h } = sizeMap.get(nodeId) ?? { w: 150, h: 40 };
+  // O nó em si fica verticalmente centrado no centro da sub-árvore
+  out.set(nodeId, { x, y: centerY - h / 2 });
+
+  const children = childrenMap.get(nodeId) ?? [];
+  if (!children.length) return;
+
+  // Altura de cada sub-árvore filha
+  const subtreeHeights = children.map((c) => mmSubtreeHeight(c, childrenMap, sizeMap));
+  const totalH =
+    subtreeHeights.reduce((a, b) => a + b, 0) + (children.length - 1) * MM_V_GAP;
+
+  // Começa no topo do bloco de filhos
+  let cy = centerY - totalH / 2;
+
+  for (let i = 0; i < children.length; i++) {
+    const childId = children[i];
+    const { w: cw } = sizeMap.get(childId) ?? { w: 150, h: 40 };
+    const childCenterY = cy + subtreeHeights[i] / 2;
+
+    // Posição horizontal do filho:
+    //   direita: pai.rightEdge + H_GAP
+    //   esquerda: pai.leftEdge - H_GAP - childWidth
+    const childX = direction === 1 ? x + w + MM_H_GAP : x - MM_H_GAP - cw;
+
+    mmPlace(childId, childX, childCenterY, direction, childrenMap, sizeMap, out);
+    cy += subtreeHeights[i] + MM_V_GAP;
+  }
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -61,18 +106,13 @@ export function useElkLayout() {
   const visibleNodes = useMindMapStore((s) => s.visibleNodes);
   const diagramType = useMindMapStore((s) => s.diagramType);
   const layoutDirection = useMindMapStore((s) => s.layoutDirection);
+
   const isRunning = useRef(false);
-  // fitView só na carga inicial — edições não devem fazer zoom-out
   const hasInitialFit = useRef(false);
-  // Tracks the last structureKey that triggered a layout.
-  // null = layout has never run (triggers the very first run).
-  // Using a ref (not state) prevents extra renders.
   const lastLayoutKey = useRef<string | null>(null);
 
-  const isFlowLayout = diagramType === "orgchart" || diagramType === "flowchart";
-  // Inclui nodeCount para re-layoutar automaticamente ao adicionar ou remover nós.
-  // O efeito só dispara depois que o novo nó é medido (nodesInitialized = true),
-  // garantindo que ELK recebe dimensões corretas. lastLayoutKey impede segunda execução.
+  // Inclui nodeCount para re-layoutar ao adicionar/remover nós.
+  // O efeito só dispara depois que o nó é medido (nodesInitialized = true).
   const collapseKey = useMindMapStore.getState().collapsedIds.size;
   const nodeCount = visibleNodes.length;
   const structureKey = `${nodeCount}|${collapseKey}|${layoutDirection}|${diagramType}`;
@@ -86,10 +126,9 @@ export function useElkLayout() {
       const root = nodes.find((n) => (n.data as any).isRoot);
       if (!root) return;
 
-      // ─── Layout DOWN para orgchart/flowchart ────────────────────────────────
-      // Sketch edges are visual-only drafts — exclude from layout computation
       const layoutEdges = visibleEdges.filter((e) => e.type !== "sketch");
 
+      // ── Layout orgchart/flowchart (ELK) ──────────────────────────────────────
       if (diagramType === "orgchart" || diagramType === "flowchart") {
         const dir = useMindMapStore.getState().layoutDirection;
         const flowGraph = {
@@ -113,7 +152,6 @@ export function useElkLayout() {
           positionMap.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
         });
 
-        // Anchor: keep root at its current position, shift everything else
         const elkRootPos = positionMap.get(root.id);
         const currentRootPos = root.position;
         const offsetX = elkRootPos ? currentRootPos.x - elkRootPos.x : 0;
@@ -125,17 +163,13 @@ export function useElkLayout() {
           return { ...node, position: { x: pos.x + offsetX, y: pos.y + offsetY } };
         });
 
-        // Migrate legacy "mindmap" edges → "flow" so they render as straight orthogonal connectors
-        // Must update the store directly (not setEdges) because ReactFlow is in controlled mode
-        // Handle IDs depend on direction: DOWN → bottom/top, RIGHT → right/left
         const store = useMindMapStore.getState();
         const currentEdges = store.visibleEdges;
         const srcHandle = dir === "RIGHT" ? "s-right" : "s-bottom";
         const tgtHandle = dir === "RIGHT" ? "t-left" : "t-top";
         const hasLegacyEdges = currentEdges.some((e) => e.type !== "sketch" && e.type !== "flow");
-        // Also detect handle mismatch when direction changes
-        const hasHandleMismatch = currentEdges.some((e) =>
-          e.type === "flow" && (e.sourceHandle !== srcHandle || e.targetHandle !== tgtHandle)
+        const hasHandleMismatch = currentEdges.some(
+          (e) => e.type === "flow" && (e.sourceHandle !== srcHandle || e.targetHandle !== tgtHandle)
         );
         if (hasLegacyEdges || hasHandleMismatch) {
           const migratedEdges = currentEdges.map((e) =>
@@ -144,7 +178,6 @@ export function useElkLayout() {
           const migratedAllEdges = store.allEdges.map((e) =>
             e.type === "sketch" ? e : { ...e, type: "flow", sourceHandle: srcHandle, targetHandle: tgtHandle }
           );
-          // Update both visibleNodes (with positions) + edges in a single store update
           store.setVisible(positionedNodes as any, migratedEdges);
           useMindMapStore.setState({ allEdges: migratedAllEdges });
         } else {
@@ -158,129 +191,107 @@ export function useElkLayout() {
         return;
       }
 
-      // ─── Layout bifurcado LEFT/RIGHT para mindmap ───────────────────────────
+      // ── Layout mindmap (árvore personalizada) ────────────────────────────────
+      //
+      // Usa o algoritmo Reingold-Tilford (mmPlace/mmSubtreeHeight) em vez de ELK.
+      // Garante: filhos sempre centralizados no pai, espaçamento uniforme.
 
-      // Separar nós por lado
-      const rightNodes = nodes.filter(
-        (n) => n.id === root.id || (n.data as any).side === "right" || !(n.data as any).side
-      );
-      const leftNodes = nodes.filter((n) => (n.data as any).side === "left");
-
-      const rightNodeIds = new Set(rightNodes.map((n) => n.id));
-      const leftNodeIds = new Set([root.id, ...leftNodes.map((n) => n.id)]);
-
-      const rightEdges = layoutEdges.filter(
-        (e) => rightNodeIds.has(e.source) && rightNodeIds.has(e.target)
-      );
-      const leftEdges = layoutEdges.filter(
-        (e) => leftNodeIds.has(e.source) && leftNodeIds.has(e.target)
+      const sizeMap = new Map(
+        nodes.map((n) => [
+          n.id,
+          {
+            w: (n as any).measured?.width ?? 150,
+            h: (n as any).measured?.height ?? 40,
+          },
+        ])
       );
 
-      // ─── Layout RIGHT ───────────────────────────────────────────────────────
-      const rightGraph = {
-        id: "right",
-        layoutOptions: elkOptions("RIGHT"),
-        children: rightNodes.map((n) => ({
-          id: n.id,
-          width: (n as any).measured?.width ?? 150,
-          height: (n as any).measured?.height ?? 40,
-        })),
-        edges: rightEdges.map((e) => ({
-          id: e.id,
-          sources: [e.source],
-          targets: [e.target],
-        })),
-      };
+      // Mapa pai → filhos (apenas arestas estruturais)
+      const childrenMap = new Map<string, string[]>();
+      nodes.forEach((n) => childrenMap.set(n.id, []));
+      layoutEdges.forEach((e) => childrenMap.get(e.source)?.push(e.target));
 
-      const rightResult = await elk.layout(rightGraph);
-      const rootInRight = rightResult.children?.find((c) => c.id === root.id);
-
-      // ─── Layout LEFT ────────────────────────────────────────────────────────
-      const leftWithRoot = [root, ...leftNodes];
-      const leftGraph = {
-        id: "left",
-        layoutOptions: elkOptions("LEFT"),
-        children: leftWithRoot.map((n) => ({
-          id: n.id,
-          width: (n as any).measured?.width ?? 150,
-          height: (n as any).measured?.height ?? 40,
-        })),
-        edges: leftEdges.map((e) => ({
-          id: e.id,
-          sources: [e.source],
-          targets: [e.target],
-        })),
-      };
-
-      const leftResult = leftNodes.length > 0 ? await elk.layout(leftGraph) : null;
-      const rootInLeft = leftResult?.children?.find((c) => c.id === root.id);
-
-      // ─── Anchor root at its current position ─────────────────────────────────
-      const elkRootX = rootInRight?.x ?? 0;
-      const elkRootY = rootInRight?.y ?? 0;
-      // Offset: shift ELK output so root stays where it was on screen
-      const anchorOX = root.position.x - elkRootX;
-      const anchorOY = root.position.y - elkRootY;
-
-      // Offset para posicionar lado esquerdo espelhado (relative to ELK root)
-      const leftOffsetX = elkRootX - (rootInLeft?.x ?? 0);
-      const leftOffsetY = elkRootY - (rootInLeft?.y ?? 0);
-
-      // ─── Mapear posições finais ──────────────────────────────────────────────
-      const positionMap = new Map<string, { x: number; y: number }>();
-
-      rightResult.children?.forEach((n) => {
-        positionMap.set(n.id, {
-          x: (n.x ?? 0) + anchorOX,
-          y: (n.y ?? 0) + anchorOY,
+      // Ordena filhos pela posição Y atual para preservar a ordem visual
+      for (const [, children] of childrenMap) {
+        children.sort((a, b) => {
+          const ya = nodes.find((n) => n.id === a)?.position.y ?? 0;
+          const yb = nodes.find((n) => n.id === b)?.position.y ?? 0;
+          return ya - yb;
         });
-      });
+      }
 
-      leftResult?.children?.forEach((n) => {
-        if (n.id !== root.id) {
-          positionMap.set(n.id, {
-            x: (n.x ?? 0) + leftOffsetX + anchorOX,
-            y: (n.y ?? 0) + leftOffsetY + anchorOY,
-          });
+      const rootSize = sizeMap.get(root.id) ?? { w: 150, h: 40 };
+      const rootCenterY = root.position.y + rootSize.h / 2;
+
+      const out = new Map<string, { x: number; y: number }>();
+      out.set(root.id, root.position); // raiz ancorada
+
+      const rootChildren = childrenMap.get(root.id) ?? [];
+      const rightChildren = rootChildren.filter(
+        (id) => (nodes.find((n) => n.id === id)?.data as any)?.side !== "left"
+      );
+      const leftChildren = rootChildren.filter(
+        (id) => (nodes.find((n) => n.id === id)?.data as any)?.side === "left"
+      );
+
+      // Posiciona lado direito
+      if (rightChildren.length > 0) {
+        const heights = rightChildren.map((c) => mmSubtreeHeight(c, childrenMap, sizeMap));
+        const totalH =
+          heights.reduce((a, b) => a + b, 0) + (rightChildren.length - 1) * MM_V_GAP;
+        let cy = rootCenterY - totalH / 2;
+        const childX = root.position.x + rootSize.w + MM_H_GAP;
+        for (let i = 0; i < rightChildren.length; i++) {
+          mmPlace(rightChildren[i], childX, cy + heights[i] / 2, 1, childrenMap, sizeMap, out);
+          cy += heights[i] + MM_V_GAP;
         }
-      });
+      }
 
-      // ─── Aplicar via ReactFlow (canal correto) ───────────────────────────────
+      // Posiciona lado esquerdo (espelhado)
+      if (leftChildren.length > 0) {
+        const heights = leftChildren.map((c) => mmSubtreeHeight(c, childrenMap, sizeMap));
+        const totalH =
+          heights.reduce((a, b) => a + b, 0) + (leftChildren.length - 1) * MM_V_GAP;
+        let cy = rootCenterY - totalH / 2;
+        for (let i = 0; i < leftChildren.length; i++) {
+          const { w: cw } = sizeMap.get(leftChildren[i]) ?? { w: 150, h: 40 };
+          const childX = root.position.x - MM_H_GAP - cw;
+          mmPlace(leftChildren[i], childX, cy + heights[i] / 2, -1, childrenMap, sizeMap, out);
+          cy += heights[i] + MM_V_GAP;
+        }
+      }
+
       setNodes(
         nodes.map((node) => {
-          const pos = positionMap.get(node.id);
+          const pos = out.get(node.id);
           if (!pos) return node;
           return { ...node, position: pos };
         })
       );
 
-      // fitView apenas na carga inicial — sem zoom-out a cada edição
       if (!hasInitialFit.current) {
         hasInitialFit.current = true;
-        setTimeout(() => {
-          fitView({ duration: 500, padding: 0.15 });
-        }, 80);
+        setTimeout(() => { fitView({ duration: 500, padding: 0.15 }); }, 80);
       }
     } catch (err) {
-      console.error("[ELK Bifurcado]", err);
+      console.error("[Layout]", err);
     } finally {
       isRunning.current = false;
     }
   }, [getNodes, setNodes, fitView, visibleEdges, diagramType, layoutDirection]);
 
-  // Reset flags when diagram type changes (new diagram loaded)
+  // Reset ao trocar de diagrama
   useEffect(() => {
     hasInitialFit.current = false;
-    lastLayoutKey.current = null; // force re-layout on new diagram
+    lastLayoutKey.current = null;
   }, [diagramType]);
 
-  // Trigger layout when:
-  //   (a) first time nodes are initialized (initial load), OR
-  //   (b) structureKey changed: node added/removed, collapse/expand, direction, diagram type
+  // Dispara layout quando:
+  //   (a) carga inicial (nodesInitialized = true pela primeira vez), OU
+  //   (b) structureKey mudou (nó adicionado/removido, colapso, direção, tipo)
   //
-  // The effect only fires when nodesInitialized = true, so ELK always gets measured
-  // node sizes. lastLayoutKey prevents a second run when nodesInitialized cycles
-  // true→false→true after ELK repositions nodes.
+  // Nunca re-executa quando nodesInitialized cicla true→false→true após um
+  // repositionamento — lastLayoutKey impede a segunda execução.
   useEffect(() => {
     if (!nodesInitialized) return;
     const shouldRun = lastLayoutKey.current === null || lastLayoutKey.current !== structureKey;
