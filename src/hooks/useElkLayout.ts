@@ -111,11 +111,16 @@ export function useElkLayout() {
   const hasInitialFit = useRef(false);
   const lastLayoutKey = useRef<string | null>(null);
 
-  // Inclui nodeCount para re-layoutar ao adicionar/remover nós.
-  // O efeito só dispara depois que o nó é medido (nodesInitialized = true).
+  // Fingerprint de arestas estruturais: detecta reparentar (source/target muda
+  // mas count não muda) além de add/delete de nós.
+  const edgeSig = visibleEdges
+    .filter((e) => e.type !== "sketch")
+    .map((e) => `${e.source}>${e.target}`)
+    .sort()
+    .join("|");
   const collapseKey = useMindMapStore.getState().collapsedIds.size;
   const nodeCount = visibleNodes.length;
-  const structureKey = `${nodeCount}|${collapseKey}|${layoutDirection}|${diagramType}`;
+  const structureKey = `${nodeCount}|${edgeSig}|${collapseKey}|${layoutDirection}|${diagramType}`;
 
   const runLayout = useCallback(async () => {
     const nodes = getNodes();
@@ -209,15 +214,19 @@ export function useElkLayout() {
       // Mapa pai → filhos (apenas arestas estruturais)
       const childrenMap = new Map<string, string[]>();
       nodes.forEach((n) => childrenMap.set(n.id, []));
-      layoutEdges.forEach((e) => childrenMap.get(e.source)?.push(e.target));
 
-      // Ordena filhos pela posição Y atual para preservar a ordem visual
+      // Mapeia nodeId → índice da aresta que o conecta ao pai.
+      // Usar índice de aresta (ordem de criação) em vez de posição Y evita
+      // dependência de posições obsoletas no store: novos irmãos vão sempre
+      // ao final pois sua aresta é adicionada por último.
+      const edgeOrderMap = new Map<string, number>();
+      layoutEdges.forEach((e, idx) => {
+        childrenMap.get(e.source)?.push(e.target);
+        edgeOrderMap.set(e.target, idx);
+      });
+
       for (const [, children] of childrenMap) {
-        children.sort((a, b) => {
-          const ya = nodes.find((n) => n.id === a)?.position.y ?? 0;
-          const yb = nodes.find((n) => n.id === b)?.position.y ?? 0;
-          return ya - yb;
-        });
+        children.sort((a, b) => (edgeOrderMap.get(a) ?? 0) - (edgeOrderMap.get(b) ?? 0));
       }
 
       const rootSize = sizeMap.get(root.id) ?? { w: 150, h: 40 };
@@ -261,13 +270,22 @@ export function useElkLayout() {
         }
       }
 
-      setNodes(
-        nodes.map((node) => {
-          const pos = out.get(node.id);
-          if (!pos) return node;
-          return { ...node, position: pos };
-        })
-      );
+      const positionedNodes = nodes.map((node) => {
+        const pos = out.get(node.id);
+        if (!pos) return node;
+        return { ...node, position: pos };
+      });
+
+      setNodes(positionedNodes);
+
+      // Sincroniza posições de volta ao store para que addChild/addSibling
+      // leiam posições corretas ao calcular lastBottom (evita inserção na ordem errada).
+      const store = useMindMapStore.getState();
+      const nextAllNodes = store.allNodes.map((n) => {
+        const pos = out.get(n.id);
+        return pos ? { ...n, position: pos } : n;
+      });
+      useMindMapStore.setState({ allNodes: nextAllNodes });
 
       if (!hasInitialFit.current) {
         hasInitialFit.current = true;
