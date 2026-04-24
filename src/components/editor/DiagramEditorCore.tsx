@@ -33,8 +33,11 @@ import { editorThemes, isColorDark, type EditorTheme } from "./editorThemes";
 import { UserRoleProvider } from "./UserRoleContext";
 import { OutlineView } from "./OutlineView";
 import { ImportOutlineDialog } from "./ImportOutlineDialog";
+import { MultiSelectBar } from "./MultiSelectBar";
 import MobileNodeDrawer from "./MobileNodeDrawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PlusCircle, Undo2, Redo2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { useMindMapStore } from "@/store/useMindMapStore";
 import { useElkLayout } from "@/hooks/useElkLayout";
@@ -325,6 +328,7 @@ function DiagramEditorInner({
   const clearPendingEdit = useMindMapStore(s => s.clearPendingEdit);
   const updateEdgeData = useMindMapStore(s => s.updateEdgeData);
   const addSketchEdge = useMindMapStore(s => s.addSketchEdge);
+  const swapSketchEdgeDirection = useMindMapStore(s => s.swapSketchEdgeDirection);
   const pendingSketchSource = useMindMapStore(s => s.pendingSketchSource);
   const setPendingSketchSource = useMindMapStore(s => s.setPendingSketchSource);
 
@@ -617,11 +621,7 @@ function DiagramEditorInner({
 
   const handleEdgeDataChange = useCallback((edgeId: string, data: Record<string, unknown>) => {
     if (data._swapDirection) {
-      const { allNodes, allEdges } = useMindMapStore.getState();
-      setNodesAndEdges(
-        allNodes,
-        allEdges.map(e => e.id === edgeId ? { ...e, source: e.target, target: e.source } : e)
-      );
+      swapSketchEdgeDirection(edgeId);
       return;
     }
     updateEdgeData(edgeId, data);
@@ -927,6 +927,63 @@ function DiagramEditorInner({
           onEdgeDataChange={handleEdgeDataChange}
         />
 
+      {/* ── Painel flutuante direito estilo MindMeister (apenas mindmap) ── */}
+      {diagramType === "mindmap" && viewMode === "graph" && !isMobile && (
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2 pointer-events-auto">
+          {/* Card superior: adicionar tópico */}
+          <div
+            className="flex flex-col items-center gap-0.5 rounded-xl shadow-md border p-1"
+            style={{ background: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder }}
+          >
+            <button
+              className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                selectedNodes.length > 0
+                  ? "hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 cursor-pointer"
+                  : "text-zinc-300 dark:text-zinc-600 cursor-default"
+              )}
+              onClick={() => selectedNodes.length > 0 && addChild(selectedNodes[0].id)}
+              title="Adicionar tópico filho"
+            >
+              <PlusCircle className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Card inferior: undo / redo */}
+          <div
+            className="flex flex-col items-center gap-0.5 rounded-xl shadow-md border p-1"
+            style={{ background: themeUI(theme).cardBg, borderColor: themeUI(theme).cardBorder }}
+          >
+            <button
+              className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                past.length > 0
+                  ? "hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-pointer"
+                  : "text-zinc-300 dark:text-zinc-600 cursor-default"
+              )}
+              onClick={undo}
+              disabled={past.length === 0}
+              title="Desfazer (Ctrl+Z)"
+            >
+              <Redo2 className="w-4 h-4 scale-x-[-1]" />
+            </button>
+            <button
+              className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                future.length > 0
+                  ? "hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 cursor-pointer"
+                  : "text-zinc-300 dark:text-zinc-600 cursor-default"
+              )}
+              onClick={redo}
+              disabled={future.length === 0}
+              title="Refazer (Ctrl+Y)"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === "graph" ? (
         <ReactFlow
           nodes={visibleNodes.map(n => {
@@ -979,6 +1036,7 @@ function DiagramEditorInner({
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color={theme.dotColor} />
           <Controls showInteractive={false} className="!rounded-xl !shadow-md [&>button]:!border-0" />
           <MiniMap position="bottom-right" className="!rounded-xl !shadow-md" maskColor={theme.minimapMask} nodeColor={themeUI(theme).minimapNode} />
+          <MultiSelectBar />
         </ReactFlow>
       ) : (
         <OutlineView

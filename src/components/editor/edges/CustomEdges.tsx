@@ -173,6 +173,7 @@ function MindMapEdgeComponent(props: EdgeProps) {
     sourceSide
   );
 
+  // Bezier curves with horizontal exit — replicates MindMeister's organic look
   const [edgePath] = getBezierPath({
     sourceX: sx,
     sourceY: sy,
@@ -180,13 +181,17 @@ function MindMapEdgeComponent(props: EdgeProps) {
     targetX: tx,
     targetY: ty,
     targetPosition,
-    curvature: 0.35,
+    curvature: 0.45,
   });
 
   const branchColor =
     ((data as any)?.branchColor as string | undefined) ??
     (style?.stroke as string | undefined) ??
     "#94a3b8";
+
+  // Depth-based stroke width — mirrors MindMeister's visual hierarchy
+  const targetDepth = (targetNode as any).data?.depth ?? 1;
+  const strokeWidth = targetDepth <= 1 ? 2.5 : targetDepth === 2 ? 2 : 1.5;
 
   // Extrai animações do tema (_animation, _dashArray) — mesmo mecanismo
   // dos outros edge types, agora aplicado nativamente ao MindMapEdge
@@ -198,7 +203,7 @@ function MindMapEdgeComponent(props: EdgeProps) {
       d={edgePath}
       fill="none"
       stroke={branchColor}
-      strokeWidth={2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       style={{
         // currentColor resolve para branchColor nos keyframes de glow/neon
@@ -333,8 +338,9 @@ function SketchEdgeComponent(props: EdgeProps) {
     lineType === "dotted" ? "2 4" :
     undefined;
 
-  const endMarkerId = `sk-end-${id}`;
-  const startMarkerId = `sk-start-${id}`;
+  // Include type in marker ID so the browser re-draws when type changes (no SVG cache collision)
+  const endMarkerId = `sk-end-${id}-${markerEndType}`;
+  const startMarkerId = `sk-start-${id}-${markerStartType}`;
 
   // Drag control point using pointer events + screenToFlowPosition
   const onCpPointerDown = useCallback((e: React.PointerEvent<SVGCircleElement>) => {
@@ -415,12 +421,12 @@ function SketchEdgeComponent(props: EdgeProps) {
         style={{ transition: "opacity 0.15s ease, stroke-width 0.15s ease" }}
       />
 
-      {/* Moveable control point — single circle: visible = hit area */}
+      {/* Moveable control point — explicit pointerEvents:"all" overrides SVG edge container inheritance */}
       {selected && (
         <circle
-          cx={cpX} cy={cpY} r={7}
-          fill={color} stroke="white" strokeWidth={2}
-          style={{ cursor: "move" }}
+          cx={cpX} cy={cpY} r={10}
+          fill={color} stroke="white" strokeWidth={2.5}
+          style={{ cursor: "move", pointerEvents: "all" }}
           className="nodrag nopan"
           onPointerDown={onCpPointerDown}
         />
