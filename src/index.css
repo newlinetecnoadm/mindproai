@@ -214,12 +214,9 @@
   box-sizing: border-box;
 }
 
-/* 2. Seleção: outline único externo — laranja da identidade visual da marca */
+/* 2. Seleção: sem outline do ReactFlow — o nó cuida da própria borda colorida */
 .react-flow__node.selected {
-  outline: 2px solid #E9853A;
-  outline-offset: 3px;
-  border-radius: 4px;
-  /* Cancel any box-shadow that React Flow's stylesheet may add */
+  outline: none !important;
   box-shadow: none !important;
 }
 
@@ -332,13 +329,20 @@
   line-height: 1.4;
 }
 
-/* Remove gray borders from Mind Map and Organograma nodes */
+/* Remove gray borders / backgrounds from Mind Map nodes — the inner div handles styling */
 .react-flow__node-mindmap,
 .react-flow__node-org_mindmap {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  border-radius: 0px !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure the ReactFlow default node styles don't bleed into mindmap nodes */
+.react-flow__node-mindmap > *,
+.react-flow__node-org_mindmap > * {
+  outline: none !important;
 }
 
 /* Kanban dragging improvements */

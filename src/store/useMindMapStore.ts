@@ -24,6 +24,13 @@ export type MindMapNodeData = {
   notes?: string;
   icon?: string;
   shape?: NodeShape;
+  // ── Per-node style overrides (MindMeister-like) ──────────
+  customColor?: string;       // Override branch color for this node only
+  fontBold?: boolean;
+  fontItalic?: boolean;
+  fontUnderline?: boolean;
+  fontSize?: "sm" | "md" | "lg";
+  link?: string;              // URL attachment
   [key: string]: unknown;
 };
 
@@ -76,9 +83,11 @@ type MindMapStore = {
   setDiagramType: (type: string) => void;
   setLayoutDirection: (dir: "DOWN" | "RIGHT") => void;
   updateEdgeData: (edgeId: string, data: Record<string, unknown>) => void;
+  swapSketchEdgeDirection: (edgeId: string) => void;
   addSketchEdge: (source: string, target: string, sourceHandle?: string, targetHandle?: string) => void;
   pendingSketchSource: string | null;
   setPendingSketchSource: (id: string | null) => void;
+  updateNodeStyle: (nodeId: string, style: Partial<Pick<MindMapNodeData, "customColor" | "fontBold" | "fontItalic" | "fontUnderline" | "fontSize" | "link">>) => void;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -737,6 +746,37 @@ export const useMindMapStore = create<MindMapStore>()(
         ),
         visibleEdges: state.visibleEdges.map((e) =>
           e.id === edgeId ? { ...e, data: { ...(e.data ?? {}), ...data } } : e
+        ),
+      }));
+    },
+
+    // Swaps source↔target on sketch edges ONLY — never touches inferBranchSides
+    swapSketchEdgeDirection: (edgeId) => {
+      set((state) => {
+        const swap = (e: Edge) =>
+          e.id === edgeId && e.type === "sketch"
+            ? {
+                ...e,
+                source: e.target,
+                target: e.source,
+                sourceHandle: e.targetHandle,
+                targetHandle: e.sourceHandle,
+              }
+            : e;
+        return {
+          allEdges: state.allEdges.map(swap),
+          visibleEdges: state.visibleEdges.map(swap),
+        };
+      });
+    },
+
+    updateNodeStyle: (nodeId, style) => {
+      set((state) => ({
+        allNodes: state.allNodes.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, ...style } } : n
+        ),
+        visibleNodes: state.visibleNodes.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, ...style } } : n
         ),
       }));
     },

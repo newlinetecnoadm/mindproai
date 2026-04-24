@@ -176,9 +176,12 @@ const EdgeFloatingToolbar = ({
           {/* Line type */}
           <Popover>
             <PopoverTrigger asChild>
-              <TipBtn label="Estilo da linha">
+              <button
+                title="Estilo da linha"
+                className="flex items-center justify-center w-7 h-7 rounded text-sm transition-colors hover:bg-muted"
+              >
                 <span className="text-xs font-bold leading-none text-muted-foreground">—</span>
-              </TipBtn>
+              </button>
             </PopoverTrigger>
             <PopoverContent align="center" side="top" className="w-36 p-2">
               <p className="text-xs text-muted-foreground mb-2 font-medium">Estilo</p>
@@ -201,17 +204,24 @@ const EdgeFloatingToolbar = ({
             </PopoverContent>
           </Popover>
 
-          {/* Direction */}
-          <TipBtn label="Mudar direção" onClick={swapDirection}>
+          {/* Direction — plain button, no TipBtn wrapper needed */}
+          <button
+            onClick={swapDirection}
+            title="Mudar direção"
+            className="flex items-center justify-center w-7 h-7 rounded text-sm transition-colors hover:bg-muted"
+          >
             <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
-          </TipBtn>
+          </button>
 
-          {/* End marker */}
+          {/* End marker — direct button trigger to avoid asChild/Tooltip conflict */}
           <Popover>
             <PopoverTrigger asChild>
-              <TipBtn label="Fim da linha">
+              <button
+                title="Fim da linha"
+                className="flex items-center justify-center w-7 h-7 rounded text-sm transition-colors hover:bg-muted"
+              >
                 <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-              </TipBtn>
+              </button>
             </PopoverTrigger>
             <PopoverContent align="center" side="top" className="w-40 p-2">
               <p className="text-xs text-muted-foreground mb-2 font-medium">Fim da linha</p>
@@ -234,9 +244,12 @@ const EdgeFloatingToolbar = ({
           {/* Start marker */}
           <Popover>
             <PopoverTrigger asChild>
-              <TipBtn label="Início da linha">
+              <button
+                title="Início da linha"
+                className="flex items-center justify-center w-7 h-7 rounded text-sm transition-colors hover:bg-muted"
+              >
                 <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground" />
-              </TipBtn>
+              </button>
             </PopoverTrigger>
             <PopoverContent align="center" side="top" className="w-40 p-2">
               <p className="text-xs text-muted-foreground mb-2 font-medium">Início da linha</p>
