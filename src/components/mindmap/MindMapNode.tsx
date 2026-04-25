@@ -584,15 +584,6 @@ function MindMapNodeComponent({
             <Spline className="w-3.5 h-3.5" />
           </button>
 
-          {/* ── Adicionar filho ── */}
-          <button
-            className="nodrag nopan flex items-center justify-center w-7 h-7 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
-            onClick={() => addChild(nodeId)}
-            title="Adicionar filho (Tab)"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-
           {/* Separador */}
           <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
 
