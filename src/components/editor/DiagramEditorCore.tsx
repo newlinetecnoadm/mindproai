@@ -893,8 +893,8 @@ function DiagramEditorInner({
           );
         })()}
 
-        {/* Floating toolbar de nó selecionado — apenas para seleção singular */}
-        {viewMode === "graph" && userRole !== "viewer" && selectedNodes.length === 1 && (
+        {/* Floating toolbar de nó selecionado — apenas para flowchart/orgchart (mindmap tem botões próprios no nó) */}
+        {viewMode === "graph" && userRole !== "viewer" && selectedNodes.length === 1 && diagramType !== "mindmap" && (
           <NodeFloatingToolbar
             containerRef={canvasRef}
             selectedNodes={selectedNodes.filter(n => !(n.data as any)?.isRoot || diagramType !== "mindmap")}
